@@ -45,17 +45,14 @@ void setup() {
   Device_Ctrl.CreateScheduleManagerTask();
 
   Device_Ctrl.CreateTimerCheckerTask();
-
-  delay(3000);
-  // DynamicJsonDocument singlePipelineSetting(1000);
-  // singlePipelineSetting["FullFilePath"].set("/pipelines/pool_1_all_data_get.json");
-  // singlePipelineSetting["TargetName"].set("pool_1_all_data_get.json");
-  // singlePipelineSetting["stepChose"].set("");
-  // singlePipelineSetting["eventChose"].set("");
-  // singlePipelineSetting["eventIndexChose"].set(-1);
-  // (*Device_Ctrl.JSON__pipelineStack).add(singlePipelineSetting);
 }
 
 void loop() {
-  delay(1000);
+  if (Serial.available()){
+    String getMessage = Serial.readString();
+    if (getMessage == "restart") {
+      esp_restart();
+    }
+  }
+  vTaskDelay(1000/portTICK_PERIOD_MS);
 }
