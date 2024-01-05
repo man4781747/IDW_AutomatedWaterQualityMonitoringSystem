@@ -39,6 +39,8 @@ void C_Device_Ctrl::INIT_Pins()
   digitalWrite(PIN__EN_Servo_Motor, LOW);
 
   pinMode(PIN__ADC_PH_IN, INPUT);
+  pinMode(PIN__EN_PH, OUTPUT);
+  digitalWrite(PIN__EN_PH, HIGH); 
 
   pinMode(PIN__EN_BlueSensor, OUTPUT);
   digitalWrite(PIN__EN_BlueSensor, LOW);
