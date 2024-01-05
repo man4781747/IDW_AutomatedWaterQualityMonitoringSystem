@@ -124,17 +124,18 @@ void ws_GetAllPoolData(AsyncWebSocket *server, AsyncWebSocketClient *client, Dyn
     DynamicJsonDocument D_poolSensorDataSended(5000);
     JsonObject D_poolsSensorData = JsonPair_poolsSensorData.value();
     String S_PoolID = String(JsonPair_poolsSensorData.key().c_str());
-
-    // for (JsonVariant value : (*Device_Ctrl.JSON__sensorDataSave).as<JsonArray>()) {
-    //   JsonObject PoolConfigItem = value.as<JsonObject>();
-    //   if (PoolConfigItem["id"].as<String>() == S_PoolID) {
-    //     if (PoolConfigItem["external_mapping"].as<String>() != "") {
-    //       S_PoolID = PoolConfigItem["external_mapping"].as<String>();
-    //     }
-    //     break;
-    //   }
-    // }
-    Serial.println(S_PoolID);
+    // serializeJsonPretty((*Device_Ctrl.JSON__PoolConfig), Serial);
+    for (JsonVariant value : (*Device_Ctrl.JSON__PoolConfig).as<JsonArray>()) {
+      JsonObject PoolConfigItem = value.as<JsonObject>();
+      // serializeJsonPretty(PoolConfigItem, Serial);
+      if (PoolConfigItem["id"].as<String>() == S_PoolID) {
+        if (PoolConfigItem["external_mapping"].as<String>() != "") {
+          S_PoolID = PoolConfigItem["external_mapping"].as<String>();
+        }
+        break;
+      }
+    }
+    // Serial.println(S_PoolID);
     D_poolSensorDataSended["PoolID"] = S_PoolID;
     D_poolSensorDataSended["PoolName"] = D_poolsSensorData["PoolName"].as<String>();
     D_poolSensorDataSended["PoolDescription"] = D_poolsSensorData["PoolDescription"].as<String>();
