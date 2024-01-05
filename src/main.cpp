@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <esp_log.h>
 #include "./DeviceCtrl/MAIN__DeviceCtrl.h"
+#include "TimeLibExternalFunction.h"
 
 void setup() {
   setCpuFrequencyMhz(240);
@@ -45,6 +46,8 @@ void setup() {
   Device_Ctrl.CreateScheduleManagerTask();
 
   Device_Ctrl.CreateTimerCheckerTask();
+
+  Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "開機完畢");
 }
 
 void loop() {

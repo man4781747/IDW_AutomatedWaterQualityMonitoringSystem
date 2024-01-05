@@ -194,10 +194,20 @@ int Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem
     }
     int d_ang = targetAngValue - readAng;
     if (abs(d_ang)>15) {
-      ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "伺服馬達(LX-20S) 編號 %d 並無轉到指定角度: %d，讀取到的角度為: %d",
+
+      char logBuffer[1000];
+      sprintf(
+        logBuffer, 
+        "伺服馬達(LX-20S) 編號 %d 並無轉到指定角度: %d，讀取到的角度為: %d",
         servoMotorItem["index"].as<int>(), servoMotorItem["status"].as<int>(),
         map(readAng, 0, 1000, -30, 210)
       );
+
+      ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "%s", logBuffer);
+      Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, logBuffer);
+      Device_Ctrl.BroadcastLogToClient(NULL, 1, logBuffer);
+
+
       anyFail += String(servoMotorItem["index"].as<int>());
       anyFail += ",";
     }
@@ -215,6 +225,8 @@ int Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem
 
   if (anyFail != "") {
     ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "伺服馬達(LX-20S)發生預期外的動作，準備中止儀器的所有動作");
+    Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "伺服馬達(LX-20S)發生預期外的動作，準備中止儀器的所有動作");
+    Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達(LX-20S)發生預期外的動作，準備中止儀器的所有動作");
     // Device_Ctrl.StopDeviceAndINIT();
     return -1;
   }
@@ -328,7 +340,9 @@ int Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDeta
       if (millis() >= endTime) {
         //? 執行到這，代表馬達執行到最大執行時間，如果 failType 是 timeout，則代表觸發失敗判斷
         if (thisFailType == "timeout") {
-          ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "蠕動馬達觸發Timeout錯誤，錯誤處裡: %s", thisFailAction.c_str());
+          ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "蠕動馬達(%d)觸發Timeout，檢查錯誤處裡: %s", motorIndex, thisFailAction.c_str());
+          Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "蠕動馬達(%d)觸發Timeout，檢查錯誤處裡: %s", motorIndex, thisFailAction.c_str());
+          Device_Ctrl.BroadcastLogToClient(NULL, 1, "蠕動馬達(%d)觸發Timeout，檢查錯誤處裡: %s", motorIndex, thisFailAction.c_str());
           if (thisFailAction=="stepStop") {
             //! 觸發timeout，並且停止當前Step的運行
             for (const auto& motorChose : endTimeCheckList.as<JsonObject>()) {
@@ -339,14 +353,20 @@ int Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDeta
             endTimeCheckJSON["finish"].set(true);
             // (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][stepsGroupNameString]["RESULT"].set("FAIL");
             ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "停止當前Step的運行");
+            Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "停止當前Step的運行");
+            Device_Ctrl.BroadcastLogToClient(NULL, 1, "停止當前Step的運行");
             return -1;
           }
           else if (thisFailAction=="stopImmediately") {
             ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "準備緊急終止儀器");
+            Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "準備緊急終止儀器");
+            Device_Ctrl.BroadcastLogToClient(NULL, 1, "準備緊急終止儀器");
             return -3;
           }
           else if (thisFailAction=="stopPipeline") {
             ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "準備停止當前流程，若有下一個排隊中的流程就執行他");
+            Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "準備停止當前流程，若有下一個排隊中的流程就執行他");
+            Device_Ctrl.BroadcastLogToClient(NULL, 1, "準備停止當前流程，若有下一個排隊中的流程就執行他");
             // (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][stepsGroupNameString]["RESULT"].set("STOP_THIS_PIPELINE");
             return -2;
           }
@@ -413,6 +433,8 @@ int Do_WaitAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
 {
   int waitSeconds = eventItem["wait"].as<int>();
   ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"      等待 %d 秒",waitSeconds);
+  Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "等待 %d 秒",waitSeconds);
+  Device_Ctrl.BroadcastLogToClient(NULL, 3, "等待 %d 秒",waitSeconds);
   unsigned long start_time = millis();
   unsigned long end_time = start_time + waitSeconds*1000;
   while (millis() < end_time) {
@@ -559,7 +581,13 @@ int Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
       "PH量測結果, 測量原始值: %s, 轉換後PH值: %s",
       String(PH_RowValue, 2).c_str(), String(pHValue, 2).c_str()
     );
+    Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 5, logBuffer);
+    Device_Ctrl.BroadcastLogToClient(NULL, 5, logBuffer);
     ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"       - %s", String(logBuffer).c_str());
+    if (pHValue > 10 | pHValue < 4) {
+      Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "PH量測數值有誤: %s", String(pHValue, 2).c_str());
+      Device_Ctrl.BroadcastLogToClient(NULL, 1, "PH量測數值有誤: %s", String(pHValue, 2).c_str());
+    }
   }
   return 1;
 }
