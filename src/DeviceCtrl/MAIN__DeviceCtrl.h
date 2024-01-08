@@ -2,7 +2,7 @@
 #define DEVICE_CTRL_H
 
 #define MAX_STEP_TASK_NUM 6
-#define FIRMWARE_VERSION "V4.23.1204.0"
+#define FIRMWARE_VERSION "V4.24.0101.0"
 
 #include "CONFIG__pinMap.h"
 #include <Arduino.h>
@@ -63,6 +63,8 @@ class C_Device_Ctrl
 
     // 預設使用 Wire
     TwoWire _Wire = Wire;
+
+    void ScanI2C();
 
     //? 初始化各個PIN的初始化狀態
     void INIT_Pins();
