@@ -484,6 +484,7 @@ int Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
     vTaskDelay(500/portTICK_PERIOD_MS);
     INA226 ina226(Device_Ctrl._Wire);
     ina226.begin(sensorAddr);
+    Device_Ctrl.ScanI2C();
     ina226.configure(
       INA226_AVERAGES_4, // 采样平均
       INA226_BUS_CONV_TIME_140US, //采样时间

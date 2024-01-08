@@ -58,18 +58,18 @@ void ws_StopAllActionTask(AsyncWebSocket *server, AsyncWebSocketClient *client, 
 // }
 
 
-// void ws_GetNowStatus(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData)
-// {
-//   JsonObject D_baseInfoJSON = D_baseInfo->as<JsonObject>();
+void ws_GetNowStatus(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData)
+{
+  JsonObject D_baseInfoJSON = D_baseInfo->as<JsonObject>();
 
-//   D_baseInfoJSON["status"].set("OK");
-//   D_baseInfoJSON["action"]["message"].set("OK");
-//   D_baseInfoJSON["action"]["status"].set("OK");
-//   D_baseInfoJSON["parameter"]["message"].set("OK");
-//   String returnString;
-//   serializeJsonPretty(D_baseInfoJSON, returnString);
-//   client->binary(returnString);
-// }
+  D_baseInfoJSON["status"].set("OK");
+  D_baseInfoJSON["action"]["message"].set("OK");
+  D_baseInfoJSON["action"]["status"].set("OK");
+  D_baseInfoJSON["parameter"]["message"].set("OK");
+  String returnString;
+  serializeJsonPretty(D_baseInfoJSON, returnString);
+  client->binary(returnString);
+}
 
 // //!LOG相關API
 
