@@ -15,6 +15,9 @@
 #include <unordered_map>
 #include <map>
 
+#include <Adafruit_GFX.h>
+#include "Adafruit_SH1106.h"
+
 //! 為了保證各Task優先級不會打架，用enum來自動分配優先級數字，
 //! 所有Task應該都要先在此定義優先級，也方便統計當前有多少Task
 //! 越往下數字越大，優先級越高
@@ -75,6 +78,7 @@ class C_Device_Ctrl
     //? 初始化SD卡
     bool INIT_SD();
     bool INIT_SPIFFS();
+    bool INIT_oled();
 
 
     //! Sqlite3相關操作
@@ -195,6 +199,13 @@ class C_Device_Ctrl
     double lastLightValue_NO3 = 0;
     double lastLightValue_NH4 = 0;
 
+    //! oled螢幕相關
+    DynamicJsonDocument *JSON__oledLogList = new DynamicJsonDocument(50000);
+    // void AddNewOledLog(String content);
+    void AddNewOledLog(const char* content, ...);
+    void CreateOledQRCodeTask();
+    TaskHandle_t TASK__OledQRCode = NULL;
+
   private:
 };
 
@@ -255,5 +266,5 @@ class C_WebsocketAPI
 extern C_Device_Ctrl Device_Ctrl;
 extern AsyncWebServer asyncServer;
 extern AsyncWebSocket ws;
-
+extern Adafruit_SH1106 display;
 #endif

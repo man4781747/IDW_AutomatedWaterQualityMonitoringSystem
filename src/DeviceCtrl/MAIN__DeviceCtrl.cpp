@@ -15,6 +15,11 @@
 #include "WebsocketAPIFunctions.h"
 #include <ArduinoOTA.h> 
 #include <NTPClient.h>
+// #include <U8g2lib.h>
+#include <Adafruit_GFX.h>
+#include "Adafruit_SH1106.h"
+// #include <Adafruit_SSD1306.h>
+#include "qrcode.h"
 
 const long  gmtOffset_sec = 3600*8; // GMT+8
 const int   daylightOffset_sec = 0; // DST+0
@@ -23,6 +28,11 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", gmtOffset_sec, daylightOffset_sec);
 
 AsyncWebServer asyncServer(80);
 AsyncWebSocket ws("/ws");
+
+// U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, PIN__SCL_1, PIN__SDA_1);
+// U8G2_SH1106_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, PIN__SCL_1, PIN__SDA_1);
+
+Adafruit_SH1106 display(PIN__SDA_1, PIN__SCL_1);
 
 void C_Device_Ctrl::ScanI2C()
 {
@@ -153,6 +163,35 @@ bool C_Device_Ctrl::INIT_SPIFFS()
   }
   ESP_LOGD("", "讀取SPIFFS成功");
   return true;
+}
+
+bool C_Device_Ctrl::INIT_oled()
+{
+  // display._i2caddr = 0x3C;
+  display.begin(SH1106_SWITCHCAPVCC, 0x3C, false);
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);  
+  display.setCursor(0,0);
+  display.println("HI");
+  display.display();
+  
+  // u8g2.setBusClock(400000UL);
+  // u8g2.begin();
+  // u8g2.clearBuffer();
+  // u8g2.setFont(u8g2_font_HelvetiPixelOutline_te);
+  // u8g2.drawStr(0,10,"Hello World!");
+  // u8g2.sendBuffer();
+  // u8g2.setFont(u8g2_font_HelvetiPixelOutline_te);
+  // u8g2.firstPage();
+  // do {
+  //   u8g2.setFont(u8g2_font_VCR_OSD_tn);
+  //   u8g2.setColorIndex(1); // 設成白色
+  //   // u8g2.drawStr(0,13,"Hello World !");
+  //   u8g2.drawUTF8(0,13,"Hello World !");
+  //   // u8g2.printf("test123%s","testtest");
+  // } while ( u8g2.nextPage() );
+  return false;
 }
 
 int C_Device_Ctrl::INIT_SqliteDB()
@@ -657,6 +696,108 @@ void C_Device_Ctrl::CreateTimerCheckerTask()
     NULL, 
     (UBaseType_t)TaskPriority::TimeCheckTask, 
     &TASK__TimerChecker, 
+    1
+  );
+}
+
+void C_Device_Ctrl::AddNewOledLog(const char* content, ...)
+{
+  char buffer[22];
+  va_list ap;
+  va_start(ap, content);
+  vsnprintf(buffer, 21,content, ap);
+  va_end(ap);
+  (*JSON__oledLogList).add(String(buffer));
+  while ((*JSON__oledLogList).size()>8) {
+    (*JSON__oledLogList).remove(0);
+  }
+  display.clearDisplay();
+  display.setCursor(0,0);
+  for (int i = 0; i < (*JSON__oledLogList).size(); i++) {
+    String item = (*JSON__oledLogList)[i].as<String>(); // 使用 as<String>() 將元素轉換為 String
+    display.println(item);
+  }
+  display.display();
+}
+
+void OledQRCode(void* parameter)
+{ 
+  String IPStringSave="";
+  int ipList[4];
+  for(;;) {
+    if (WiFi.isConnected()) {
+      String IpString = WiFi.localIP().toString();
+      if (IpString == IPStringSave) {
+        vTaskDelay(1000/portTICK_PERIOD_MS);
+        continue;
+      } else {
+        IPStringSave = IpString;
+      }
+      String delimiter = ".";
+      byte x0 = 3 + 64;
+      byte y0 = 3;
+      QRCode qrcode;
+      uint8_t qrcodeData[qrcode_getBufferSize(3)];
+      qrcode_initText(&qrcode, qrcodeData, 3, 0, ("http://" + IpString).c_str());
+      int delimiterIndex = IpString.indexOf(delimiter);
+      int rowChose = 0;
+      while (delimiterIndex != -1) {
+        ipList[rowChose] =  IpString.substring(0, delimiterIndex).toInt();
+        IpString = IpString.substring(delimiterIndex+1);
+        delimiterIndex = IpString.indexOf(delimiter);
+        rowChose++;
+      }
+      ipList[3] = IpString.toInt();
+      display.clearDisplay();
+      display.setCursor(0,0);
+      display.setTextSize(2);
+      display.printf("%d.\n",ipList[0]);
+      display.printf("%d.\n",ipList[1]);
+      display.printf("%d.\n",ipList[2]);
+      display.printf("%d",ipList[3]);
+      
+      // Serial.println(qrcode.size);
+      for (uint8_t y = 0; y < qrcode.size; y++)
+      {
+        for (uint8_t x = 0; x < qrcode.size; x++)
+        {
+          if (qrcode_getModule(&qrcode, x, y))
+          {
+            display.drawPixel(64+3+x*2,3+y*2,0);
+            display.drawPixel(64+3+x*2+1,3+y*2,0);
+            display.drawPixel(64+3+x*2,3+y*2+1,0);
+            display.drawPixel(64+3+x*2+1,3+y*2+1,0);
+            // u8g2.setColorIndex(0);
+          }
+          else
+          {
+            display.drawPixel(64+3+x*2,3+y*2,1);
+            display.drawPixel(64+3+x*2+1,3+y*2,1);
+            display.drawPixel(64+3+x*2,3+y*2+1,1);
+            display.drawPixel(64+3+x*2+1,3+y*2+1,1);
+            // u8g2.setColorIndex(1);
+          }
+          display.drawRect(64,0,64,64,1);
+          display.drawRect(65,1,62,62,1);
+          // u8g2.drawBox(x0 + x * 2, y0 + y * 2, 2, 2);
+        }
+      }
+      display.display();
+    }
+  }
+  vTaskDelay(1000/portTICK_PERIOD_MS);
+}
+
+
+void C_Device_Ctrl::CreateOledQRCodeTask()
+{
+  xTaskCreatePinnedToCore(
+    OledQRCode, 
+    "OledQRCode", 
+    10000, 
+    NULL, 
+    (UBaseType_t)TaskPriority::OLEDCheckTask, 
+    &TASK__OledQRCode, 
     1
   );
 }

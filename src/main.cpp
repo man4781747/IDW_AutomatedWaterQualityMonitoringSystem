@@ -13,41 +13,43 @@ void setup() {
   ESP_LOGI("MAIN", "Flash Chip Size: %d Byte", spi_flash_get_chip_size());
   ESP_LOGI("MAIN", "=====================================");
   Device_Ctrl.INIT_Pins();
-  
+  Device_Ctrl.INIT_oled();
   ESP_LOGI("MAIN", "初始化I2C總線");
+  Device_Ctrl.AddNewOledLog("INIT_I2C_Wires");
   Device_Ctrl.INIT_I2C_Wires(Wire);
-
+  Device_Ctrl.AddNewOledLog("INIT_SD");
   Device_Ctrl.INIT_SD();
-
+  Device_Ctrl.AddNewOledLog("INIT_SPIFFS");
   Device_Ctrl.INIT_SPIFFS();
-
+  Device_Ctrl.AddNewOledLog("INIT_SqliteDB");
   Device_Ctrl.INIT_SqliteDB();
-
+  Device_Ctrl.AddNewOledLog("LoadConfigJsonFiles");
   Device_Ctrl.LoadConfigJsonFiles();
-
+  Device_Ctrl.AddNewOledLog("INIT_PoolData");
   Device_Ctrl.INIT_PoolData();
-
+  Device_Ctrl.AddNewOledLog("UpdatePipelineConfigList");
   Device_Ctrl.UpdatePipelineConfigList();
-
+  Device_Ctrl.AddNewOledLog("INIT_Motors");
   Device_Ctrl.peristalticMotorsCtrl.INIT_Motors(PIN__Peristaltic_Motor_SHCP,PIN__Peristaltic_Motor_SHTP,PIN__Peristaltic_Motor_DATA,1);
-
+  Device_Ctrl.AddNewOledLog("CreatePipelineFlowScanTask");
   Device_Ctrl.CreatePipelineFlowScanTask();
-
+  Device_Ctrl.AddNewOledLog("CreateStepTasks");
   Device_Ctrl.CreateStepTasks();
-
+  Device_Ctrl.AddNewOledLog("preLoadWebJSFile");
   Device_Ctrl.preLoadWebJSFile();
-
+  Device_Ctrl.AddNewOledLog("ConnectWiFi");
   Device_Ctrl.ConnectWiFi();
-
+  Device_Ctrl.AddNewOledLog("INITWebServer");
   Device_Ctrl.INITWebServer();
-
+  Device_Ctrl.AddNewOledLog("CreateOTAService");
   Device_Ctrl.CreateOTAService();
-
+  Device_Ctrl.AddNewOledLog("CreateScheduleManagerTask");
   Device_Ctrl.CreateScheduleManagerTask();
-
+  Device_Ctrl.AddNewOledLog("CreateTimerCheckerTask");
   Device_Ctrl.CreateTimerCheckerTask();
-
+  
   Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "開機完畢");
+  Device_Ctrl.CreateOledQRCodeTask();
 }
 
 void loop() {
