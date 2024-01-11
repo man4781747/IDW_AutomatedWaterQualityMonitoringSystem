@@ -1,0 +1,13 @@
+{
+  "AP": {
+    "AP_IP": "192.168.0.4",
+    "AP_gateway": "192.168.0.1",
+    "AP_subnet_mask": "255.255.255.0",
+    "AP_Name": "ID_PoolSensor",
+    "AP_Password": "12345678"
+  },
+  "Remote": {
+    "remote_Name": "IDWATER",
+    "remote_Password": "56651588"
+  }
+}

@@ -1,0 +1,610 @@
+{
+    "title": "測氨氮數值-不抽水",
+    "desp": "",
+    "tag": [
+        "校正",
+        "池1"
+    ],
+    "events": {
+        "Reset_All_PWM_Motor": {
+            "title": "伺服馬達全數歸位",
+            "desp": "",
+            "event": [
+                {
+                    "pwm_motor_list": [
+                        {
+                            "index": 1,
+                            "status": 90
+                        },
+                        {
+                            "index": 2,
+                            "status": 90
+                        },
+                        {
+                            "index": 3,
+                            "status": 90
+                        },
+                        {
+                            "index": 4,
+                            "status": 90
+                        },
+                        {
+                            "index": 5,
+                            "status": 90
+                        },
+                        {
+                            "index": 6,
+                            "status": 90
+                        },
+                        {
+                            "index": 7,
+                            "status": 90
+                        },
+                        {
+                            "index": 8,
+                            "status": 90
+                        },
+                        {
+                            "index": 9,
+                            "status": 90
+                        },
+                        {
+                            "index": 10,
+                            "status": 90
+                        },
+                        {
+                            "index": 11,
+                            "status": 90
+                        }
+                    ]
+                }
+            ]
+        },
+        "Clear_NH4_SensorRoom": {
+            "title": "清空NH4光度簡測模組",
+            "desp": "",
+            "event": [
+                {
+                    "pwm_motor_list": [
+                        {
+                            "index": 1,
+                            "status": 90
+                        },
+                        {
+                            "index": 2,
+                            "status": 90
+                        },
+                        {
+                            "index": 3,
+                            "status": 90
+                        },
+                        {
+                            "index": 4,
+                            "status": 90
+                        },
+                        {
+                            "index": 5,
+                            "status": 90
+                        },
+                        {
+                            "index": 6,
+                            "status": 0
+                        }
+                    ]
+                },
+                {
+                    "peristaltic_motor_list": [
+                        {
+                            "index": 2,
+                            "status": -1,
+                            "time": 60,
+                            "until": "-"
+                        }
+                    ]
+                }
+            ]
+        },
+        "GetRO": {
+            "title": "抽取RO水",
+            "desp": "",
+            "event": [
+                {
+                    "peristaltic_motor_list": [
+                        {
+                            "index": 1,
+                            "status": 1,
+                            "time": 180,
+                            "until": "RO",
+                            "failType": "timeout",
+                            "failAction": "stopPipeline"
+                        }
+                    ]
+                }
+            ]
+        },
+        "FORWASH_Push_RO_To_NH4_Room": {
+            "title": "[清洗用]抽取RO水(40秒)至NH4檢測室",
+            "desp": "",
+            "event": [
+                {
+                    "pwm_motor_list": [
+                        {
+                            "index": 1,
+                            "status": 90
+                        },
+                        {
+                            "index": 2,
+                            "status": 90
+                        },
+                        {
+                            "index": 3,
+                            "status": 90
+                        },
+                        {
+                            "index": 4,
+                            "status": 90
+                        },
+                        {
+                            "index": 5,
+                            "status": 90
+                        },
+                        {
+                            "index": 6,
+                            "status": 90
+                        },
+                        {
+                            "index": 7,
+                            "status": 0
+                        }
+                    ]
+                },
+                {
+                    "peristaltic_motor_list": [
+                        {
+                            "index": 2,
+                            "status": 1,
+                            "time": 40,
+                            "until": "-"
+                        }
+                    ]
+                },
+                {
+                    "pwm_motor_list": [
+                        {
+                            "index": 7,
+                            "status": 90
+                        }
+                    ]
+                },
+                {
+                    "peristaltic_motor_list": [
+                        {
+                            "index": 2,
+                            "status": 1,
+                            "time": 10,
+                            "until": "-"
+                        }
+                    ]
+                }
+            ]
+        },
+        "NH4_Wash_Value_Get": {
+            "title": "氨氮清洗數值獲得",
+            "desp": "",
+            "event": [
+                {
+                    "spectrophotometer_list": [
+                        {
+                            "index": 0,
+                            "gain": "96X",
+                            "channel": "CH1",
+                            "value_name": "NH4_wash_volt",
+                            "pool": "pool-1",
+                            "type": "Adjustment",
+                            "target": 50000,
+                            "failAction": "continue"
+                        }
+                    ]
+                }
+            ]
+        },
+        "NH4_Test_Value_Get": {
+            "title": "氨氮量測數值獲得",
+            "desp": "",
+            "event": [
+                {
+                    "spectrophotometer_list": [
+                        {
+                            "index": 0,
+                            "gain": "96X",
+                            "channel": "CH1",
+                            "value_name": "NH4_test_volt",
+                            "pool": "pool-1",
+                            "type": "Measurement",
+                            "dilution": 10,
+                            "max": 55000,
+                            "min": 5000,
+                            "failAction": "continue"
+                        }
+                    ]
+                }
+            ]
+        },
+        "Mix_Liquid_In_NH4_Room": {
+            "title": "混合混合室的液體(20秒)",
+            "desp": "",
+            "event": [
+                {
+                    "pwm_motor_list": [
+                        {
+                            "index": 1,
+                            "status": 90
+                        },
+                        {
+                            "index": 2,
+                            "status": 90
+                        },
+                        {
+                            "index": 3,
+                            "status": 90
+                        },
+                        {
+                            "index": 4,
+                            "status": 90
+                        },
+                        {
+                            "index": 5,
+                            "status": 90
+                        },
+                        {
+                            "index": 6,
+                            "status": 90
+                        },
+                        {
+                            "index": 7,
+                            "status": 90
+                        }
+                    ]
+                },
+                {
+                    "peristaltic_motor_list": [
+                        {
+                            "index": 2,
+                            "status": 1,
+                            "time": 20,
+                            "until": "-"
+                        }
+                    ]
+                }
+            ]
+        },
+        "Wait_5_Min": {
+            "title": "等待5分鐘成色",
+            "desp": "",
+            "event": [
+                {
+                    "wait": 300
+                }
+            ]
+        },
+        "Push_NH4_R1_Liquid_To_MixRoom": {
+            "title": "抽取氨氮R1(1.5秒)至混合室",
+            "desp": "",
+            "event": [
+                {
+                    "pwm_motor_list": [
+                        {
+                            "index": 1,
+                            "status": 90
+                        },
+                        {
+                            "index": 2,
+                            "status": 90
+                        },
+                        {
+                            "index": 3,
+                            "status": 0
+                        }
+                    ]
+                },
+                {
+                    "peristaltic_motor_list": [
+                        {
+                            "index": 2,
+                            "status": 1,
+                            "time": 1.5,
+                            "until": "-"
+                        }
+                    ]
+                },
+                {
+                    "pwm_motor_list": [
+                        {
+                            "index": 3,
+                            "status": 90
+                        }
+                    ]
+                },
+                {
+                    "peristaltic_motor_list": [
+                        {
+                            "index": 2,
+                            "status": 1,
+                            "time": 10,
+                            "until": "-"
+                        }
+                    ]
+                }
+            ]
+        },
+        "Push_NH4_R2_Liquid_To_MixRoom": {
+            "title": "抽取氨氮R2(0.75秒)至混合室",
+            "desp": "",
+            "event": [
+                {
+                    "peristaltic_motor_list": [
+                        {
+                            "index": 3,
+                            "status": 1,
+                            "time": 0.75,
+                            "until": "-"
+                        }
+                    ]
+                }
+            ]
+        },
+        "FORNH4_Push_RO_Liquid_To_NH4_Room": {
+            "title": "抽取RO水至混合室(12.5秒)",
+            "desp": "-",
+            "event": [
+                {
+                    "pwm_motor_list": [
+                        {
+                            "index": 1,
+                            "status": 90
+                        },
+                        {
+                            "index": 2,
+                            "status": 90
+                        },
+                        {
+                            "index": 3,
+                            "status": 90
+                        },
+                        {
+                            "index": 4,
+                            "status": 90
+                        },
+                        {
+                            "index": 5,
+                            "status": 90
+                        },
+                        {
+                            "index": 6,
+                            "status": 90
+                        },
+                        {
+                            "index": 7,
+                            "status": 0
+                        }
+                    ]
+                },
+                {
+                    "peristaltic_motor_list": [
+                        {
+                            "index": 2,
+                            "status": 1,
+                            "time": 12.5,
+                            "until": "-"
+                        }
+                    ]
+                },
+                {
+                    "pwm_motor_list": [
+                        {
+                            "index": 7,
+                            "status": 90
+                        }
+                    ]
+                },
+                {
+                    "peristaltic_motor_list": [
+                        {
+                            "index": 2,
+                            "status": 1,
+                            "time": 10,
+                            "until": "-"
+                        }
+                    ]
+                }
+            ]
+        },
+        "FORNH4_Push_Sample_Liquid_To_NH4_Room": {
+            "title": "抽取池水至混合室(12.5秒)",
+            "desp": "-",
+            "event": [
+                {
+                    "pwm_motor_list": [
+                        {
+                            "index": 1,
+                            "status": 90
+                        },
+                        {
+                            "index": 2,
+                            "status": 90
+                        },
+                        {
+                            "index": 3,
+                            "status": 90
+                        },
+                        {
+                            "index": 4,
+                            "status": 90
+                        },
+                        {
+                            "index": 5,
+                            "status": 0
+                        }
+                    ]
+                },
+                {
+                    "peristaltic_motor_list": [
+                        {
+                            "index": 2,
+                            "status": 1,
+                            "time": 12.5,
+                            "until": "-"
+                        }
+                    ]
+                },
+                {
+                    "pwm_motor_list": [
+                        {
+                            "index": 5,
+                            "status": 90
+                        }
+                    ]
+                },
+                {
+                    "peristaltic_motor_list": [
+                        {
+                            "index": 2,
+                            "status": 1,
+                            "time": 10,
+                            "until": "-"
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    "steps_group": {
+        "INIT": {
+            "title": "儀器初始化",
+            "desp": "馬達回歸原點",
+            "steps": [
+                "Reset_All_PWM_Motor"
+            ]
+        },
+        "Before_NH4Check_ClearNH4Room": {
+            "title": "檢測前-第一次-清空NH4檢測模組",
+            "desp": "",
+            "steps": [
+                "Clear_NH4_SensorRoom"
+            ]
+        },
+        "Before_NH4Check_GetROWater": {
+            "title": "檢測前-第一次-抽取RO水",
+            "desp": "",
+            "steps": [
+                "GetRO"
+            ]
+        },
+        "Before_NH4Check_PushROToNH4Room": {
+            "title": "檢測前-第一次-RO水送至NH4檢測室",
+            "desp": "",
+            "trigger": "allSuccess",
+            "steps": [
+                "FORWASH_Push_RO_To_NH4_Room"
+            ]
+        },
+        "Before_NH4Check_ClearNH4Room_2": {
+            "title": "檢測前-第二次-清空NH4檢測室",
+            "same": "Before_NH4Check_ClearNH4Room"
+        },
+        "Before_NH4Check_GetROWater_2": {
+            "title": "檢測前-第二次-抽取RO水",
+            "same": "Before_NH4Check_GetROWater"
+        },
+        "Before_NH4Check_PushROToNH4Room_2": {
+            "title": "檢測前-第二次-RO水送至NH4檢測室",
+            "same": "Before_NH4Check_PushROToNH4Room"
+        },
+        "Before_NH4Check_ClearNH4Room_3": {
+            "title": "檢測前-第三次-清空NH4檢測室",
+            "same": "Before_NH4Check_ClearNH4Room"
+        },
+        "Before_NH4Check_GetROWater_3": {
+            "title": "檢測前-第三次-抽取RO水",
+            "same": "Before_NH4Check_GetROWater"
+        },
+        "NH4_Value_Get": {
+            "title": "氨氮數值檢測",
+            "desp": "",
+            "trigger": "allSuccess",
+            "steps": [
+                "Reset_All_PWM_Motor",
+                "FORNH4_Push_Sample_Liquid_To_NH4_Room",
+                "FORNH4_Push_RO_Liquid_To_NH4_Room",
+                "Mix_Liquid_In_NH4_Room",
+                "NH4_Wash_Value_Get",
+                "Push_NH4_R1_Liquid_To_MixRoom",
+                "Mix_Liquid_In_NH4_Room",
+                "Push_NH4_R2_Liquid_To_MixRoom",
+                "Mix_Liquid_In_NH4_Room",
+                "Wait_5_Min",
+                "NH4_Test_Value_Get",
+                "Clear_NH4_SensorRoom"
+            ]
+        }
+    },
+    "pipline": [
+        [
+            "INIT",
+            [
+                "Before_NH4Check_GetROWater",
+                "Before_NH4Check_ClearNH4Room"
+            ]
+        ],
+        [
+            "Before_NH4Check_GetROWater",
+            [
+                "Before_NH4Check_PushROToNH4Room"
+            ]
+        ],
+        [
+            "Before_NH4Check_ClearNH4Room",
+            [
+                "Before_NH4Check_PushROToNH4Room"
+            ]
+        ],
+        [
+            "Before_NH4Check_PushROToNH4Room",
+            [
+                "Before_NH4Check_GetROWater_2",
+                "Before_NH4Check_ClearNH4Room_2"
+            ]
+        ],
+        [
+            "Before_NH4Check_GetROWater_2",
+            [
+                "Before_NH4Check_PushROToNH4Room_2"
+            ]
+        ],
+        [
+            "Before_NH4Check_ClearNH4Room_2",
+            [
+                "Before_NH4Check_PushROToNH4Room_2"
+            ]
+        ],
+        [
+            "Before_NH4Check_PushROToNH4Room_2",
+            [
+                "Before_NH4Check_GetROWater_3",
+                "Before_NH4Check_ClearNH4Room_3"
+            ]
+        ],
+        [
+            "Before_NH4Check_GetROWater_3",
+            [
+                "NH4_Value_Get"
+            ]
+        ],
+        [
+            "Before_NH4Check_ClearNH4Room_3",
+            [
+                "NH4_Value_Get"
+            ]
+        ]
+    ]
+}

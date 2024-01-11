@@ -52,6 +52,13 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
     request->send(response);
   });
 
+  asyncServer.on("/api/version", HTTP_GET, [](AsyncWebServerRequest *request){
+    String returnString = "{\"FIRMWARE_VERSION\":\""+String(FIRMWARE_VERSION)+"\"}";
+    AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+    request->send(response);
+  });
+
+
   asyncServer.on("/api/piplines", HTTP_GET, [&](AsyncWebServerRequest *request){
     String pipelineFilesList;
     serializeJsonPretty(*Device_Ctrl.JSON__PipelineConfigList, pipelineFilesList);
@@ -185,6 +192,31 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
 //! 儀器設定檔相關API
 void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
 {
+  asyncServer.on("/api/config/device_base_config", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      String RetuenString;
+      serializeJson((*Device_Ctrl.JSON__DeviceBaseInfo), RetuenString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      request->send(response);
+    }
+  );
+  asyncServer.on("/api/config/device_base_config", HTTP_PATCH,
+    [&](AsyncWebServerRequest *request)
+    { 
+      if (request->hasParam("device_no")) {
+        String NewDeviceNo = request->getParam("device_no")->value();
+        (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].set(NewDeviceNo);
+      }
+      ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__DeviceBaseInfo, (*Device_Ctrl.JSON__DeviceBaseInfo));
+      String RetuenString;
+      serializeJson((*Device_Ctrl.JSON__DeviceBaseInfo), RetuenString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      request->send(response);
+    }
+  );
+
+
   asyncServer.on("/api/config/device_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -234,6 +266,42 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+
+  asyncServer.on("/api/config/spectrophotometer_config", HTTP_PATCH,
+    [&](AsyncWebServerRequest *request)
+    { 
+      if (request->hasParam("index")) {
+        int SettingIndex = request->getParam("index")->value().toInt();
+        if (request->hasParam("title")) {
+          (*Device_Ctrl.JSON__SpectrophotometerConfig)[SettingIndex]["title"].set(request->getParam("title")->value());
+        }
+        if (request->hasParam("desp")) {
+          (*Device_Ctrl.JSON__SpectrophotometerConfig)[SettingIndex]["desp"].set(request->getParam("desp")->value());
+        }
+        if (request->hasParam("m")) {
+          (*Device_Ctrl.JSON__SpectrophotometerConfig)[SettingIndex]["m"].set(request->getParam("m")->value().toDouble());
+        }
+        if (request->hasParam("b")) {
+          (*Device_Ctrl.JSON__SpectrophotometerConfig)[SettingIndex]["b"].set(request->getParam("b")->value().toDouble());
+        }
+        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__SpectrophotometerConfig, (*Device_Ctrl.JSON__SpectrophotometerConfig));
+
+        DynamicJsonDocument ReturnData(10000);
+        ReturnData["new"].set((*Device_Ctrl.JSON__SpectrophotometerConfig)[SettingIndex]);
+        ReturnData["index"].set(SettingIndex);
+        String RetuenString;
+        serializeJson(ReturnData, RetuenString);
+        AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+        request->send(response);
+      }
+      else {
+        AsyncWebServerResponse* response = request->beginResponse(400, "application/json", "{\"message\":\"需要index\"}");
+        request->send(response);
+      }
+    }
+  );
+
+
 
   asyncServer.on("/api/config/PHmeter_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)

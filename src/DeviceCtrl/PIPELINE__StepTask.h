@@ -523,6 +523,7 @@ int Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
       //! 需要套用校正參數，獲得真實濃度
       double mValue = spectrophotometerConfigChose["calibration"][0]["ret"]["m"].as<double>();
       double bValue = spectrophotometerConfigChose["calibration"][0]["ret"]["b"].as<double>();
+      serializeJsonPretty(spectrophotometerConfigChose["calibration"][0]["ret"], Serial);
       String TargetType = value_name.substring(0,3); 
       double A0_Value = 0;
       if (TargetType == "NO2") {
@@ -530,6 +531,12 @@ int Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
       } else if (TargetType == "NH4") {
         A0_Value = Device_Ctrl.lastLightValue_NH4;
       }
+      Serial.printf("finalValue: %.2f, A0_Value: %.2f, mValue: %.2f, bValue: %.2f\n",
+        finalValue, A0_Value, mValue, bValue
+      );
+      Serial.printf("-log10(finalValue/A0_Value): %.2f\n",
+        -log10(finalValue/A0_Value)
+      );
       double finalValue_after = -log10(finalValue/A0_Value)*mValue+bValue;
       if (finalValue_after < 0) {
         finalValue_after = 0;
