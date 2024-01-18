@@ -15,11 +15,10 @@
 #include "WebsocketAPIFunctions.h"
 #include <ArduinoOTA.h> 
 #include <NTPClient.h>
-// #include <U8g2lib.h>
 #include <Adafruit_GFX.h>
 #include "Adafruit_SH1106.h"
-// #include <Adafruit_SSD1306.h>
 #include "qrcode.h"
+#include <HTTPClient.h>
 
 const long  gmtOffset_sec = 3600*8; // GMT+8
 const int   daylightOffset_sec = 0; // DST+0
@@ -514,6 +513,24 @@ void C_Device_Ctrl::BroadcastLogToClient(AsyncWebSocketClient *client, int Level
   }
 }
 
+void C_Device_Ctrl::SendLineNotifyMessage(String content)
+{
+  #ifdef LINE_NOTIFY_KEY
+  #ifdef LINE_NOTIFY_API
+  HTTPClient http;
+  http.begin(LINE_NOTIFY_API);;
+  DynamicJsonDocument postData(10000);
+  postData["key"] = LINE_NOTIFY_KEY;
+  postData["content"] = content;
+  String sendContent;
+  serializeJson(postData, sendContent);
+  postData.clear();
+  int httpResponseCode = http.POST(sendContent);
+  http.end();
+  #endif
+  #endif
+}
+
 void C_Device_Ctrl::CreatePipelineFlowScanTask()
 {
   xTaskCreatePinnedToCore(
@@ -525,10 +542,6 @@ void C_Device_Ctrl::CreatePipelineFlowScanTask()
     &TASK__pipelineFlowScan, 
     1
   );
-// xTaskCreateStaticPinnedToCore(
-//         PipelineFlowScan, "PipelineScan", 20000,(void*)pipelineStackList, (UBaseType_t)TaskPriority::PipelineFlowScan,
-//         PipelineFlowScanTask_xStack, &PipelineFlowScanTask_xTaskBuffer, 1
-//       );
 }
 
 void C_Device_Ctrl::StopNowPipelineAndAllStepTask()

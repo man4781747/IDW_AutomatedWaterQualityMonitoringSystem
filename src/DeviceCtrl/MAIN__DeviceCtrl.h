@@ -133,6 +133,7 @@ class C_Device_Ctrl
       AsyncWebSocketClient *client,
       int Level, const char* content, ...
     );
+    void SendLineNotifyMessage(String content);
 
     //! Websocket相關
     void INIT_AllWsAPI();
