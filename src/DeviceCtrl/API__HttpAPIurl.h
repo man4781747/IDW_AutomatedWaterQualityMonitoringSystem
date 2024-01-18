@@ -25,7 +25,7 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
       request->send(404);
     }
   });
-
+  asyncServer.serveStatic("/static/SD/",SD,"/");
 
   asyncServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     Serial.println("API: /");
@@ -184,6 +184,8 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+
+
 
   Set_deviceConfigs_apis(asyncServer);
   Set_scheduleConfig_apis(asyncServer);
