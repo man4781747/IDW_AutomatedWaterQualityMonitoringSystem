@@ -10,12 +10,17 @@
 #include "TimeLibExternalFunction.h"
 #include "CalcFunction.h"
 
+struct StepResult {
+  int code;
+  String message;
+};
+
 void StopStep(StepTaskDetail* StepTaskDetailItem);
-int Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
+StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
 int Do_WaitAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
-int Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
-int Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
-int Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
+StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
+StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
+StepResult Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
 
 
 void StepTask(void* parameter) {
@@ -61,7 +66,13 @@ void StepTask(void* parameter) {
       //? 一個一個event item依序執行
       for (JsonObject eventItem : eventList) {
         if (eventItem.containsKey("pwm_motor_list")) {
-          if (Do_ServoMotorAction(eventItem, StepTaskDetailItem) != 1) {
+          StepResult actionResult = Do_ServoMotorAction(eventItem, StepTaskDetailItem);
+          if (actionResult.code == -1) {
+            String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
+            sendString += actionResult.message;
+            sendString += "後續處理方法: 整機停止\n";
+            Device_Ctrl.SendLineNotifyMessage(sendString);
             isStepFail = true;
             EmergencyStop = true;
             break;
@@ -75,29 +86,58 @@ void StepTask(void* parameter) {
           }
         }
         else if (eventItem.containsKey("peristaltic_motor_list")) {
-          int PeristalticMotorResult = Do_PeristalticMotorAction(eventItem, StepTaskDetailItem);
-          if (PeristalticMotorResult == -1) {
+          StepResult actionResult = Do_PeristalticMotorAction(eventItem, StepTaskDetailItem);
+          if (actionResult.code == -1) {
             //! 收到停止
+            String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
+            sendString += actionResult.message;
+            sendString += "後續處理方法: 跳過此步驟\n";
+            Device_Ctrl.SendLineNotifyMessage(sendString);
             isStepFail = true;
             OnlyStepStop = true;
             break;
           }
-          else if (PeristalticMotorResult == -2) {
+          else if (actionResult.code == -2) {
+            String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
+            sendString += actionResult.message;
+            sendString += "後續處理方法: 跳過當前流程\n";
+            Device_Ctrl.SendLineNotifyMessage(sendString);
             isStepFail = true;
             OnlyPipelineStop = true;
             break;
           }
-          else if (PeristalticMotorResult == -3) {
+          else if (actionResult.code == -3) {
+            String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
+            sendString += actionResult.message;
+            sendString += "後續處理方法: 整機停止\n";
+            Device_Ctrl.SendLineNotifyMessage(sendString);
             isStepFail = true;
             EmergencyStop = true;
             break;
           }
         }
         else if (eventItem.containsKey("spectrophotometer_list")) {
-          int SpectrophotometerResult = Do_SpectrophotometerAction(eventItem, StepTaskDetailItem);
+          StepResult actionResult = Do_SpectrophotometerAction(eventItem, StepTaskDetailItem);
+          if (actionResult.code != 1) {
+            String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
+            sendString += actionResult.message;
+            sendString += "後續處理方法: 繼續執行\n";
+            Device_Ctrl.SendLineNotifyMessage(sendString);
+          }
         }
         else if (eventItem.containsKey("ph_meter")) {
-          int PHmeterResult = Do_PHmeterAction(eventItem, StepTaskDetailItem);
+          StepResult actionResult = Do_PHmeterAction(eventItem, StepTaskDetailItem);
+          if (actionResult.code != 1) {
+            String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
+            sendString += actionResult.message;
+            sendString += "後續處理方法: 繼續執行\n";
+            Device_Ctrl.SendLineNotifyMessage(sendString);
+          }
         }
       
       
@@ -146,8 +186,9 @@ void StopStep(StepTaskDetail* StepTaskDetailItem) {
   StepTaskDetailItem->TaskStatus = StepTaskStatus::Idel;
 }
 
-int Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
+StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
 {
+  StepResult result;
   pinMode(PIN__EN_Servo_Motor, OUTPUT);
   String anyFail = "";
   xSemaphoreTake(Device_Ctrl.xMutex__LX_20S, portMAX_DELAY);
@@ -158,7 +199,9 @@ int Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem
     ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
     digitalWrite(PIN__EN_Servo_Motor, LOW);
     xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
-    return 0;
+    result.code = 0;
+    result.message = "";
+    return result;
   }
   for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
     int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
@@ -174,7 +217,9 @@ int Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem
       ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
       digitalWrite(PIN__EN_Servo_Motor, LOW);
       xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
-      return 0;
+      result.code = 0;
+      result.message = "";
+      return result;
     }
   }
   vTaskDelay(2000/portTICK_PERIOD_MS);
@@ -182,7 +227,9 @@ int Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem
     ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
     digitalWrite(PIN__EN_Servo_Motor, LOW);
     xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
-    return 0;
+    result.code = 0;
+    result.message = "";
+    return result;
   }
   for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
     int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
@@ -215,7 +262,9 @@ int Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem
       ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
       digitalWrite(PIN__EN_Servo_Motor, LOW);
       xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
-      return 0;
+      result.code = 0;
+      result.message = "";
+      return result;
     }
     vTaskDelay(100/portTICK_PERIOD_MS);
   }
@@ -224,13 +273,20 @@ int Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem
   xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
 
   if (anyFail != "") {
+    String ErrorInfo = "偵測到伺服馬達異常\n異常馬達編號: "+anyFail;
     ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "伺服馬達(LX-20S)發生預期外的動作，準備中止儀器的所有動作");
     Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "伺服馬達(LX-20S)發生預期外的動作，準備中止儀器的所有動作");
     Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達(LX-20S)發生預期外的動作，準備中止儀器的所有動作");
-    // Device_Ctrl.StopDeviceAndINIT();
-    return -1;
+    // String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到伺服馬達異常\n";
+    // sendString += "異常馬達編號: "+anyFail;
+    // Device_Ctrl.SendLineNotifyMessage(sendString);
+    result.code = -1;
+    result.message = ErrorInfo;
+    return result;
   }
-  return 1;
+  result.code = 0;
+  result.message = "";
+  return result;
 }
 
 
@@ -241,8 +297,9 @@ int Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem
  * @return int: -2 - 標記失敗，並停下此Pipeline
  * @return int: -3 - 標記失敗，並停下儀器
  */
-int Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
+StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
 {
+  StepResult result;
   // serializeJsonPretty(eventItem, Serial);
   pinMode(PIN__EN_Peristaltic_Motor, OUTPUT);
   //? endTimeCheckList: 記錄各蠕動馬達最大運行結束時間
@@ -314,14 +371,16 @@ int Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDeta
     if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
       ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"蠕動馬達流程步驟收到中斷要求");
       digitalWrite(PIN__EN_Peristaltic_Motor, LOW);
-      return -1;
+      result.code = -1;
+      return result;
     }
     allFinish = true;
     for (const auto& endTimeCheck : endTimeCheckList.as<JsonObject>()) {
       if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
         ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"蠕動馬達流程步驟收到中斷要求");
         digitalWrite(PIN__EN_Peristaltic_Motor, LOW);
-        return -1;
+        result.code = -1;
+        return result;
       }
       JsonObject endTimeCheckJSON = endTimeCheck.value().as<JsonObject>();
       if (endTimeCheckJSON["finish"] == true) {
@@ -340,6 +399,8 @@ int Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDeta
       if (millis() >= endTime) {
         //? 執行到這，代表馬達執行到最大執行時間，如果 failType 是 timeout，則代表觸發失敗判斷
         if (thisFailType == "timeout") {
+          result.message="馬達:"+String(motorIndex)+" 運轉超時\n";
+
           ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "蠕動馬達(%d)觸發Timeout，檢查錯誤處裡: %s", motorIndex, thisFailAction.c_str());
           Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "蠕動馬達(%d)觸發Timeout，檢查錯誤處裡: %s", motorIndex, thisFailAction.c_str());
           Device_Ctrl.BroadcastLogToClient(NULL, 1, "蠕動馬達(%d)觸發Timeout，檢查錯誤處裡: %s", motorIndex, thisFailAction.c_str());
@@ -355,20 +416,23 @@ int Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDeta
             ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "停止當前Step的運行");
             Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "停止當前Step的運行");
             Device_Ctrl.BroadcastLogToClient(NULL, 1, "停止當前Step的運行");
-            return -1;
+            result.code = -1;
+            return result;
           }
           else if (thisFailAction=="stopImmediately") {
             ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "準備緊急終止儀器");
             Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "準備緊急終止儀器");
             Device_Ctrl.BroadcastLogToClient(NULL, 1, "準備緊急終止儀器");
-            return -3;
+            result.code = -3;
+            return result;
           }
           else if (thisFailAction=="stopPipeline") {
             ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "準備停止當前流程，若有下一個排隊中的流程就執行他");
             Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "準備停止當前流程，若有下一個排隊中的流程就執行他");
             Device_Ctrl.BroadcastLogToClient(NULL, 1, "準備停止當前流程，若有下一個排隊中的流程就執行他");
             // (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][stepsGroupNameString]["RESULT"].set("STOP_THIS_PIPELINE");
-            return -2;
+            result.code = -2;
+            return result;
           }
           //? 若非，則正常停止馬達運行
           Device_Ctrl.peristalticMotorsCtrl.SetMotorStatus(motorIndex, PeristalticMotorStatus::STOP);
@@ -403,11 +467,13 @@ int Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDeta
               }
               endTimeCheckJSON["finish"].set(true);
               ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "停止當前Step的運行");
-              return -1;
+              result.code = -1;
+              return result;
             }
             else if (thisFailAction=="stopImmediately") {
               ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "準備緊急終止儀器");
-              return -3;
+              result.code = -3;
+              return result;
             }
           }
           endTimeCheckJSON["finish"].set(true);
@@ -420,7 +486,8 @@ int Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDeta
   if (Device_Ctrl.peristalticMotorsCtrl.IsAllStop()) {
     digitalWrite(PIN__EN_Peristaltic_Motor, LOW);
   }
-  return 1;
+  result.code = 1;
+  return result;
 }
 
 
@@ -448,8 +515,9 @@ int Do_WaitAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
 }
 
 
-int Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
+StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
 {
+  StepResult result;
   for (JsonObject spectrophotometerItem : eventItem["spectrophotometer_list"].as<JsonArray>()) {
     //? spectrophotometerIndex: 待動作的光度計編號
     //? spectrophotometerIndex 為 0 時，代表藍光模組
@@ -482,9 +550,23 @@ int Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
 
     digitalWrite(activePin, HIGH);
     vTaskDelay(500/portTICK_PERIOD_MS);
+
+
+    Device_Ctrl._Wire.beginTransmission(sensorAddr);
+    byte error = Device_Ctrl._Wire.endTransmission();
+
+    if (error != 0) {
+      Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "找不到光度計: %s", spectrophotometerTitle.c_str());
+      Device_Ctrl.BroadcastLogToClient(NULL, 1, "找不到光度計: %s", spectrophotometerTitle.c_str());
+      result.code = -1;
+      result.message = "找不到光度計: "+spectrophotometerTitle + "\n";
+      return result;
+    }
+
+
     INA226 ina226(Device_Ctrl._Wire);
     ina226.begin(sensorAddr);
-    Device_Ctrl.ScanI2C();
+    // Device_Ctrl.ScanI2C();
     ina226.configure(
       INA226_AVERAGES_4, // 采样平均
       INA226_BUS_CONV_TIME_140US, //采样时间
@@ -504,11 +586,6 @@ int Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
     //?  最終量測的結果數值 (mV)
     double finalValue = busvoltage_ina226*1000;
     digitalWrite(activePin, LOW);
-    if (spectrophotometerIndex == 0) {
-      Device_Ctrl.lastLightValue_NH4 = finalValue;
-    } else if (spectrophotometerIndex == 1) {
-      Device_Ctrl.lastLightValue_NO3 = finalValue;
-    }
     Serial.printf("%s - %s:%.2f", poolChose.c_str(), value_name.c_str(), finalValue);
     (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][value_name]["Value"].set(String(finalValue,2).toDouble());
     (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][value_name]["data_time"].set(GetDatetimeString());
@@ -517,6 +594,17 @@ int Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
 
     if (value_name.lastIndexOf("wash_volt")!=-1) {
       //! 本次測量的是清洗電壓
+      if (spectrophotometerIndex == 0) {
+        Device_Ctrl.lastLightValue_NH4 = finalValue;
+      } else if (spectrophotometerIndex == 1) {
+        Device_Ctrl.lastLightValue_NO3 = finalValue;
+      }
+      if (finalValue < 16000.) {
+        result.code = -2;
+        result.message = "光度計:"+spectrophotometerTitle+" 測量初始光強度時數值過低: "+String(finalValue);
+        return result;
+
+      }
     }
     else if (value_name.lastIndexOf("test_volt")!=-1) {
       //! 本次測量的是量測電壓
@@ -547,12 +635,13 @@ int Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
       Serial.printf("%s - %s:%.2f", poolChose.c_str(), TargetType.c_str(), finalValue_after);
     }
   }
-        
-  return 1;
+  result.code = 1;
+  return result;
 }
 
-int Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
+StepResult Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
 {
+  StepResult result;
   ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"PH計控制");
   for (JsonObject PHmeterItem : eventItem["ph_meter"].as<JsonArray>()) {
     pinMode(PIN__ADC_PH_IN, INPUT);
@@ -565,6 +654,13 @@ int Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
     }
     //* 原始電壓數值獲得
     double PH_RowValue = afterFilterValue(phValue, 30);
+
+    if (PH_RowValue < 0. | PH_RowValue > 4000) {
+      result.code = -1;
+      result.message = "pH模組測量異常，測量原始數據: "+String(PH_RowValue);
+      return result;  
+    }
+
     double m = (*Device_Ctrl.JSON__PHmeterConfig)[0]["calibration"][0]["ret"]["m"].as<String>().toDouble();
     double b = (*Device_Ctrl.JSON__PHmeterConfig)[0]["calibration"][0]["ret"]["b"].as<String>().toDouble();
     double pHValue = m*PH_RowValue + b;
@@ -597,7 +693,8 @@ int Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
       Device_Ctrl.BroadcastLogToClient(NULL, 1, "PH量測數值有誤: %s", String(pHValue, 2).c_str());
     }
   }
-  return 1;
+  result.code = 1;
+  return result;
 }
 
 #endif
