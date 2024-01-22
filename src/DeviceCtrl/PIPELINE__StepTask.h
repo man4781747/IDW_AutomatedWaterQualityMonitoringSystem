@@ -591,7 +591,7 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
     (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][value_name]["data_time"].set(GetDatetimeString());
 
     Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, value_name, finalValue);
-
+    ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__LastSensorDataSave, *Device_Ctrl.JSON__sensorDataSave);
     if (value_name.lastIndexOf("wash_volt")!=-1) {
       //! 本次測量的是清洗電壓
       if (spectrophotometerIndex == 0) {
@@ -632,6 +632,7 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
       (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][TargetType]["Value"].set(String(finalValue_after,2).toDouble());
       (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][TargetType]["data_time"].set(GetDatetimeString());
       Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, TargetType, finalValue_after);
+      ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__LastSensorDataSave, *Device_Ctrl.JSON__sensorDataSave);
       Serial.printf("%s - %s:%.2f", poolChose.c_str(), TargetType.c_str(), finalValue_after);
     }
   }
@@ -677,7 +678,7 @@ StepResult Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetail
 
     Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, "pH_volt", PH_RowValue);
     Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, "pH", pHValue);
-
+    ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__LastSensorDataSave, *Device_Ctrl.JSON__sensorDataSave);
 
     char logBuffer[1000];
     sprintf(
