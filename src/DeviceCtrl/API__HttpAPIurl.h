@@ -249,6 +249,18 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
     }
   );
 
+  asyncServer.on("/api/config/pwm_motor_config", HTTP_DELETE,
+    [&](AsyncWebServerRequest *request)
+    { 
+      (*Device_Ctrl.JSON__ServoConfig).clear();
+      ExFile_LoadJsonFile(SPIFFS, "/config/pwm_motor_config.json", (*Device_Ctrl.JSON__ServoConfig));
+      String RetuenString;
+      serializeJson((*Device_Ctrl.JSON__ServoConfig), RetuenString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      request->send(response);
+    }
+  );
+
   asyncServer.on("/api/config/pool_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -259,6 +271,34 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
     }
   );
   
+  asyncServer.on("/api/config/pool_config", HTTP_PATCH,
+    [&](AsyncWebServerRequest *request)
+    { 
+      if (request->hasParam("content")) {
+        String NewContent = request->getParam("content")->value();
+        DynamicJsonDocument tempJSONItem(2048);
+        DeserializationError error = deserializeJson(tempJSONItem, NewContent);
+        if (error) {
+          ESP_LOGE("schedule更新", "JOSN解析失敗,停止更新蝦池設定檔內容", error.c_str());
+          AsyncWebServerResponse* response = request->beginResponse(500, "application/json", "{\"Result\":\"更新失敗,content所需型態: String, 格式: JSON\"}");
+          request->send(response);
+        }
+        else {
+          (*Device_Ctrl.JSON__PoolConfig).clear();
+          (*Device_Ctrl.JSON__PoolConfig).set(tempJSONItem);
+          ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__PoolConfig, (*Device_Ctrl.JSON__PoolConfig));
+          AsyncWebServerResponse* response = request->beginResponse(200, "application/json", NewContent);
+          request->send(response);
+        }
+      }
+      else {
+        AsyncWebServerResponse* response = request->beginResponse(400, "application/json", "{\"message\":\"需要content\"}");
+        request->send(response);
+      }
+    }
+  );
+
+
   asyncServer.on("/api/config/spectrophotometer_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -303,7 +343,17 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
     }
   );
 
-
+  asyncServer.on("/api/config/spectrophotometer_config", HTTP_DELETE,
+    [&](AsyncWebServerRequest *request)
+    { 
+      (*Device_Ctrl.JSON__SpectrophotometerConfig).clear();
+      ExFile_LoadJsonFile(SPIFFS, "/config/spectrophotometer.json", (*Device_Ctrl.JSON__SpectrophotometerConfig));
+      String RetuenString;
+      serializeJson((*Device_Ctrl.JSON__SpectrophotometerConfig), RetuenString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      request->send(response);
+    }
+  );
 
   asyncServer.on("/api/config/PHmeter_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
@@ -323,9 +373,10 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
     [&](AsyncWebServerRequest *request)
     { 
       (*Device_Ctrl.JSON__ScheduleConfig).clear();
-      for (int i=0;i<24;i++) {
-        (*Device_Ctrl.JSON__ScheduleConfig).add("-");
-      }
+      // for (int i=0;i<24;i++) {
+      //   (*Device_Ctrl.JSON__ScheduleConfig).add("-");
+      // }
+      ExFile_LoadJsonFile(SPIFFS, "/config/schedule_config.json", *Device_Ctrl.JSON__ScheduleConfig);
       ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__ScheduleConfig, *Device_Ctrl.JSON__ScheduleConfig);
       AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"message\":\"OK\"}");
       request->send(response);
