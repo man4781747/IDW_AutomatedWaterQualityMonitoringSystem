@@ -319,6 +319,19 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
 //! 排程相關API
 void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
 {
+  asyncServer.on("/api/schedule", HTTP_DELETE,
+    [&](AsyncWebServerRequest *request)
+    { 
+      (*Device_Ctrl.JSON__ScheduleConfig).clear();
+      for (int i=0;i<24;i++) {
+        (*Device_Ctrl.JSON__ScheduleConfig).add("-");
+      }
+      ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__ScheduleConfig, *Device_Ctrl.JSON__ScheduleConfig);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"message\":\"OK\"}");
+      request->send(response);
+    }
+  );
+
   asyncServer.on("/api/schedule", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -328,66 +341,102 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
-  asyncServer.on("^\\/api\\/schedule\\/([a-zA-Z0-9_.-]+)$", HTTP_GET,
+
+
+  asyncServer.on("/api/schedule", HTTP_PATCH,
     [&](AsyncWebServerRequest *request)
     { 
       AsyncWebServerResponse* response;
       String keyName = request->pathArg(0);
-      if ((*Device_Ctrl.JSON__ScheduleConfig).containsKey(keyName)) {
-        response = request->beginResponse(200, "application/json", (*Device_Ctrl.JSON__ScheduleConfig)[keyName]);
-      } 
-      else {
-        response = request->beginResponse(500, "application/json", "{\"Result\":\"Can't Find: "+keyName+"\"}");
-      }
-      request->send(response);
-    }
-  );
-  //? 接收前端上傳的設定更新
-  //? FormData強制一定要有 Param: "content", 型態: String, 格式: JSON
-  asyncServer.on("^\\/api\\/schedule\\/([a-zA-Z0-9_.-]+)$", HTTP_PATCH,
-    [&](AsyncWebServerRequest *request)
-    { 
-      AsyncWebServerResponse* response;
-      String keyName = request->pathArg(0);
-      if (request->hasArg("content")) {
-        String content = request->getParam("content", true)->value();
-        DynamicJsonDocument JSON__content(1000);
-        DeserializationError error = deserializeJson(JSON__content, content);
-        if (error) {
-          ESP_LOGE("schedule更新", "JOSN解析失敗,停止更新排程設定檔內容", error.c_str());
-          response = request->beginResponse(500, "application/json", "{\"Result\":\"更新失敗,content所需型態: String, 格式: JSON\"}");
+      if (request->hasArg("index")) {
+        if (request->hasArg("name")) {
+          int index = String(request->getParam("index")->value()).toInt();
+          String name = request->getParam("name")->value();
+          (*Device_Ctrl.JSON__ScheduleConfig)[index].set(name);
+          ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__ScheduleConfig, *Device_Ctrl.JSON__ScheduleConfig);
+          DynamicJsonDocument returnJSON(1000);
+          returnJSON["index"] = index;
+          returnJSON["name"] = name;
+          String returnString;
+          serializeJson(returnJSON, returnString);
+          response = request->beginResponse(200, "application/json", returnString);
         }
         else {
-          (*Device_Ctrl.JSON__ScheduleConfig)[keyName].set(JSON__content);
-          ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__ScheduleConfig, *Device_Ctrl.JSON__ScheduleConfig);
-          // Device_Ctrl.SD__ReWriteScheduleConfig();
-          response = request->beginResponse(200, "application/json", (*Device_Ctrl.JSON__ScheduleConfig)[keyName]);
+          response = request->beginResponse(500, "application/json", "{\"Result\":\"缺少para: 'name'\"}");
         }
       }
       else {
-        response = request->beginResponse(500, "application/json", "{\"Result\":\"缺少para: 'content',型態: String, 格式: JSON\"}");
+        response = request->beginResponse(500, "application/json", "{\"Result\":\"缺少para: 'index'\"}");
       }
       request->send(response);
     }
   );
 
-  asyncServer.on("^\\/api\\/schedule\\/([a-zA-Z0-9_.-]+)$", HTTP_DELETE,
-    [&](AsyncWebServerRequest *request)
-    { 
-      AsyncWebServerResponse* response;
-      String keyName = request->pathArg(0);
-      if ((*Device_Ctrl.JSON__ScheduleConfig).containsKey(keyName)) {
-        (*Device_Ctrl.JSON__ScheduleConfig).remove(keyName);
-        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__ScheduleConfig, *Device_Ctrl.JSON__ScheduleConfig);
-        // Device_Ctrl.SD__ReWriteScheduleConfig();
-        response = request->beginResponse(200, "application/json", "{\"Result\":\"刪除成功\"}");
-      } 
-      else {
-        response = request->beginResponse(500, "application/json", "{\"Result\":\"Can't Find: "+keyName+"\"}");
-      }
-      request->send(response);
-    }
-  );
+
+
+
+
+
+  // asyncServer.on("^\\/api\\/schedule\\/([a-zA-Z0-9_.-]+)$", HTTP_GET,
+  //   [&](AsyncWebServerRequest *request)
+  //   { 
+  //     AsyncWebServerResponse* response;
+  //     String keyName = request->pathArg(0);
+  //     if ((*Device_Ctrl.JSON__ScheduleConfig).containsKey(keyName)) {
+  //       response = request->beginResponse(200, "application/json", (*Device_Ctrl.JSON__ScheduleConfig)[keyName]);
+  //     } 
+  //     else {
+  //       response = request->beginResponse(500, "application/json", "{\"Result\":\"Can't Find: "+keyName+"\"}");
+  //     }
+  //     request->send(response);
+  //   }
+  // );
+  // //? 接收前端上傳的設定更新
+  // //? FormData強制一定要有 Param: "content", 型態: String, 格式: JSON
+  // asyncServer.on("^\\/api\\/schedule\\/([a-zA-Z0-9_.-]+)$", HTTP_PATCH,
+  //   [&](AsyncWebServerRequest *request)
+  //   { 
+  //     AsyncWebServerResponse* response;
+  //     String keyName = request->pathArg(0);
+  //     if (request->hasArg("content")) {
+  //       String content = request->getParam("content", true)->value();
+  //       DynamicJsonDocument JSON__content(1000);
+  //       DeserializationError error = deserializeJson(JSON__content, content);
+  //       if (error) {
+  //         ESP_LOGE("schedule更新", "JOSN解析失敗,停止更新排程設定檔內容", error.c_str());
+  //         response = request->beginResponse(500, "application/json", "{\"Result\":\"更新失敗,content所需型態: String, 格式: JSON\"}");
+  //       }
+  //       else {
+  //         (*Device_Ctrl.JSON__ScheduleConfig)[keyName].set(JSON__content);
+  //         ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__ScheduleConfig, *Device_Ctrl.JSON__ScheduleConfig);
+  //         // Device_Ctrl.SD__ReWriteScheduleConfig();
+  //         response = request->beginResponse(200, "application/json", (*Device_Ctrl.JSON__ScheduleConfig)[keyName]);
+  //       }
+  //     }
+  //     else {
+  //       response = request->beginResponse(500, "application/json", "{\"Result\":\"缺少para: 'content',型態: String, 格式: JSON\"}");
+  //     }
+  //     request->send(response);
+  //   }
+  // );
+
+  // asyncServer.on("^\\/api\\/schedule\\/([a-zA-Z0-9_.-]+)$", HTTP_DELETE,
+  //   [&](AsyncWebServerRequest *request)
+  //   { 
+  //     AsyncWebServerResponse* response;
+  //     String keyName = request->pathArg(0);
+  //     if ((*Device_Ctrl.JSON__ScheduleConfig).containsKey(keyName)) {
+  //       (*Device_Ctrl.JSON__ScheduleConfig).remove(keyName);
+  //       ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__ScheduleConfig, *Device_Ctrl.JSON__ScheduleConfig);
+  //       // Device_Ctrl.SD__ReWriteScheduleConfig();
+  //       response = request->beginResponse(200, "application/json", "{\"Result\":\"刪除成功\"}");
+  //     } 
+  //     else {
+  //       response = request->beginResponse(500, "application/json", "{\"Result\":\"Can't Find: "+keyName+"\"}");
+  //     }
+  //     request->send(response);
+  //   }
+  // );
 }
 
 #endif

@@ -612,7 +612,7 @@ void C_Device_Ctrl::CreateStepTasks()
 void ScheduleManager(void* parameter)
 { 
   for(;;) {
-    ESP_LOGI("", "準備檢查是否有排程設定");
+    // ESP_LOGI("", "準備檢查是否有排程設定");
     time_t nowTime = now();
     if ( nowTime < 946656000 ) {
       ESP_LOGW("", "儀器時間有誤，暫時跳過排程設定檢查");
@@ -624,50 +624,88 @@ void ScheduleManager(void* parameter)
       continue;
     }
     //? 每5分鐘檢查一次排程
-    if (minute(nowTime) % 5 == 0) {
-      int Weekday = weekday(nowTime);
+    if (minute(nowTime) == 0) {
       int Hour = hour(nowTime);
-      int Minute = minute(nowTime);
+      String targetString = (*Device_Ctrl.JSON__ScheduleConfig)[Hour].as<String>();
+      if (targetString != "-") {
+        DynamicJsonDocument NewPipelineSetting(60000);
+        int eventCount = 0;
+        String TargetName = targetString+".json";
+        String FullFilePath = "/pipelines/"+TargetName;
+        DynamicJsonDocument singlePipelineSetting(10000);
+        singlePipelineSetting["FullFilePath"].set(FullFilePath);
+        singlePipelineSetting["TargetName"].set(TargetName);
+        singlePipelineSetting["stepChose"].set("");
+        singlePipelineSetting["eventChose"].set("");
+        singlePipelineSetting["eventIndexChose"].set(-1);
+        NewPipelineSetting.add(singlePipelineSetting);
+        RunNewPipeline(NewPipelineSetting);
 
-      for (JsonPair ScheduleConfigChose : (*Device_Ctrl.JSON__ScheduleConfig).as<JsonObject>()) {
-        String ScheduleConfigID = String(ScheduleConfigChose.key().c_str());
-        JsonObject ScheduleConfig = ScheduleConfigChose.value().as<JsonObject>();
-        for (JsonVariant weekdayItem : ScheduleConfig["schedule"].as<JsonArray>()[1].as<JsonArray>()) {
-          if (weekdayItem.as<int>() == Weekday) {
-            for (JsonVariant hourItem : ScheduleConfig["schedule"].as<JsonArray>()[2].as<JsonArray>()) {
-              if (hourItem.as<int>() == Hour) {
-                for (JsonVariant minuteItem : ScheduleConfig["schedule"].as<JsonArray>()[3].as<JsonArray>()) {
-                  if (minuteItem.as<int>() == Minute) {
-                    DynamicJsonDocument NewPipelineSetting(60000);
-                    int eventCount = 0;
-                    for (JsonVariant poolScheduleItem : ScheduleConfig["schedule"].as<JsonArray>()[0].as<JsonArray>()) {
-                      int targetIndex = poolScheduleItem.as<int>();
-                      String TargetName = "pool_"+String(targetIndex+1)+"_all_data_get.json";
-                      String FullFilePath = "/pipelines/"+TargetName;
-                      DynamicJsonDocument singlePipelineSetting(10000);
-                      singlePipelineSetting["FullFilePath"].set(FullFilePath);
-                      singlePipelineSetting["TargetName"].set(TargetName);
-                      singlePipelineSetting["stepChose"].set("");
-                      singlePipelineSetting["eventChose"].set("");
-                      singlePipelineSetting["eventIndexChose"].set(-1);
-                      NewPipelineSetting.add(singlePipelineSetting);
-                      ESP_LOGD("WebSocket", " - 事件 %d", eventCount+1);
-                      ESP_LOGD("WebSocket", "   - 檔案路徑:\t%s", FullFilePath.c_str());
-                      ESP_LOGD("WebSocket", "   - 目標名稱:\t%s", TargetName.c_str());
-                    }
-                    RunNewPipeline(NewPipelineSetting);
-                    break;
-                  }
-                }
-                break;
-              }
-            }
-            break;
-          }
-        }
+        // for (JsonVariant poolScheduleItem : ScheduleConfig["schedule"].as<JsonArray>()[0].as<JsonArray>()) {
+        //   int targetIndex = poolScheduleItem.as<int>();
+        //   String TargetName = "pool_"+String(targetIndex+1)+"_all_data_get.json";
+        //   String FullFilePath = "/pipelines/"+TargetName;
+        //   DynamicJsonDocument singlePipelineSetting(10000);
+        //   singlePipelineSetting["FullFilePath"].set(FullFilePath);
+        //   singlePipelineSetting["TargetName"].set(TargetName);
+        //   singlePipelineSetting["stepChose"].set("");
+        //   singlePipelineSetting["eventChose"].set("");
+        //   singlePipelineSetting["eventIndexChose"].set(-1);
+        //   NewPipelineSetting.add(singlePipelineSetting);
+        //   ESP_LOGD("WebSocket", " - 事件 %d", eventCount+1);
+        //   ESP_LOGD("WebSocket", "   - 檔案路徑:\t%s", FullFilePath.c_str());
+        //   ESP_LOGD("WebSocket", "   - 目標名稱:\t%s", TargetName.c_str());
+        // }
+        // RunNewPipeline(NewPipelineSetting);
       }
-    }
-    ESP_LOGI("", "排程檢查完畢，等待下一個檢查時段");
+      ESP_LOGI("", "排程檢查完畢，等待下一個檢查時段");
+      vTaskDelay(1000*60*30/portTICK_PERIOD_MS);
+    } 
+
+    // if (minute(nowTime) % 5 == 0) {
+    //   int Weekday = weekday(nowTime);
+    //   int Hour = hour(nowTime);
+    //   int Minute = minute(nowTime);
+    //   for (JsonPair ScheduleConfigChose : (*Device_Ctrl.JSON__ScheduleConfig).as<JsonObject>()) {
+    //     String ScheduleConfigID = String(ScheduleConfigChose.key().c_str());
+    //     JsonObject ScheduleConfig = ScheduleConfigChose.value().as<JsonObject>();
+    //     for (JsonVariant weekdayItem : ScheduleConfig["schedule"].as<JsonArray>()[1].as<JsonArray>()) {
+    //       if (weekdayItem.as<int>() == Weekday) {
+    //         for (JsonVariant hourItem : ScheduleConfig["schedule"].as<JsonArray>()[2].as<JsonArray>()) {
+    //           if (hourItem.as<int>() == Hour) {
+    //             for (JsonVariant minuteItem : ScheduleConfig["schedule"].as<JsonArray>()[3].as<JsonArray>()) {
+    //               if (minuteItem.as<int>() == Minute) {
+    //                 DynamicJsonDocument NewPipelineSetting(60000);
+    //                 int eventCount = 0;
+    //                 for (JsonVariant poolScheduleItem : ScheduleConfig["schedule"].as<JsonArray>()[0].as<JsonArray>()) {
+    //                   int targetIndex = poolScheduleItem.as<int>();
+    //                   String TargetName = "pool_"+String(targetIndex+1)+"_all_data_get.json";
+    //                   String FullFilePath = "/pipelines/"+TargetName;
+    //                   DynamicJsonDocument singlePipelineSetting(10000);
+    //                   singlePipelineSetting["FullFilePath"].set(FullFilePath);
+    //                   singlePipelineSetting["TargetName"].set(TargetName);
+    //                   singlePipelineSetting["stepChose"].set("");
+    //                   singlePipelineSetting["eventChose"].set("");
+    //                   singlePipelineSetting["eventIndexChose"].set(-1);
+    //                   NewPipelineSetting.add(singlePipelineSetting);
+    //                   ESP_LOGD("WebSocket", " - 事件 %d", eventCount+1);
+    //                   ESP_LOGD("WebSocket", "   - 檔案路徑:\t%s", FullFilePath.c_str());
+    //                   ESP_LOGD("WebSocket", "   - 目標名稱:\t%s", TargetName.c_str());
+    //                 }
+    //                 RunNewPipeline(NewPipelineSetting);
+    //                 break;
+    //               }
+    //             }
+    //             break;
+    //           }
+    //         }
+    //         break;
+    //       }
+    //     }
+    //   }
+    // }
+    
+    // ESP_LOGI("", "排程檢查完畢，等待下一個檢查時段");
     vTaskDelay(1000*60*1/portTICK_PERIOD_MS);
   }
 }
