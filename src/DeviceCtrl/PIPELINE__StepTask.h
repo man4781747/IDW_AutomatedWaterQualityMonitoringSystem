@@ -609,8 +609,10 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
     else if (value_name.lastIndexOf("test_volt")!=-1) {
       //! 本次測量的是量測電壓
       //! 需要套用校正參數，獲得真實濃度
-      double mValue = spectrophotometerConfigChose["calibration"][0]["ret"]["m"].as<double>();
-      double bValue = spectrophotometerConfigChose["calibration"][0]["ret"]["b"].as<double>();
+      double mValue = spectrophotometerConfigChose["m"].as<double>();
+      double bValue = spectrophotometerConfigChose["b"].as<double>();
+      // double mValue = spectrophotometerConfigChose["calibration"][0]["ret"]["m"].as<double>();
+      // double bValue = spectrophotometerConfigChose["calibration"][0]["ret"]["b"].as<double>();
       serializeJsonPretty(spectrophotometerConfigChose["calibration"][0]["ret"], Serial);
       String TargetType = value_name.substring(0,3); 
       double A0_Value = 0;
