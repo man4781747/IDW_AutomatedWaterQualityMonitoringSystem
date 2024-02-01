@@ -198,14 +198,14 @@ int C_Device_Ctrl::INIT_SqliteDB()
   // SD.remove("/mainDB.db");
   sqlite3_initialize();
   int rc = sqlite3_open(FilePath__SD__MainDB.c_str(), &DB_Main);
-   if (rc) {
-      Serial.printf("Can't open database: %s\n", sqlite3_errmsg(DB_Main));
-      return rc;
-   } else {
-      Serial.printf("Opened database successfully\n");
-      db_exec(DB_Main, "CREATE TABLE logs ( time TEXT, level INTEGER, content TEXT );");
-      db_exec(DB_Main, "CREATE TABLE sensor ( time TEXT, pool TEXT , value_name TEXT , result REAL );");
-   }
+  if (rc) {
+    Serial.printf("Can't open database: %s\n", sqlite3_errmsg(DB_Main));
+    return rc;
+  } else {
+    Serial.printf("Opened database successfully\n");
+    db_exec(DB_Main, "CREATE TABLE logs ( time TEXT, level INTEGER, content TEXT );");
+    db_exec(DB_Main, "CREATE TABLE sensor ( time TEXT, pool TEXT , value_name TEXT , result REAL );");
+  }
   return rc;
 }
 
