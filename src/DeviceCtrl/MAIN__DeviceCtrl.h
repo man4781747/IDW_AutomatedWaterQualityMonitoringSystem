@@ -51,6 +51,7 @@ struct StepTaskDetail {
   StepTaskStatus TaskStatus = StepTaskStatus::Idel;
   String TaskName;
   String StepName="";
+  String PipelineName="";
 };
 
 

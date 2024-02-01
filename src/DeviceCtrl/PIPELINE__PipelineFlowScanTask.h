@@ -7,7 +7,7 @@
 #include "TimeLibExternalFunction.h"
 #include <SD.h>
 
-int TryToRunStep(String StepName);
+int TryToRunStep(String StepName, String PipelineName);
 
 bool RunNewPipeline(const DynamicJsonDocument &newPipelineStackList)
 {
@@ -163,7 +163,7 @@ void PipelineFlowScan(void* parameter) {
           if (CONFIG_ARDUHAL_LOG_DEFAULT_LEVEL==5) {
             String piplineSaveString = "";
             serializeJson((*Device_Ctrl.JSON__pipelineConfig)["pipline"], piplineSaveString);
-            ESP_LOGV("", "流程設定檔: %s", piplineSaveString);
+            ESP_LOGV("", "流程設定檔: %s", piplineSaveString.c_str());
           }
         }
         else {
@@ -223,7 +223,7 @@ void PipelineFlowScan(void* parameter) {
         //? isAllDone: 用來判斷是否所有流程都運行完畢，如果都完畢，則此TASK也可以關閉
         //? 判斷完畢的邏輯: 全部step都不為 "WAIT"、"RUNNING" 則代表完畢
         bool isAllDone = false;
-
+        String PipelineName = (*Device_Ctrl.JSON__pipelineConfig)["title"].as<String>();
         while(isAllDone == false) {
           if (Device_Ctrl.StopNowPipeline) {
             Device_Ctrl.StopNowPipeline = false;
@@ -245,7 +245,7 @@ void PipelineFlowScan(void* parameter) {
               //? 如果此step狀態是WAIT並且parent數量為0，則直接觸發
               if (parentList.size() == 0) {
                 ESP_LOGI("", "發現初始流程: %s(%s)，準備執行", stepsGroupTitle.c_str(), stepsGroupName.c_str());
-                TryToRunStep(stepsGroupName);
+                TryToRunStep(stepsGroupName, PipelineName);
                 continue;
               }
 
@@ -273,7 +273,7 @@ void PipelineFlowScan(void* parameter) {
                 }
                 if (stepRun) {
                   ESP_LOGI("", "流程: %s(%s) 符合觸發條件: allDone，準備執行", stepsGroupTitle.c_str(), stepsGroupName.c_str());
-                  TryToRunStep(stepsGroupName);
+                  TryToRunStep(stepsGroupName, PipelineName);
                   // Device_Ctrl.AddNewPiplelineFlowTask(stepsGroupName);
                   continue;
                 }
@@ -287,7 +287,7 @@ void PipelineFlowScan(void* parameter) {
                   String parentResult = (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][parentName]["RESULT"].as<String>();
                   if (parentResult=="FAIL") {
                     ESP_LOGI("", "流程: %s(%s) 符合觸發條件: oneFail，準備執行", stepsGroupTitle.c_str(), stepsGroupName.c_str());
-                    TryToRunStep(stepsGroupName);
+                    TryToRunStep(stepsGroupName, PipelineName);
                     // Device_Ctrl.AddNewPiplelineFlowTask(stepsGroupName);
                     setNoRun = false;
                     break;
@@ -322,7 +322,7 @@ void PipelineFlowScan(void* parameter) {
                 }
                 if (stepRun) {
                   ESP_LOGI("", "流程: %s(%s) 符合觸發條件: allSuccess，準備執行", stepsGroupTitle.c_str(), stepsGroupName.c_str());
-                  TryToRunStep(stepsGroupName);
+                  TryToRunStep(stepsGroupName, PipelineName);
                   // Device_Ctrl.AddNewPiplelineFlowTask(stepsGroupName);
                   continue;
                 }
@@ -369,12 +369,13 @@ void PipelineFlowScan(void* parameter) {
 
 }
 
-int_fast16_t TryToRunStep(String StepName)
+int_fast16_t TryToRunStep(String StepName, String PipelineName)
 {
   for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
     if (Device_Ctrl.StepTaskDetailList[i].TaskStatus == StepTaskStatus::Idel) {
       Device_Ctrl.StepTaskDetailList[i].TaskStatus = StepTaskStatus::Busy;
       Device_Ctrl.StepTaskDetailList[i].StepName = StepName;
+      Device_Ctrl.StepTaskDetailList[i].PipelineName = PipelineName;
       (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][StepName]["RESULT"] = "RUNNING";
       return 1;
     }

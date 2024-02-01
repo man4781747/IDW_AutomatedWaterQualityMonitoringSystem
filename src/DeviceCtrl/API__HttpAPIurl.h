@@ -11,6 +11,7 @@
 
 void Set_deviceConfigs_apis(AsyncWebServer &asyncServer);
 void Set_scheduleConfig_apis(AsyncWebServer &asyncServer);
+void Set_tool_apis(AsyncWebServer &asyncServer);
 
 uint8_t *newConfigUpdateFileBuffer;
 size_t newConfigUpdateFileBufferLen;
@@ -189,6 +190,7 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
 
   Set_deviceConfigs_apis(asyncServer);
   Set_scheduleConfig_apis(asyncServer);
+  Set_tool_apis(asyncServer);
 }
 
 //! 儀器設定檔相關API
@@ -488,6 +490,23 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
   //     request->send(response);
   //   }
   // );
+}
+
+void Set_tool_apis(AsyncWebServer &asyncServer)
+{
+  asyncServer.on("/api/SD/info", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      DynamicJsonDocument returnJSON(1000);
+      returnJSON["Size"] = SD.cardSize();
+      returnJSON["Type"] = (int)SD.cardType();
+      returnJSON["Used"] = SD.usedBytes();
+      String RetuenString;
+      serializeJson(returnJSON, RetuenString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      request->send(response);
+    }
+  );
 }
 
 #endif

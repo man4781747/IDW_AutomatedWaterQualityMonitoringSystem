@@ -40,6 +40,8 @@ void StepTask(void* parameter) {
       vTaskDelay(2000/portTICK_PERIOD_MS);
       continue;
     }
+    String pipelineName = StepTaskDetailItem->PipelineName;
+
     String stepsGroupNameString = StepTaskDetailItem->StepName;
     //? 這個 Task 要執行的 steps_group 的 title
     String ThisStepGroupTitle = (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][stepsGroupNameString]["title"].as<String>();
@@ -69,9 +71,10 @@ void StepTask(void* parameter) {
           StepResult actionResult = Do_ServoMotorAction(eventItem, StepTaskDetailItem);
           if (actionResult.code == -1) {
             String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
-            sendString += "後續處理方法: 整機停止\n";
+            sendString += "\n後續處理方法: 整機停止\n";
             Device_Ctrl.SendLineNotifyMessage(sendString);
             isStepFail = true;
             EmergencyStop = true;
@@ -90,6 +93,7 @@ void StepTask(void* parameter) {
           if (actionResult.code == -1) {
             //! 收到停止
             String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
             sendString += "後續處理方法: 跳過此步驟\n";
@@ -100,6 +104,7 @@ void StepTask(void* parameter) {
           }
           else if (actionResult.code == -2) {
             String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
             sendString += "後續處理方法: 跳過當前流程\n";
@@ -110,6 +115,7 @@ void StepTask(void* parameter) {
           }
           else if (actionResult.code == -3) {
             String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
             sendString += "後續處理方法: 整機停止\n";
@@ -123,6 +129,7 @@ void StepTask(void* parameter) {
           StepResult actionResult = Do_SpectrophotometerAction(eventItem, StepTaskDetailItem);
           if (actionResult.code != 1) {
             String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
             sendString += "後續處理方法: 繼續執行\n";
@@ -133,6 +140,7 @@ void StepTask(void* parameter) {
           StepResult actionResult = Do_PHmeterAction(eventItem, StepTaskDetailItem);
           if (actionResult.code != 1) {
             String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
             sendString += "後續處理方法: 繼續執行\n";
@@ -333,7 +341,8 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
       continue;
     }
 
-    ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"蠕動馬達(%d) %s 持續 %.2f 秒或是直到%s被觸發,failType: %s, failAction: %s", 
+    ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"[%s]蠕動馬達(%d) %s 持續 %.2f 秒或是直到%s被觸發,failType: %s, failAction: %s", 
+      StepTaskDetailItem->PipelineName.c_str(),
       motorIndex, 
       peristalticMotorItem["status"].as<int>()==-1 ? "正轉" : "反轉", 
       runTime,
@@ -400,10 +409,15 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
         //? 執行到這，代表馬達執行到最大執行時間，如果 failType 是 timeout，則代表觸發失敗判斷
         if (thisFailType == "timeout") {
           result.message="馬達:"+String(motorIndex)+" 運轉超時\n";
-
-          ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "蠕動馬達(%d)觸發Timeout，檢查錯誤處裡: %s", motorIndex, thisFailAction.c_str());
-          Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "蠕動馬達(%d)觸發Timeout，檢查錯誤處裡: %s", motorIndex, thisFailAction.c_str());
-          Device_Ctrl.BroadcastLogToClient(NULL, 1, "蠕動馬達(%d)觸發Timeout，檢查錯誤處裡: %s", motorIndex, thisFailAction.c_str());
+          char buffer[1024];
+          sprintf(buffer, "[%s][%s]蠕動馬達(%d)觸發Timeout，檢查錯誤處裡: %s", 
+            StepTaskDetailItem->PipelineName.c_str(), 
+            (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][StepTaskDetailItem->StepName]["title"].as<String>().c_str(),
+            motorIndex, thisFailAction.c_str()
+          );
+          ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "%s", buffer);
+          Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "%s", buffer);
+          Device_Ctrl.BroadcastLogToClient(NULL, 1, "%s", buffer);
           if (thisFailAction=="stepStop") {
             //! 觸發timeout，並且停止當前Step的運行
             for (const auto& motorChose : endTimeCheckList.as<JsonObject>()) {
@@ -499,9 +513,17 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
 int Do_WaitAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
 {
   int waitSeconds = eventItem["wait"].as<int>();
-  ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"      等待 %d 秒",waitSeconds);
-  Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "等待 %d 秒",waitSeconds);
-  Device_Ctrl.BroadcastLogToClient(NULL, 3, "等待 %d 秒",waitSeconds);
+  char buffer[1024];
+  sprintf(buffer, "[%s][%s]等待 %d 秒", 
+    StepTaskDetailItem->PipelineName.c_str(), 
+    (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][StepTaskDetailItem->StepName]["title"].as<String>().c_str(),
+    waitSeconds
+  );
+
+
+  ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"%s",buffer);
+  Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3,"%s",buffer);
+  Device_Ctrl.BroadcastLogToClient(NULL, 3,"%s",buffer);
   unsigned long start_time = millis();
   unsigned long end_time = start_time + waitSeconds*1000;
   while (millis() < end_time) {
@@ -556,8 +578,14 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
     byte error = Device_Ctrl._Wire.endTransmission();
 
     if (error != 0) {
-      Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "找不到光度計: %s", spectrophotometerTitle.c_str());
-      Device_Ctrl.BroadcastLogToClient(NULL, 1, "找不到光度計: %s", spectrophotometerTitle.c_str());
+      char buffer[1024];
+      sprintf(buffer, "[%s][%s] 找不到光度計: %s", 
+        StepTaskDetailItem->PipelineName.c_str(), 
+        (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][StepTaskDetailItem->StepName]["title"].as<String>().c_str(),
+        spectrophotometerTitle.c_str()
+      );
+      Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "%s", buffer);
+      Device_Ctrl.BroadcastLogToClient(NULL, 1, "%s", buffer);
       result.code = -1;
       result.message = "找不到光度計: "+spectrophotometerTitle + "\n";
       return result;
@@ -589,6 +617,19 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
     Serial.printf("%s - %s:%.2f", poolChose.c_str(), value_name.c_str(), finalValue);
     (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][value_name]["Value"].set(String(finalValue,2).toDouble());
     (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][value_name]["data_time"].set(GetDatetimeString());
+
+    char buffer[1024];
+    sprintf(buffer, "[%s][%s] %s 第 %s 池 光度計量測 %s 結果: %s", 
+      StepTaskDetailItem->PipelineName.c_str(), 
+      (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][StepTaskDetailItem->StepName]["title"].as<String>().c_str(),
+      (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][value_name]["data_time"].as<String>().c_str(),
+      poolChose.c_str(),
+      value_name.c_str(),
+      String(finalValue,2)
+    );
+    Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 5, "%s", buffer);
+    Device_Ctrl.BroadcastLogToClient(NULL, 5, "%s", buffer);
+
 
     Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, value_name, finalValue);
     ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__LastSensorDataSave, *Device_Ctrl.JSON__sensorDataSave);
@@ -633,6 +674,18 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
       }
       (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][TargetType]["Value"].set(String(finalValue_after,2).toDouble());
       (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][TargetType]["data_time"].set(GetDatetimeString());
+      char buffer[1024];
+      sprintf(buffer, "[%s][%s] %s 第 %s 池 光度計量測 %s 結果: %s", 
+        StepTaskDetailItem->PipelineName.c_str(), 
+        (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][StepTaskDetailItem->StepName]["title"].as<String>().c_str(),
+        (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][TargetType]["data_time"].as<String>().c_str(),
+        poolChose.c_str(),
+        TargetType.c_str(),
+        String(finalValue_after,2)
+      );
+      Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 5, "%s", buffer);
+      Device_Ctrl.BroadcastLogToClient(NULL, 5, "%s", buffer);
+
       Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, TargetType, finalValue_after);
       ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__LastSensorDataSave, *Device_Ctrl.JSON__sensorDataSave);
       Serial.printf("%s - %s:%.2f", poolChose.c_str(), TargetType.c_str(), finalValue_after);
@@ -682,18 +735,27 @@ StepResult Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetail
     Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, "pH", pHValue);
     ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__LastSensorDataSave, *Device_Ctrl.JSON__sensorDataSave);
 
-    char logBuffer[1000];
-    sprintf(
-      logBuffer, 
-      "PH量測結果, 測量原始值: %s, 轉換後PH值: %s",
-      String(PH_RowValue, 2).c_str(), String(pHValue, 2).c_str()
+    char logBuffer[1024];
+    sprintf(logBuffer, "[%s][%s] %s 第 %s 池 PH量測結果, 測量原始值: %s, 轉換後PH值: %s", 
+      StepTaskDetailItem->PipelineName.c_str(), 
+      (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][StepTaskDetailItem->StepName]["title"].as<String>().c_str(),
+      (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"]["pH"]["data_time"].as<String>().c_str(),
+      poolChose.c_str(),
+      String(PH_RowValue,2),
+      String(pHValue,2)
     );
     Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 5, logBuffer);
     Device_Ctrl.BroadcastLogToClient(NULL, 5, logBuffer);
     ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"       - %s", String(logBuffer).c_str());
     if (pHValue > 10 | pHValue < 4) {
-      Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "PH量測數值有誤: %s", String(pHValue, 2).c_str());
-      Device_Ctrl.BroadcastLogToClient(NULL, 1, "PH量測數值有誤: %s", String(pHValue, 2).c_str());
+      char buffer[1024];
+      sprintf(buffer, "[%s][%s] PH量測數值有誤: %s", 
+        StepTaskDetailItem->PipelineName.c_str(), 
+        (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][StepTaskDetailItem->StepName]["title"].as<String>().c_str(),
+        String(pHValue, 2).c_str()
+      );
+      Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "%s", buffer);
+      Device_Ctrl.BroadcastLogToClient(NULL, 1, "%s", buffer);
     }
   }
   result.code = 1;
