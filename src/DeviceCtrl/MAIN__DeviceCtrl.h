@@ -1,7 +1,7 @@
 #ifndef DEVICE_CTRL_H
 #define DEVICE_CTRL_H
 
-#define MAX_STEP_TASK_NUM 6
+#define MAX_STEP_TASK_NUM 4
 #define FIRMWARE_VERSION "V4.24.0104.0"
 
 #include "CONFIG__pinMap.h"

@@ -515,20 +515,34 @@ void C_Device_Ctrl::BroadcastLogToClient(AsyncWebSocketClient *client, int Level
 
 void C_Device_Ctrl::SendLineNotifyMessage(String content)
 {
-  #ifdef LINE_NOTIFY_KEY
-  #ifdef LINE_NOTIFY_API
-  HTTPClient http;
-  http.begin(LINE_NOTIFY_API);;
-  DynamicJsonDocument postData(10000);
-  postData["key"] = LINE_NOTIFY_KEY;
-  postData["content"] = content;
-  String sendContent;
-  serializeJson(postData, sendContent);
-  postData.clear();
-  int httpResponseCode = http.POST(sendContent);
-  http.end();
-  #endif
-  #endif
+  String LINE_Notify_id = (*Device_Ctrl.JSON__DeviceBaseInfo)["LINE_Notify_id"].as<String>();
+  bool LINE_Notify_switch = (*Device_Ctrl.JSON__DeviceBaseInfo)["LINE_Notify_switch"].as<bool>();
+  if (LINE_Notify_id != "" & LINE_Notify_switch) {
+    HTTPClient http;
+    http.begin("https://notify-api.line.me/api/notify");
+    http.addHeader("Host", "notify-api.line.me");
+    String AuthorizationInfo = "Bearer "+LINE_Notify_id;
+    http.addHeader("Authorization", AuthorizationInfo);
+    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+    http.addHeader("Connection", "close");
+    String payload = "message="+content;
+    http.POST(payload);
+  }
+
+  // #ifdef LINE_NOTIFY_KEY
+  // #ifdef LINE_NOTIFY_API
+  // HTTPClient http;
+  // http.begin(LINE_NOTIFY_API);;
+  // DynamicJsonDocument postData(10000);
+  // postData["key"] = LINE_NOTIFY_KEY;
+  // postData["content"] = content;
+  // String sendContent;
+  // serializeJson(postData, sendContent);
+  // postData.clear();
+  // int httpResponseCode = http.POST(sendContent);
+  // http.end();
+  // #endif
+  // #endif
 }
 
 void C_Device_Ctrl::CreatePipelineFlowScanTask()

@@ -212,6 +212,14 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
         String NewDeviceNo = request->getParam("device_no")->value();
         (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].set(NewDeviceNo);
       }
+      if (request->hasParam("LINE_Notify_id")) {
+        String LINE_Notify_id = request->getParam("LINE_Notify_id")->value();
+        (*Device_Ctrl.JSON__DeviceBaseInfo)["LINE_Notify_id"].set(LINE_Notify_id);
+      }
+      if (request->hasParam("LINE_Notify_switch")) {
+        bool LINE_Notify_switch = request->getParam("LINE_Notify_switch")->value()=="true"?true:false;
+        (*Device_Ctrl.JSON__DeviceBaseInfo)["LINE_Notify_switch"].set(LINE_Notify_switch);
+      }
       ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__DeviceBaseInfo, (*Device_Ctrl.JSON__DeviceBaseInfo));
       String RetuenString;
       serializeJson((*Device_Ctrl.JSON__DeviceBaseInfo), RetuenString);
@@ -504,6 +512,14 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       String RetuenString;
       serializeJson(returnJSON, RetuenString);
       AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      request->send(response);
+    }
+  );
+  asyncServer.on("/api/test/line_notify", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      Device_Ctrl.SendLineNotifyMessage("手動測試");
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"OK\"}");
       request->send(response);
     }
   );
