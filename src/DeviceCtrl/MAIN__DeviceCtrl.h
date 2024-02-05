@@ -96,6 +96,7 @@ class C_Device_Ctrl
      * @param content 
      */
     void InsertNewLogToDB(String time, int level, const char* content, ...);
+    void DeleteOldLog();
 
     //! SD相關操作與函式
     void LoadConfigJsonFiles();

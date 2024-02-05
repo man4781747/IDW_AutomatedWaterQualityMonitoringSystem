@@ -203,6 +203,8 @@ int C_Device_Ctrl::INIT_SqliteDB()
     return rc;
   } else {
     Serial.printf("Opened database successfully\n");
+
+    // db_exec(DB_Main, "DROP TABLE logs;");
     db_exec(DB_Main, "CREATE TABLE logs ( time TEXT, level INTEGER, content TEXT );");
     db_exec(DB_Main, "CREATE TABLE sensor ( time TEXT, pool TEXT , value_name TEXT , result REAL );");
   }
@@ -251,6 +253,20 @@ void C_Device_Ctrl::InsertNewLogToDB(String time, int level, const char* content
   SqlString += String(buffer);
   SqlString += "' );";
   db_exec(DB_Main, SqlString);
+}
+
+//? 刪除過舊的LOG資訊
+//! 目前還在考慮是否真的要加入這功能，有發現SQLITE的DELETE耗時超久，有當機風險
+//! 不如把整個Table砍掉重來
+void C_Device_Ctrl::DeleteOldLog()
+{
+  DynamicJsonDocument tempJSONItem(1000);
+  String sql = "SELECT min(rowid) AS rowid FROM( SELECT rowid FROM logs ORDER BY rowid DESC LIMIT 1000);";
+  db_exec(DB_Main, sql, &tempJSONItem);
+  String minId = tempJSONItem[0]["rowid"].as<String>();
+  serializeJsonPretty(tempJSONItem, Serial);
+  sql = "DELETE FROM logs WHERE rowid < "+minId+";";
+  db_exec(DB_Main, sql);
 }
 
 void C_Device_Ctrl::UpdatePipelineConfigList()
@@ -488,6 +504,7 @@ void C_Device_Ctrl::UpdateDeviceTimerByNTP()
   setTime((time_t)timeClient.getEpochTime());
   timeClient.end();
   ESP_LOGI("Time", "Time: %s", timeClient.getFormattedTime().c_str());
+  // DeleteOldLog();
 }
 
 void C_Device_Ctrl::BroadcastLogToClient(AsyncWebSocketClient *client, int Level, const char *content, ...)
