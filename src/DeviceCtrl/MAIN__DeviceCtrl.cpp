@@ -392,9 +392,11 @@ void C_Device_Ctrl::preLoadWebJSFile()
 DynamicJsonDocument C_Device_Ctrl::GetBaseWSReturnData(String MessageString)
 {
   DynamicJsonDocument BaseWSReturnData(65525);
-  BaseWSReturnData.set(*(Device_Ctrl.JSON__DeviceBaseInfo));
   BaseWSReturnData["firmware_version"].set(FIRMWARE_VERSION);
-
+  String mode = (*Device_Ctrl.JSON__DeviceBaseInfo)["mode"].as<String>();
+  String device_no = (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>();
+  BaseWSReturnData["mode"].set(mode);
+  BaseWSReturnData["device_no"].set(device_no);
   int startIndex = MessageString.indexOf("/", 0);
   startIndex = MessageString.indexOf("/", startIndex+1);
   int endIndex = MessageString.indexOf("/", startIndex+1);
