@@ -374,6 +374,40 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+
+  asyncServer.on("/api/config/PHmeter_config", HTTP_PATCH,
+    [&](AsyncWebServerRequest *request)
+    { 
+      if (request->hasParam("index")) {
+        int SettingIndex = request->getParam("index")->value().toInt();
+        if (request->hasParam("title")) {
+          (*Device_Ctrl.JSON__PHmeterConfig)[SettingIndex]["title"].set(request->getParam("title")->value());
+        }
+        if (request->hasParam("desp")) {
+          (*Device_Ctrl.JSON__PHmeterConfig)[SettingIndex]["desp"].set(request->getParam("desp")->value());
+        }
+        if (request->hasParam("m")) {
+          (*Device_Ctrl.JSON__PHmeterConfig)[SettingIndex]["m"].set(request->getParam("m")->value().toDouble());
+        }
+        if (request->hasParam("b")) {
+          (*Device_Ctrl.JSON__PHmeterConfig)[SettingIndex]["b"].set(request->getParam("b")->value().toDouble());
+        }
+        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__PHmeterConfig, (*Device_Ctrl.JSON__PHmeterConfig));
+
+        DynamicJsonDocument ReturnData(10000);
+        ReturnData["new"].set((*Device_Ctrl.JSON__PHmeterConfig)[SettingIndex]);
+        ReturnData["index"].set(SettingIndex);
+        String RetuenString;
+        serializeJson(ReturnData, RetuenString);
+        AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+        request->send(response);
+      }
+      else {
+        AsyncWebServerResponse* response = request->beginResponse(400, "application/json", "{\"message\":\"需要index\"}");
+        request->send(response);
+      }
+    }
+  );
 }
 
 //! 排程相關API
