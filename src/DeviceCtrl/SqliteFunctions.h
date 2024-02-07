@@ -39,7 +39,7 @@ int db_exec(sqlite3 *db, String sql, JsonDocument *jsonData=NULL) {
     Serial.printf("SQL error: %s\n", zErrMsg);
     String ErrType = String(zErrMsg);
     sqlite3_free(zErrMsg);
-    if (ErrType == "disk I/O error") {
+    if (ErrType == "disk I/O error" | ErrType == "database disk image is malformed") {
       SD.end();
       SD.begin(PIN__SD_CS);
       sqlite3_initialize();
