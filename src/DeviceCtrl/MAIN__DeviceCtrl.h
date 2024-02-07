@@ -17,6 +17,9 @@
 
 #include <Adafruit_GFX.h>
 #include "Adafruit_SH1106.h"
+#include <ESP_Mail_Client.h>
+
+
 
 //! 為了保證各Task優先級不會打架，用enum來自動分配優先級數字，
 //! 所有Task應該都要先在此定義優先級，也方便統計當前有多少Task
@@ -135,7 +138,14 @@ class C_Device_Ctrl
       AsyncWebSocketClient *client,
       int Level, const char* content, ...
     );
+
+    //! 錯誤警報相關功能
+
     void SendLineNotifyMessage(String content);
+
+    SMTPSession smtp;
+    int SendGmailNotifyMessage(String MailSubject,String content);
+
 
     //! Websocket相關
     void INIT_AllWsAPI();

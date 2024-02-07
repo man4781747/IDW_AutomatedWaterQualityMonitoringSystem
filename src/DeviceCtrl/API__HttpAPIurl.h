@@ -54,7 +54,7 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
   });
 
   asyncServer.on("/api/version", HTTP_GET, [](AsyncWebServerRequest *request){
-    String returnString = "{\"FIRMWARE_VERSION\":\""+String(FIRMWARE_VERSION)+"\"}";
+    String returnString = String("{\"FIRMWARE_VERSION\":\"")+String(FIRMWARE_VERSION)+"\"}";
     AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
     request->send(response);
   });
@@ -87,7 +87,8 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
           SD.mkdir("/pipelines");
         }
         File configTempFile;
-        configTempFile = SD.open("/pipelines/"+filename, FILE_WRITE);
+        String filePath = "/pipelines/"+filename;
+        configTempFile = SD.open(filePath, FILE_WRITE);
         configTempFile.write(newConfigUpdateFileBuffer ,index + len);
         configTempFile.close();
         Serial.printf("檔案更新完成\n", filename.c_str());
@@ -220,6 +221,24 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
         bool LINE_Notify_switch = request->getParam("LINE_Notify_switch")->value()=="true"?true:false;
         (*Device_Ctrl.JSON__DeviceBaseInfo)["LINE_Notify_switch"].set(LINE_Notify_switch);
       }
+      if (request->hasParam("Mail_Notify_switch")) {
+        bool Mail_Notify_switch = request->getParam("Mail_Notify_switch")->value()=="true"?true:false;
+        (*Device_Ctrl.JSON__DeviceBaseInfo)["Mail_Notify_switch"].set(Mail_Notify_switch);
+      }
+      if (request->hasParam("Mail_Notify_Auther")) {
+        String Mail_Notify_Auther = request->getParam("Mail_Notify_Auther")->value();
+        (*Device_Ctrl.JSON__DeviceBaseInfo)["Mail_Notify_Auther"].set(Mail_Notify_Auther);
+      }
+      if (request->hasParam("Mail_Notify_Key")) {
+        String Mail_Notify_Key = request->getParam("Mail_Notify_Key")->value();
+        (*Device_Ctrl.JSON__DeviceBaseInfo)["Mail_Notify_Key"].set(Mail_Notify_Key);
+      }
+      if (request->hasParam("Mail_Notify_Target")) {
+        String Mail_Notify_Target = request->getParam("Mail_Notify_Target")->value();
+        (*Device_Ctrl.JSON__DeviceBaseInfo)["Mail_Notify_Target"].set(Mail_Notify_Target);
+      }
+
+
       ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__DeviceBaseInfo, (*Device_Ctrl.JSON__DeviceBaseInfo));
       String RetuenString;
       serializeJson((*Device_Ctrl.JSON__DeviceBaseInfo), RetuenString);
@@ -557,6 +576,16 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+
+  asyncServer.on("/api/test/mail_notify", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      Device_Ctrl.SendGmailNotifyMessage("手動測試","手動測試");
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"OK\"}");
+      request->send(response);
+    }
+  );
+
 }
 
 #endif

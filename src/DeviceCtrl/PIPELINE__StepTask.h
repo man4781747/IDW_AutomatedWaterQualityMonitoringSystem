@@ -76,6 +76,7 @@ void StepTask(void* parameter) {
             sendString += actionResult.message;
             sendString += "\n後續處理方法: 整機停止\n";
             Device_Ctrl.SendLineNotifyMessage(sendString);
+            Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",sendString);
             isStepFail = true;
             EmergencyStop = true;
             break;
@@ -98,6 +99,7 @@ void StepTask(void* parameter) {
             sendString += actionResult.message;
             sendString += "後續處理方法: 跳過此步驟\n";
             Device_Ctrl.SendLineNotifyMessage(sendString);
+            Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",sendString);
             isStepFail = true;
             OnlyStepStop = true;
             break;
@@ -109,6 +111,7 @@ void StepTask(void* parameter) {
             sendString += actionResult.message;
             sendString += "後續處理方法: 跳過當前流程\n";
             Device_Ctrl.SendLineNotifyMessage(sendString);
+            Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",sendString);
             isStepFail = true;
             OnlyPipelineStop = true;
             break;
@@ -120,6 +123,7 @@ void StepTask(void* parameter) {
             sendString += actionResult.message;
             sendString += "後續處理方法: 整機停止\n";
             Device_Ctrl.SendLineNotifyMessage(sendString);
+            Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",sendString);
             isStepFail = true;
             EmergencyStop = true;
             break;
@@ -134,6 +138,7 @@ void StepTask(void* parameter) {
             sendString += actionResult.message;
             sendString += "後續處理方法: 繼續執行\n";
             Device_Ctrl.SendLineNotifyMessage(sendString);
+            Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",sendString);
           }
         }
         else if (eventItem.containsKey("ph_meter")) {
@@ -145,6 +150,7 @@ void StepTask(void* parameter) {
             sendString += actionResult.message;
             sendString += "後續處理方法: 繼續執行\n";
             Device_Ctrl.SendLineNotifyMessage(sendString);
+            Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",sendString);
           }
         }
       
@@ -288,6 +294,7 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
     // String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到伺服馬達異常\n";
     // sendString += "異常馬達編號: "+anyFail;
     // Device_Ctrl.SendLineNotifyMessage(sendString);
+    // Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",sendString);
     result.code = -1;
     result.message = ErrorInfo;
     return result;
@@ -717,8 +724,11 @@ StepResult Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetail
       return result;  
     }
 
-    double m = (*Device_Ctrl.JSON__PHmeterConfig)[0]["calibration"][0]["ret"]["m"].as<String>().toDouble();
-    double b = (*Device_Ctrl.JSON__PHmeterConfig)[0]["calibration"][0]["ret"]["b"].as<String>().toDouble();
+    // double m = (*Device_Ctrl.JSON__PHmeterConfig)[0]["calibration"][0]["ret"]["m"].as<String>().toDouble();
+    // double b = (*Device_Ctrl.JSON__PHmeterConfig)[0]["calibration"][0]["ret"]["b"].as<String>().toDouble();
+    double m = (*Device_Ctrl.JSON__PHmeterConfig)[0]["m"].as<String>().toDouble();
+    double b = (*Device_Ctrl.JSON__PHmeterConfig)[0]["b"].as<String>().toDouble();
+
     double pHValue = m*PH_RowValue + b;
     if (pHValue<0) {
       pHValue = 0.;

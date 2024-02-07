@@ -19,6 +19,8 @@
 #include "Adafruit_SH1106.h"
 #include "qrcode.h"
 #include <HTTPClient.h>
+#include <ESP_Mail_Client.h>
+// SMTPSession smtp;
 
 const long  gmtOffset_sec = 3600*8; // GMT+8
 const int   daylightOffset_sec = 0; // DST+0
@@ -415,6 +417,7 @@ DynamicJsonDocument C_Device_Ctrl::GetBaseWSReturnData(String MessageString)
   BaseWSReturnData.createNestedObject("parameter");
   BaseWSReturnData["cmd_detail"].set(MessageString);
   BaseWSReturnData["device_status"].set("Idle");
+  
   // if (xSemaphoreTake(Machine_Ctrl.LOAD__ACTION_V2_xMutex, 0) == pdFALSE) {
   //   BaseWSReturnData["device_status"].set("Busy");
   // }
@@ -562,6 +565,105 @@ void C_Device_Ctrl::SendLineNotifyMessage(String content)
   // http.end();
   // #endif
   // #endif
+}
+
+/* 取得信件寄送狀態的回呼函式本體 */
+void smtpCallback(SMTP_Status status){
+  /* 顯示目前的狀態 */
+  Serial.println(status.info());
+
+  /* 顯示傳送結果 */
+  if (status.success()){
+    Serial.println("----------------");
+    ESP_MAIL_PRINTF("訊息傳送成功：%d\n", status.completedCount());
+    ESP_MAIL_PRINTF("訊息傳送失敗：%d\n", status.failedCount());
+    Serial.println("----------------\n");
+    struct tm dt;
+
+    for (int i = 0; i < Device_Ctrl.smtp.sendingResult.size(); i++){
+      SMTP_Result result = Device_Ctrl.smtp.sendingResult.getItem(i);
+      time_t ts = (time_t)result.timestamp;
+
+      ESP_MAIL_PRINTF("訊息編號：%d\n", i + 1);
+      ESP_MAIL_PRINTF("狀態：%s\n", result.completed ? "成功" : "失敗");
+      ESP_MAIL_PRINTF("日期/時間：%s\n", asctime(localtime(&ts)));
+      ESP_MAIL_PRINTF("收信人：%s\n", result.recipients.c_str());
+      ESP_MAIL_PRINTF("主旨：%s\n", result.subject.c_str());
+    }
+    Serial.println("----------------\n");
+    Device_Ctrl.smtp.sendingResult.clear();
+  }
+}
+
+
+int C_Device_Ctrl::SendGmailNotifyMessage(String MailSubject, String content)
+{
+  //! https://swf.com.tw/?p=1787
+
+  bool isSendMail = (*JSON__DeviceBaseInfo)["Mail_Notify_switch"].as<bool>();
+  if (isSendMail) {
+    String SMTP_HOST = "smtp.gmail.com";
+    int SMTP_PORT = 465;
+    String DeviceName = (*JSON__DeviceBaseInfo)["device_no"].as<String>();
+    String SenderName = String("自動化水質機-") + DeviceName;
+    String User = "User";
+    String AutherMail = (*JSON__DeviceBaseInfo)["Mail_Notify_Auther"].as<String>();
+    if (AutherMail=="null") {
+      ESP_LOGE("Mail", "Mail警告訊息功能缺乏");
+      return -4;
+    }
+
+    String Key = (*JSON__DeviceBaseInfo)["Mail_Notify_Key"].as<String>();
+    if (Key=="null") {
+      return -5;
+    }
+    String TargetMail = (*JSON__DeviceBaseInfo)["Mail_Notify_Target"].as<String>();
+    if (TargetMail=="null") {
+      return -6;
+    }
+    smtp.debug(1);
+    smtp.callback(smtpCallback);
+    //? 宣告SMTP郵件伺服器連線物件
+    ESP_Mail_Session session;
+    //? 設定SMTP郵件伺服器連線物件
+    session.server.host_name = SMTP_HOST;      // 設定寄信的郵件伺服器名稱
+    session.server.port = SMTP_PORT;           // 郵件伺服器的埠號
+    session.login.email = AutherMail;         // 你的帳號
+    session.login.password = Key;             // 密碼
+    //? 設置時區
+    session.time.ntp_server = F("pool.ntp.org,time.nist.gov");
+    session.time.gmt_offset = 8;        // 台北時區
+    session.time.day_light_offset = 0;  // 無日光節約時間
+
+    if (!smtp.connect(&session)) {
+      ESP_LOGE("Mail", "Mail訊息通知無法連上STMP伺服器");
+      return -2;
+    }
+
+    SMTP_Message message;
+
+    /* 設定郵件標頭 */
+    message.sender.name = SenderName;    // 寄信人的名字
+    message.sender.email = AutherMail;  // 寄信人的e-mail
+    message.subject = "[自動化水質機台]"+MailSubject;       // 信件主旨
+    message.addRecipient(User, TargetMail);  // "收信人的名字", "收信人的e-mail"
+
+    /* 設定郵件內容（HTML格式訊息） */
+    // String htmlMsg = "<div style=\"color:#2f4468;\"><h1>學程式就是要動手實作</h1><p>- 從ESP32開發板傳送</p></div>";
+    message.html.content = content.c_str();  // 設定信件內容
+    message.text.charSet = "utf-8";          // 設定訊息文字的編碼
+    if (!MailClient.sendMail(&smtp, &message)) {
+      Serial.println("寄信時出錯了：" + smtp.errorReason());
+      smtp.closeSession();
+      return -3;
+    }
+    // smtp.sendingResult.clear();
+    // smtp.closeSession();
+    return 1;
+  }
+  else {
+    return -1;
+  }
 }
 
 void C_Device_Ctrl::CreatePipelineFlowScanTask()
