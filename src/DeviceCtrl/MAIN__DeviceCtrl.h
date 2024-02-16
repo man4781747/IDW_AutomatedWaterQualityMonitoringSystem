@@ -183,13 +183,22 @@ class C_Device_Ctrl
 
     SemaphoreHandle_t xMutex__LX_20S = NULL;
 
+    //? 停止所有Step流程，使之回歸 Idel狀態
+    //? 執行此方程會同時停止當前Pipeline，並確認Pipeline停止後，才陸續將Step停止
+    //? 最後將所有Step停止後，才結束方程
     void StopAllStepTask();
     //? 停止當前的Pipeline以及所有Theard Task，讓下一個Pipeline執行
     void StopNowPipelineAndAllStepTask();
-    //? 停止所有Pipeline以及所有Theard Task
+    //? 停止所有Pipeline以及所有Theard Task，回歸Idel
     void StopDeviceAllAction();
 
+    //? 是否停止當前執行中的流程
+    //? 如果為true，則會陸續將當前流程相關的步驟關閉
+    //! 這寫法實在不夠好，太多有的沒的狀態，待日後想到好作法在來取代
     bool StopNowPipeline = false;
+    //? 是否停止當前所有執行中與等待執行的流程
+    //? 如果為true，則會陸續將所有流程關閉
+    //! 這寫法實在不夠好，太多有的沒的狀態，待日後想到好作法在來取代
     bool StopAllPipeline = false;
 
     //! 排程檢查Task

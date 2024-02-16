@@ -686,30 +686,48 @@ void C_Device_Ctrl::StopNowPipelineAndAllStepTask()
   digitalWrite(PIN__EN_Peristaltic_Motor, LOW);
   digitalWrite(PIN__EN_Servo_Motor, LOW);
   Device_Ctrl.peristalticMotorsCtrl.SetAllMotorStop();
-  Device_Ctrl.StopNowPipeline = true;
-  while (Device_Ctrl.StopNowPipeline) {
-    vTaskDelay(10/portTICK_PERIOD_MS);
-  }
-  for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
-    StepTaskDetailList[i].TaskStatus = StepTaskStatus::Close;
-  }
+
+  Device_Ctrl.StopAllStepTask();
+
+  // Device_Ctrl.StopNowPipeline = true;
+  // while (Device_Ctrl.StopNowPipeline) {
+  //   vTaskDelay(10/portTICK_PERIOD_MS);
+  // }
+  // for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
+  //   StepTaskDetailList[i].TaskStatus = StepTaskStatus::Close;
+  // }
 }
+
 
 void C_Device_Ctrl::StopDeviceAllAction()
 {
+  //! 關閉所有光度計
   digitalWrite(PIN__EN_BlueSensor, LOW);
   digitalWrite(PIN__EN_GreenSensor, LOW);
+  //! 蠕動馬達斷電
   digitalWrite(PIN__EN_Peristaltic_Motor, LOW);
-  digitalWrite(PIN__EN_Servo_Motor, LOW);
+  //! 所有蠕動馬達狀態定為 不轉動
   Device_Ctrl.peristalticMotorsCtrl.SetAllMotorStop();
+  //! 伺服馬達斷電
+  digitalWrite(PIN__EN_Servo_Motor, LOW);
+
+  //! 將 StopAllPipeline 與 StopAllPipeline 狀態值改為true
+  //! 改為 true 後，會先關閉 PipelineFlowScanTask 中執行的流程
+  //! 中斷執行會需要一點時間，並非立即中斷
+  //! 這寫法實在不夠好，太多有的沒的狀態，待日後想到好作法在來取代
   Device_Ctrl.StopAllPipeline = true;
-  Device_Ctrl.StopNowPipeline = true;
-  while (Device_Ctrl.StopNowPipeline) {
-    vTaskDelay(10/portTICK_PERIOD_MS);
-  }
-  for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
-    StepTaskDetailList[i].TaskStatus = StepTaskStatus::Close;
-  }
+
+  Device_Ctrl.StopAllStepTask();
+  // Device_Ctrl.StopNowPipeline = true;
+
+  // //! 等待 PipelineFlowScanTask 執行停止
+  // //! 再慢慢將各個Step停止
+  // while (Device_Ctrl.StopNowPipeline) {
+  //   vTaskDelay(10/portTICK_PERIOD_MS);
+  // }
+  // for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
+  //   StepTaskDetailList[i].TaskStatus = StepTaskStatus::Close;
+  // }
 }
 
 void C_Device_Ctrl::StopAllStepTask()
@@ -720,6 +738,28 @@ void C_Device_Ctrl::StopAllStepTask()
   }
   for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
     StepTaskDetailList[i].TaskStatus = StepTaskStatus::Close;
+  }
+  //? 檢查是否所有Step都停止了，都停止才繼續執行下去
+  int timeOut = 5000;
+  bool allStop = true;
+  time_t waitStart = now();
+  while (allStop) {
+    allStop = true;
+    for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
+      if (StepTaskDetailList[i].TaskStatus != StepTaskStatus::Idel) {
+        allStop = false;
+        break;
+      }
+    }
+    if (now() - waitStart >= timeOut) {
+      ESP_LOGE("嚴重系統性錯誤", "停止所有Step流程Timeout，請聯絡工程師排除此BUG");
+      Device_Ctrl.SendGmailNotifyMessage(
+        "嚴重系統性錯誤", "停止所有Step流程Timeout，請聯絡工程師排除此BUG"
+      );
+      Device_Ctrl.SendLineNotifyMessage("[嚴重系統性錯誤]停止所有Step流程Timeout，請聯絡工程師排除此BUG");
+      break;
+    }
+    vTaskDelay(100/portTICK_PERIOD_MS);
   }
 }
 
