@@ -9,7 +9,7 @@
 
 int TryToRunStep(String StepName, String PipelineName);
 
-bool RunNewPipeline(const DynamicJsonDocument &newPipelineStackList)
+bool RunNewPipeline(const DynamicJsonDocument &newPipelineStackList) //? 執行
 {
   if (xSemaphoreTake(Device_Ctrl.xMutex__pipelineFlowScan, 0) == pdTRUE) {
     (*Device_Ctrl.JSON__pipelineStack).clear();
@@ -28,7 +28,7 @@ void PipelineFlowScan(void* parameter) {
   for (;;) {
     if ((*Device_Ctrl.JSON__pipelineStack).as<JsonArray>().size() == 0 ) {
       // 目前沒有待執行的Pipeline
-      vTaskDelay(1000/portTICK_PERIOD_MS);
+      vTaskDelay(100/portTICK_PERIOD_MS);
       continue;
     }
     else {
