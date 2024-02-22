@@ -217,7 +217,7 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
     result.message = "";
     return result;
   }
-  for (int ReTry=0;ReTry<2;ReTry++) {
+  for (int ReTry=0;ReTry<4;ReTry++) {
     for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
       int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
       ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"伺服馬達(LX-20S) %d 轉至 %d 度(%d)", 
@@ -225,9 +225,9 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
         servoMotorItem["status"].as<int>(), targetAngValue
       );
       LX_20S_SerialServoMove(Serial2, servoMotorItem["index"].as<int>(),targetAngValue,500);
-      vTaskDelay(50/portTICK_PERIOD_MS);
-      LX_20S_SerialServoMove(Serial2, servoMotorItem["index"].as<int>(),targetAngValue,500);
-      vTaskDelay(50/portTICK_PERIOD_MS);
+      // vTaskDelay(50/portTICK_PERIOD_MS);
+      // LX_20S_SerialServoMove(Serial2, servoMotorItem["index"].as<int>(),targetAngValue,500);
+      // vTaskDelay(50/portTICK_PERIOD_MS);
       if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
         ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
         digitalWrite(PIN__EN_Servo_Motor, LOW);
@@ -237,7 +237,7 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
         return result;
       }
     }
-    vTaskDelay(1000/portTICK_PERIOD_MS);
+    vTaskDelay(500/portTICK_PERIOD_MS);
   }
   if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
     ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
