@@ -32,6 +32,7 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
     DynamicJsonDocument D_baseInfo = Device_Ctrl.GetBaseWSReturnData("");
     D_baseInfo["cmd"].set("CONNECTED");
     D_baseInfo["action"]["message"].set("OK");
+    D_baseInfo["action"]["status"].set("OK");
     String returnString;
     serializeJsonPretty(D_baseInfo, returnString);
     client->binary(returnString);
