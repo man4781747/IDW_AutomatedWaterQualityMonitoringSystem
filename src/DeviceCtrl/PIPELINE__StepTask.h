@@ -61,7 +61,7 @@ void StepTask(void* parameter) {
       //? eventChose: 待執行的event名稱
       String thisEventTitle = (*Device_Ctrl.JSON__pipelineConfig)["events"][eventChose]["title"].as<String>();
       ESP_LOGI(StepTaskDetailItem->TaskName.c_str(), "執行: %s - %s", ThisStepGroupTitle.c_str(), thisEventTitle.c_str());
-      Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "執行: %s - %s", ThisStepGroupTitle.c_str(), thisEventTitle.c_str());
+      // Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "執行: %s - %s", ThisStepGroupTitle.c_str(), thisEventTitle.c_str());
       Device_Ctrl.BroadcastLogToClient(NULL, 3, "執行: %s - %s", ThisStepGroupTitle.c_str(), thisEventTitle.c_str());
       //? event細節執行內容
       JsonArray eventList = (*Device_Ctrl.JSON__pipelineConfig)["events"][eventChose]["event"].as<JsonArray>();
@@ -204,7 +204,6 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
 {
   StepResult result;
   pinMode(PIN__EN_Servo_Motor, OUTPUT);
-  String anyFail = "";
   xSemaphoreTake(Device_Ctrl.xMutex__LX_20S, portMAX_DELAY);
   digitalWrite(PIN__EN_Servo_Motor, HIGH);
   Serial2.begin(115200,SERIAL_8N1, PIN__Serial_LX_20S_RX, PIN__Serial_LX_20S_TX);
@@ -217,17 +216,49 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
     result.message = "";
     return result;
   }
+  
+  // for (int ReTry=0;ReTry<4;ReTry++) {
+  //   for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
+  //     int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
+  //     ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"伺服馬達(LX-20S) %d 轉至 %d 度(%d)", 
+  //       servoMotorItem["index"].as<int>(), 
+  //       servoMotorItem["status"].as<int>(), targetAngValue
+  //     );
+  //     LX_20S_SerialServoMove(Serial2, servoMotorItem["index"].as<int>(),targetAngValue,500);
+  //     if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
+  //       ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
+  //       digitalWrite(PIN__EN_Servo_Motor, LOW);
+  //       xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
+  //       result.code = 0;
+  //       result.message = "";
+  //       return result;
+  //     }
+  //     vTaskDelay(10/portTICK_PERIOD_MS);
+  //   }
+  //   vTaskDelay(700/portTICK_PERIOD_MS);
+  // }
+
+  String anyFail;
+  DynamicJsonDocument ServoStatusSave(3000);
+  for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
+    ServoStatusSave[String(servoMotorItem["index"].as<int>())] = false;
+  }
+
   for (int ReTry=0;ReTry<4;ReTry++) {
+    if (ReTry != 0) {
+      ESP_LOGW("", "(重試第%d次)前次伺服馬達 (%s) 運作有誤，即將重試", ReTry, anyFail.c_str());
+    }
+    anyFail = "";
     for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
-      int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
-      ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"伺服馬達(LX-20S) %d 轉至 %d 度(%d)", 
-        servoMotorItem["index"].as<int>(), 
-        servoMotorItem["status"].as<int>(), targetAngValue
-      );
-      LX_20S_SerialServoMove(Serial2, servoMotorItem["index"].as<int>(),targetAngValue,500);
-      // vTaskDelay(50/portTICK_PERIOD_MS);
-      // LX_20S_SerialServoMove(Serial2, servoMotorItem["index"].as<int>(),targetAngValue,500);
-      // vTaskDelay(50/portTICK_PERIOD_MS);
+      if (ServoStatusSave[String(servoMotorItem["index"].as<int>())] == false) {
+        int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
+        ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"伺服馬達(LX-20S) %d 轉至 %d 度(%d)", 
+          servoMotorItem["index"].as<int>(), 
+          servoMotorItem["status"].as<int>(), targetAngValue
+        );
+        LX_20S_SerialServoMove(Serial2, servoMotorItem["index"].as<int>(),targetAngValue,500);
+        vTaskDelay(10/portTICK_PERIOD_MS);
+      }
       if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
         ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
         digitalWrite(PIN__EN_Servo_Motor, LOW);
@@ -237,43 +268,7 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
         return result;
       }
     }
-    vTaskDelay(500/portTICK_PERIOD_MS);
-  }
-  if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
-    ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
-    digitalWrite(PIN__EN_Servo_Motor, LOW);
-    xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
-    result.code = 0;
-    result.message = "";
-    return result;
-  }
-  for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
-    int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
-    int readAng;
-    readAng = LX_20S_SerialServoReadPosition(Serial2, servoMotorItem["index"].as<int>());
-    if (readAng < -100) {
-      vTaskDelay(200/portTICK_PERIOD_MS);
-      readAng = LX_20S_SerialServoReadPosition(Serial2, servoMotorItem["index"].as<int>());
-    }
-    int d_ang = targetAngValue - readAng;
-    if (abs(d_ang)>15) {
-
-      char logBuffer[1000];
-      sprintf(
-        logBuffer, 
-        "伺服馬達(LX-20S) 編號 %d 並無轉到指定角度: %d，讀取到的角度為: %d",
-        servoMotorItem["index"].as<int>(), servoMotorItem["status"].as<int>(),
-        map(readAng, 0, 1000, -30, 210)
-      );
-
-      ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "%s", logBuffer);
-      Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, logBuffer);
-      Device_Ctrl.BroadcastLogToClient(NULL, 1, logBuffer);
-
-
-      anyFail += String(servoMotorItem["index"].as<int>());
-      anyFail += ",";
-    }
+    vTaskDelay(700/portTICK_PERIOD_MS);
     if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
       ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
       digitalWrite(PIN__EN_Servo_Motor, LOW);
@@ -282,8 +277,52 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
       result.message = "";
       return result;
     }
-    vTaskDelay(100/portTICK_PERIOD_MS);
+    for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
+      if (ServoStatusSave[String(servoMotorItem["index"].as<int>())] == false) {
+        int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
+        int readAng = LX_20S_SerialServoReadPosition(Serial2, servoMotorItem["index"].as<int>());
+        for (int readAngRetry = 0;readAngRetry<3;readAngRetry++) {
+          if (readAng > -100) {
+            break;
+          }
+          // ESP_LOGW("", "伺服馬達 %d 讀取角度有誤: %d", servoMotorItem["index"].as<int>(), readAng);
+          vTaskDelay(100/portTICK_PERIOD_MS);
+          readAng = LX_20S_SerialServoReadPosition(Serial2, servoMotorItem["index"].as<int>());
+        }
+        int d_ang = targetAngValue - readAng;
+        ESP_LOGW("", "伺服馬達 %d 目標角度: %d\t真實角度: %d", servoMotorItem["index"].as<int>(), targetAngValue, readAng);
+        if (abs(d_ang)>20) {
+          // char logBuffer[1000];
+          // sprintf(
+          //   logBuffer, 
+          //   "伺服馬達(LX-20S) 編號 %d 並無轉到指定角度: %d，讀取到的角度為: %d",
+          //   servoMotorItem["index"].as<int>(), servoMotorItem["status"].as<int>(),
+          //   map(readAng, 0, 1000, -30, 210)
+          // );
+          // ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "%s", logBuffer);
+          // Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, logBuffer);
+          // Device_Ctrl.BroadcastLogToClient(NULL, 1, logBuffer);
+          anyFail += String(servoMotorItem["index"].as<int>());
+          anyFail += ",";
+        }
+        else {
+          ServoStatusSave[String(servoMotorItem["index"].as<int>())] = true;
+        }
+        if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
+          ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
+          digitalWrite(PIN__EN_Servo_Motor, LOW);
+          xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
+          result.code = 0;
+          result.message = "";
+          return result;
+        }
+        vTaskDelay(100/portTICK_PERIOD_MS);
+      }
+    }
+
+    if (anyFail == "") {break;}
   }
+
   // Serial2.end();
   digitalWrite(PIN__EN_Servo_Motor, LOW);
   xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
@@ -531,7 +570,7 @@ int Do_WaitAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
 
 
   ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"%s",buffer);
-  Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3,"%s",buffer);
+  // Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3,"%s",buffer);
   Device_Ctrl.BroadcastLogToClient(NULL, 3,"%s",buffer);
   unsigned long start_time = millis();
   unsigned long end_time = start_time + waitSeconds*1000;
