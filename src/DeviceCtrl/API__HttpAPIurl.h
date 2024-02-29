@@ -586,6 +586,18 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
     }
   );
 
+
+  //! 獲得當前Websocket所有連線單位的狀態
+  asyncServer.on("/api/wifi/websocket", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      String returnString;
+      serializeJson(Device_Ctrl.GetWebsocketConnectInfo(), returnString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+      request->send(response);
+    }
+  );
+
 }
 
 #endif

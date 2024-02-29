@@ -163,6 +163,10 @@ bool C_Device_Ctrl::INIT_SPIFFS()
     return false;
   }
   ESP_LOGD("", "讀取SPIFFS成功");
+  // serializeJsonPretty(
+  //   ExFile_listDir(SPIFFS, "/web"),
+  //   Serial
+  // );
   return true;
 }
 
@@ -385,10 +389,15 @@ void C_Device_Ctrl::preLoadWebJSFile()
 {
   File JSFile = SPIFFS.open("/assets/index.js.gz", "r");
   webJS_BufferLen = JSFile.size();
-  webJS_Buffer = (uint8_t *)malloc(webJS_BufferLen);
-  JSFile.read(webJS_Buffer, webJS_BufferLen);
-  JSFile.close();
-  ESP_LOGD("網頁檔案初始化", "大小: %d", webJS_BufferLen);
+  if (webJS_BufferLen == 0) {
+    ESP_LOGD("網頁檔案初始化", "無法讀取SPIFFS中的網頁檔案");
+  }
+  else {
+    webJS_Buffer = (uint8_t *)malloc(webJS_BufferLen);
+    JSFile.read(webJS_Buffer, webJS_BufferLen);
+    JSFile.close();
+    ESP_LOGD("網頁檔案初始化", "大小: %d", webJS_BufferLen);
+  }
 }
 
 DynamicJsonDocument C_Device_Ctrl::GetBaseWSReturnData(String MessageString)
@@ -533,6 +542,20 @@ void C_Device_Ctrl::BroadcastLogToClient(AsyncWebSocketClient *client, int Level
   else {
     ws.binaryAll(returnString);
   }
+}
+
+DynamicJsonDocument C_Device_Ctrl::GetWebsocketConnectInfo()
+{
+  DynamicJsonDocument returnData(10000);
+  for (AsyncWebSocketClient *clientChose : ws.getClients()) {
+    DynamicJsonDocument singleItem(1000);
+    singleItem["remoteIP"] = clientChose->remoteIP().toString();
+    singleItem["remotePort"] = clientChose->remotePort();
+    singleItem["canSend"] = clientChose->canSend();
+    singleItem["status"] = clientChose->status();
+    returnData.add(singleItem);
+  }
+  return returnData;
 }
 
 void C_Device_Ctrl::SendLineNotifyMessage(String content)

@@ -138,6 +138,7 @@ class C_Device_Ctrl
       AsyncWebSocketClient *client,
       int Level, const char* content, ...
     );
+    DynamicJsonDocument GetWebsocketConnectInfo();
 
     //! 錯誤警報相關功能
 
