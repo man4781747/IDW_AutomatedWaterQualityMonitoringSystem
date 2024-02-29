@@ -45,6 +45,10 @@ void PipelineFlowScan(void* parameter) {
       }
       JsonArray PipelineList = (*Device_Ctrl.JSON__pipelineStack).as<JsonArray>();
       ESP_LOGD("","一共有 %d 個流程會依序執行", PipelineList.size());
+      Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "準備執行新流程需求，一共有 %d 個流程", PipelineList.size());
+      Device_Ctrl.BroadcastLogToClient(NULL, 3, "準備執行新流程需求，一共有 %d 個流程", PipelineList.size());
+
+
       for (int pipelineIndex = 0;pipelineIndex<PipelineList.size();pipelineIndex++) {
         ESP_LOGI("", "開始執行第 %d 個流程", pipelineIndex+1);
         JsonObject pipelineChose = PipelineList[pipelineIndex].as<JsonObject>();
@@ -236,6 +240,9 @@ void PipelineFlowScan(void* parameter) {
         //? 判斷完畢的邏輯: 全部step都不為 "WAIT"、"RUNNING" 則代表完畢
         bool isAllDone = false;
         String PipelineName = (*Device_Ctrl.JSON__pipelineConfig)["title"].as<String>();
+        Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "準備執行第 %d 個Pipeline: %s", pipelineIndex+1, PipelineName.c_str());
+        Device_Ctrl.BroadcastLogToClient(NULL, 3, "準備執行第 %d 個Pipeline: %s", pipelineIndex+1, PipelineName.c_str());
+
         while(isAllDone == false) {
           if (Device_Ctrl.StopNowPipeline) {
             Device_Ctrl.StopNowPipeline = false;
@@ -366,8 +373,8 @@ void PipelineFlowScan(void* parameter) {
           break;
         }
         ESP_LOGI("", "第 %d 個Pipeline執行完畢", pipelineIndex+1);
-        Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "第 %d 個Pipeline執行完畢", pipelineIndex+1);
-        Device_Ctrl.BroadcastLogToClient(NULL, 3, "第 %d 個Pipeline執行完畢", pipelineIndex+1);
+        Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "第 %d 個Pipeline: %s 執行完畢", pipelineIndex+1, PipelineName.c_str());
+        Device_Ctrl.BroadcastLogToClient(NULL, 3, "第 %d 個Pipeline: %s 執行完畢", pipelineIndex+1, PipelineName.c_str());
       }
       ESP_LOGD("","所有流程執行完畢，清空流程列隊");
       Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "所有流程執行完畢，清空流程列隊");
