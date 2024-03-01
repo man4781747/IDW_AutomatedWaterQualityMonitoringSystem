@@ -1033,6 +1033,17 @@ void OledQRCode(void* parameter)
       }
       display.display();
     }
+    else {
+      if (IPStringSave != "") {
+        IPStringSave = "";
+        display.clearDisplay();
+        display.setCursor(0,0);
+        display.setTextSize(1);
+        display.printf("WiFi is not connected");
+        display.display();
+      }
+      vTaskDelay(1000/portTICK_PERIOD_MS);
+    }
   }
   vTaskDelay(1000/portTICK_PERIOD_MS);
 }
