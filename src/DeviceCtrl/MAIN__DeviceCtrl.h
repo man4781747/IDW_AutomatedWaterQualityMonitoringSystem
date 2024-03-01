@@ -139,6 +139,9 @@ class C_Device_Ctrl
       int Level, const char* content, ...
     );
     DynamicJsonDocument GetWebsocketConnectInfo();
+    //! WiFi連線檢查Task
+    void CreateWifiManagerTask();
+    TaskHandle_t TASK__WifiManager = NULL;
 
     //! 錯誤警報相關功能
 
@@ -192,6 +195,8 @@ class C_Device_Ctrl
     void StopNowPipelineAndAllStepTask();
     //? 停止所有Pipeline以及所有Theard Task，回歸Idel
     void StopDeviceAllAction();
+    //? 獲得儀器是否為待機狀態
+    bool IsDeviceIdel();
 
     //? 是否停止當前執行中的流程
     //? 如果為true，則會陸續將當前流程相關的步驟關閉

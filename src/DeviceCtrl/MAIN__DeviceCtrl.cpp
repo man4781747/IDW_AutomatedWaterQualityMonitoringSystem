@@ -425,8 +425,13 @@ DynamicJsonDocument C_Device_Ctrl::GetBaseWSReturnData(String MessageString)
   BaseWSReturnData["action"]["status"].set("看到這行代表API設定時忘記設定本項目了，請通知工程師修正，謝謝");
   BaseWSReturnData.createNestedObject("parameter");
   BaseWSReturnData["cmd_detail"].set(MessageString);
-  BaseWSReturnData["device_status"].set("Idle");
-  
+  if (IsDeviceIdel()) {
+    BaseWSReturnData["device_status"].set("Idle");
+  }
+  else {
+    BaseWSReturnData["device_status"].set("Busy");
+  }
+
   // if (xSemaphoreTake(Machine_Ctrl.LOAD__ACTION_V2_xMutex, 0) == pdFALSE) {
   //   BaseWSReturnData["device_status"].set("Busy");
   // }
@@ -557,6 +562,25 @@ DynamicJsonDocument C_Device_Ctrl::GetWebsocketConnectInfo()
   }
   return returnData;
 }
+
+// void WifiManager(void* parameter)
+// { 
+  
+//   vTaskDelay(1000/portTICK_PERIOD_MS);
+// }
+
+// void C_Device_Ctrl::CreateWifiManagerTask()
+// {
+//     xTaskCreatePinnedToCore(
+//     WifiManager, 
+//     "WifiManager", 
+//     10000, 
+//     NULL, 
+//     (UBaseType_t)TaskPriority::APICheckerTask, 
+//     &TASK__WifiManager,
+//     1
+//   );
+// }
 
 void C_Device_Ctrl::SendLineNotifyMessage(String content)
 {
@@ -734,6 +758,8 @@ void C_Device_Ctrl::StopDeviceAllAction()
   //! 伺服馬達斷電
   digitalWrite(PIN__EN_Servo_Motor, LOW);
 
+  ESP_LOGD("StopDeviceAllAction", "已斷開所有設施電源");
+
   //! 將 StopAllPipeline 與 StopAllPipeline 狀態值改為true
   //! 改為 true 後，會先關閉 PipelineFlowScanTask 中執行的流程
   //! 中斷執行會需要一點時間，並非立即中斷
@@ -753,12 +779,41 @@ void C_Device_Ctrl::StopDeviceAllAction()
   // }
 }
 
+bool C_Device_Ctrl::IsDeviceIdel()
+{
+  //? 嘗試獲得 xMutex__pipelineFlowScan 
+  //? 若要得到，代表沒有流程在跑
+  if (xSemaphoreTake(Device_Ctrl.xMutex__pipelineFlowScan, 0) != pdTRUE) {
+    return false;
+  }
+  //? 要到後記得還回去
+  xSemaphoreGive(Device_Ctrl.xMutex__pipelineFlowScan);
+
+  //? 另外再檢查是否各個 Step 都在 Idel
+  for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
+    if (StepTaskDetailList[i].TaskStatus != StepTaskStatus::Idel) {
+      return false;
+    }
+  }
+
+  //? 另外再檢查 PipelineList 是否為空
+  JsonArray PipelineList = (*Device_Ctrl.JSON__pipelineStack).as<JsonArray>();
+  if (PipelineList.size() != 0) {
+    return false;
+  }
+
+  return true;
+}
+
 void C_Device_Ctrl::StopAllStepTask()
 {
+  ESP_LOGD("StopAllStepTask", "準備停止所有Step");
+  ESP_LOGD("StopAllStepTask", "停止Pipeline流程");
   Device_Ctrl.StopNowPipeline = true;
   while (Device_Ctrl.StopNowPipeline) {
     vTaskDelay(10/portTICK_PERIOD_MS);
   }
+  ESP_LOGD("StopAllStepTask", "停止所有Step");
   for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
     StepTaskDetailList[i].TaskStatus = StepTaskStatus::Close;
   }
@@ -838,72 +893,10 @@ void ScheduleManager(void* parameter)
         singlePipelineSetting["eventIndexChose"].set(-1);
         NewPipelineSetting.add(singlePipelineSetting);
         RunNewPipeline(NewPipelineSetting);
-
-        // for (JsonVariant poolScheduleItem : ScheduleConfig["schedule"].as<JsonArray>()[0].as<JsonArray>()) {
-        //   int targetIndex = poolScheduleItem.as<int>();
-        //   String TargetName = "pool_"+String(targetIndex+1)+"_all_data_get.json";
-        //   String FullFilePath = "/pipelines/"+TargetName;
-        //   DynamicJsonDocument singlePipelineSetting(10000);
-        //   singlePipelineSetting["FullFilePath"].set(FullFilePath);
-        //   singlePipelineSetting["TargetName"].set(TargetName);
-        //   singlePipelineSetting["stepChose"].set("");
-        //   singlePipelineSetting["eventChose"].set("");
-        //   singlePipelineSetting["eventIndexChose"].set(-1);
-        //   NewPipelineSetting.add(singlePipelineSetting);
-        //   ESP_LOGD("WebSocket", " - 事件 %d", eventCount+1);
-        //   ESP_LOGD("WebSocket", "   - 檔案路徑:\t%s", FullFilePath.c_str());
-        //   ESP_LOGD("WebSocket", "   - 目標名稱:\t%s", TargetName.c_str());
-        // }
-        // RunNewPipeline(NewPipelineSetting);
       }
       ESP_LOGI("", "排程檢查完畢，等待下一個檢查時段");
       vTaskDelay(1000*60*30/portTICK_PERIOD_MS);
-    } 
-
-    // if (minute(nowTime) % 5 == 0) {
-    //   int Weekday = weekday(nowTime);
-    //   int Hour = hour(nowTime);
-    //   int Minute = minute(nowTime);
-    //   for (JsonPair ScheduleConfigChose : (*Device_Ctrl.JSON__ScheduleConfig).as<JsonObject>()) {
-    //     String ScheduleConfigID = String(ScheduleConfigChose.key().c_str());
-    //     JsonObject ScheduleConfig = ScheduleConfigChose.value().as<JsonObject>();
-    //     for (JsonVariant weekdayItem : ScheduleConfig["schedule"].as<JsonArray>()[1].as<JsonArray>()) {
-    //       if (weekdayItem.as<int>() == Weekday) {
-    //         for (JsonVariant hourItem : ScheduleConfig["schedule"].as<JsonArray>()[2].as<JsonArray>()) {
-    //           if (hourItem.as<int>() == Hour) {
-    //             for (JsonVariant minuteItem : ScheduleConfig["schedule"].as<JsonArray>()[3].as<JsonArray>()) {
-    //               if (minuteItem.as<int>() == Minute) {
-    //                 DynamicJsonDocument NewPipelineSetting(60000);
-    //                 int eventCount = 0;
-    //                 for (JsonVariant poolScheduleItem : ScheduleConfig["schedule"].as<JsonArray>()[0].as<JsonArray>()) {
-    //                   int targetIndex = poolScheduleItem.as<int>();
-    //                   String TargetName = "pool_"+String(targetIndex+1)+"_all_data_get.json";
-    //                   String FullFilePath = "/pipelines/"+TargetName;
-    //                   DynamicJsonDocument singlePipelineSetting(10000);
-    //                   singlePipelineSetting["FullFilePath"].set(FullFilePath);
-    //                   singlePipelineSetting["TargetName"].set(TargetName);
-    //                   singlePipelineSetting["stepChose"].set("");
-    //                   singlePipelineSetting["eventChose"].set("");
-    //                   singlePipelineSetting["eventIndexChose"].set(-1);
-    //                   NewPipelineSetting.add(singlePipelineSetting);
-    //                   ESP_LOGD("WebSocket", " - 事件 %d", eventCount+1);
-    //                   ESP_LOGD("WebSocket", "   - 檔案路徑:\t%s", FullFilePath.c_str());
-    //                   ESP_LOGD("WebSocket", "   - 目標名稱:\t%s", TargetName.c_str());
-    //                 }
-    //                 RunNewPipeline(NewPipelineSetting);
-    //                 break;
-    //               }
-    //             }
-    //             break;
-    //           }
-    //         }
-    //         break;
-    //       }
-    //     }
-    //   }
-    // }
-    
-    // ESP_LOGI("", "排程檢查完畢，等待下一個檢查時段");
+    }
     vTaskDelay(1000*60*1/portTICK_PERIOD_MS);
   }
 }

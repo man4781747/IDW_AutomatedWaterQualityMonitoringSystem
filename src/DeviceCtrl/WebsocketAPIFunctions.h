@@ -357,9 +357,11 @@ void ws_v2_RunPipeline(AsyncWebSocket *server, AsyncWebSocketClient *client, Dyn
     ESP_LOGD("WebSocket", " - 指定事件:\t%s", eventChose.c_str());
     ESP_LOGD("WebSocket", " - 指定事件編號:\t%d", eventIndexChose);
     // Device_Ctrl.LOAD__ACTION_V2(Device_Ctrl.JSON__pipelineStack);
+    Device_Ctrl.BroadcastLogToClient(client,3,"已提交執行需求，請稍候");
   }
   else {
     ESP_LOGD("WebSocket", "儀器忙碌中");
+    Device_Ctrl.BroadcastLogToClient(client,1,"儀器忙碌中，請稍後再試");
     // Device_Ctrl.SetLog(1,"儀器忙碌中，請稍後再試","",NULL, client, false);
   }
 }
@@ -552,7 +554,9 @@ void ws_RunAllPoolPipeline(AsyncWebSocket *server, AsyncWebSocketClient *client,
         ESP_LOGD("WebSocket", "   - 檔案路徑:\t%s", FullFilePath.c_str());
         ESP_LOGD("WebSocket", "   - 目標名稱:\t%s", TargetName.c_str());
       }
-      RunNewPipeline(NewPipelineSetting);
+      if (!RunNewPipeline(NewPipelineSetting)) {
+        Device_Ctrl.BroadcastLogToClient(client,1,"儀器忙碌中，請稍後再試");
+      }
     }
   } 
   else {
