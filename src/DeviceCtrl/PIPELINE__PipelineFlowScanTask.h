@@ -29,6 +29,7 @@ void PipelineFlowScan(void* parameter) {
     if ((*Device_Ctrl.JSON__pipelineStack).as<JsonArray>().size() == 0 ) {
       // 目前沒有待執行的Pipeline
       vTaskDelay(100/portTICK_PERIOD_MS);
+      Device_Ctrl.StopNowPipeline = false;
       continue;
     }
     else {
