@@ -10,8 +10,17 @@
 #include "TimeLibExternalFunction.h"
 #include "CalcFunction.h"
 
+enum ResultCode: int {
+  SUCCESS = 0,
+  STOP_BY_OUTSIDE = 1,
+  KEEP_RUN = 2,
+  STOP_THIS_STEP = -1,
+  STOP_THIS_PIPELINE = -2,
+  STOP_DEVICE = -3,
+};
+
 struct StepResult {
-  int code;
+  ResultCode code;
   String message;
 };
 
@@ -69,7 +78,7 @@ void StepTask(void* parameter) {
       for (JsonObject eventItem : eventList) {
         if (eventItem.containsKey("pwm_motor_list")) {
           StepResult actionResult = Do_ServoMotorAction(eventItem, StepTaskDetailItem);
-          if (actionResult.code == -1) {
+          if (actionResult.code == ResultCode::STOP_DEVICE) {
             String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
             sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
@@ -91,20 +100,13 @@ void StepTask(void* parameter) {
         }
         else if (eventItem.containsKey("peristaltic_motor_list")) {
           StepResult actionResult = Do_PeristalticMotorAction(eventItem, StepTaskDetailItem);
-          if (actionResult.code == -1) {
+          if (actionResult.code == ResultCode::STOP_BY_OUTSIDE) {
             //! 收到停止
-            String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
-            sendString += "Pipeline: "+pipelineName+"\n";
-            sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
-            sendString += actionResult.message;
-            sendString += "後續處理方法: 跳過此步驟\n";
-            Device_Ctrl.SendLineNotifyMessage(sendString);
-            Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",sendString);
             isStepFail = true;
             OnlyStepStop = true;
             break;
           }
-          else if (actionResult.code == -2) {
+          else if (actionResult.code == ResultCode::STOP_THIS_PIPELINE) {
             String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
             sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
@@ -116,7 +118,7 @@ void StepTask(void* parameter) {
             OnlyPipelineStop = true;
             break;
           }
-          else if (actionResult.code == -3) {
+          else if (actionResult.code == ResultCode::STOP_DEVICE) {
             String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
             sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
@@ -131,7 +133,7 @@ void StepTask(void* parameter) {
         }
         else if (eventItem.containsKey("spectrophotometer_list")) {
           StepResult actionResult = Do_SpectrophotometerAction(eventItem, StepTaskDetailItem);
-          if (actionResult.code != 1) {
+          if (actionResult.code != ResultCode::KEEP_RUN) {
             String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
             sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
@@ -143,7 +145,7 @@ void StepTask(void* parameter) {
         }
         else if (eventItem.containsKey("ph_meter")) {
           StepResult actionResult = Do_PHmeterAction(eventItem, StepTaskDetailItem);
-          if (actionResult.code != 1) {
+          if (actionResult.code != ResultCode::KEEP_RUN) {
             String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
             sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
@@ -212,7 +214,7 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
     ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
     digitalWrite(PIN__EN_Servo_Motor, LOW);
     xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
-    result.code = 0;
+    result.code = ResultCode::STOP_BY_OUTSIDE;
     result.message = "";
     return result;
   }
@@ -263,7 +265,7 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
         ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
         digitalWrite(PIN__EN_Servo_Motor, LOW);
         xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
-        result.code = 0;
+        result.code = ResultCode::STOP_BY_OUTSIDE;
         result.message = "";
         return result;
       }
@@ -273,7 +275,7 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
       ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
       digitalWrite(PIN__EN_Servo_Motor, LOW);
       xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
-      result.code = 0;
+      result.code = ResultCode::STOP_BY_OUTSIDE;
       result.message = "";
       return result;
     }
@@ -312,7 +314,7 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
           ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
           digitalWrite(PIN__EN_Servo_Motor, LOW);
           xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
-          result.code = 0;
+          result.code = ResultCode::STOP_BY_OUTSIDE;
           result.message = "";
           return result;
         }
@@ -336,15 +338,14 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
     // sendString += "異常馬達編號: "+anyFail;
     // Device_Ctrl.SendLineNotifyMessage(sendString);
     // Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",sendString);
-    result.code = -1;
+    result.code = ResultCode::STOP_DEVICE;
     result.message = ErrorInfo;
     return result;
   }
-  result.code = 0;
+  result.code = ResultCode::SUCCESS;
   result.message = "";
   return result;
 }
-
 
 /**
  * @return int: 1 - 正常完成
@@ -428,7 +429,8 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
     if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
       ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"蠕動馬達流程步驟收到中斷要求");
       digitalWrite(PIN__EN_Peristaltic_Motor, LOW);
-      result.code = -1;
+      result.code = ResultCode::STOP_BY_OUTSIDE;
+      // result.code = -1;
       return result;
     }
     allFinish = true;
@@ -436,7 +438,7 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
       if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
         ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"蠕動馬達流程步驟收到中斷要求");
         digitalWrite(PIN__EN_Peristaltic_Motor, LOW);
-        result.code = -1;
+        result.code = ResultCode::STOP_BY_OUTSIDE;
         return result;
       }
       JsonObject endTimeCheckJSON = endTimeCheck.value().as<JsonObject>();
@@ -478,14 +480,14 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
             ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "停止當前Step的運行");
             Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "停止當前Step的運行");
             Device_Ctrl.BroadcastLogToClient(NULL, 1, "停止當前Step的運行");
-            result.code = -1;
+            result.code = ResultCode::STOP_THIS_STEP;
             return result;
           }
           else if (thisFailAction=="stopImmediately") {
             ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "準備緊急終止儀器");
             Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "準備緊急終止儀器");
             Device_Ctrl.BroadcastLogToClient(NULL, 1, "準備緊急終止儀器");
-            result.code = -3;
+            result.code = ResultCode::STOP_DEVICE;
             return result;
           }
           else if (thisFailAction=="stopPipeline") {
@@ -493,7 +495,7 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
             Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "準備停止當前流程，若有下一個排隊中的流程就執行他");
             Device_Ctrl.BroadcastLogToClient(NULL, 1, "準備停止當前流程，若有下一個排隊中的流程就執行他");
             // (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][stepsGroupNameString]["RESULT"].set("STOP_THIS_PIPELINE");
-            result.code = -2;
+            result.code = ResultCode::STOP_THIS_PIPELINE;
             return result;
           }
           //? 若非，則正常停止馬達運行
@@ -529,12 +531,12 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
               }
               endTimeCheckJSON["finish"].set(true);
               ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "停止當前Step的運行");
-              result.code = -1;
+              result.code = ResultCode::STOP_THIS_STEP;
               return result;
             }
             else if (thisFailAction=="stopImmediately") {
               ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "準備緊急終止儀器");
-              result.code = -3;
+              result.code = ResultCode::STOP_DEVICE;
               return result;
             }
           }
@@ -548,16 +550,11 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
   if (Device_Ctrl.peristalticMotorsCtrl.IsAllStop()) {
     digitalWrite(PIN__EN_Peristaltic_Motor, LOW);
   }
-  result.code = 1;
+  result.code = ResultCode::SUCCESS;
   return result;
 }
 
 
-/**
- * @return int: 1 - 正常完成
- * @return int: 0 - 異常失敗
- * @return int: -1 - 緊急中斷
- */
 int Do_WaitAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
 {
   int waitSeconds = eventItem["wait"].as<int>();
@@ -634,7 +631,7 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
       );
       Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "%s", buffer);
       Device_Ctrl.BroadcastLogToClient(NULL, 1, "%s", buffer);
-      result.code = -1;
+      result.code = ResultCode::KEEP_RUN;
       result.message = "找不到光度計: "+spectrophotometerTitle + "\n";
       return result;
     }
@@ -689,7 +686,7 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
         Device_Ctrl.lastLightValue_NO3 = finalValue;
       }
       if (finalValue < 16000.) {
-        result.code = -2;
+        result.code = ResultCode::KEEP_RUN;
         result.message = "光度計:"+spectrophotometerTitle+" 測量初始光強度時數值過低: "+String(finalValue);
         return result;
 
@@ -739,7 +736,7 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
       Serial.printf("%s - %s:%.2f", poolChose.c_str(), TargetType.c_str(), finalValue_after);
     }
   }
-  result.code = 1;
+  result.code = ResultCode::SUCCESS;
   return result;
 }
 
@@ -760,7 +757,7 @@ StepResult Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetail
     double PH_RowValue = afterFilterValue(phValue, 30);
 
     if (PH_RowValue < 0. | PH_RowValue > 4000) {
-      result.code = -1;
+      result.code = ResultCode::KEEP_RUN;
       result.message = "pH模組測量異常，測量原始數據: "+String(PH_RowValue);
       return result;  
     }
@@ -809,7 +806,7 @@ StepResult Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetail
       Device_Ctrl.BroadcastLogToClient(NULL, 1, "%s", buffer);
     }
   }
-  result.code = 1;
+  result.code = ResultCode::SUCCESS;
   return result;
 }
 
