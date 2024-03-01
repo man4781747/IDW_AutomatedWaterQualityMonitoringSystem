@@ -379,9 +379,13 @@ void PipelineFlowScan(void* parameter) {
       }
       ESP_LOGD("","所有流程執行完畢，清空流程列隊");
       Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "所有流程執行完畢，清空流程列隊");
-      Device_Ctrl.BroadcastLogToClient(NULL, 3, "所有流程執行完畢");
       (*Device_Ctrl.JSON__pipelineStack).clear();
       xSemaphoreGive(Device_Ctrl.xMutex__pipelineFlowScan);
+      while (!Device_Ctrl.IsDeviceIdel())
+      {
+        vTaskDelay(1000/portTICK_PERIOD_MS);
+      }
+      Device_Ctrl.BroadcastLogToClient(NULL, 3, "所有流程執行完畢");
     }
   }
 

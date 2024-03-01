@@ -537,6 +537,7 @@ void C_Device_Ctrl::BroadcastLogToClient(AsyncWebSocketClient *client, int Level
   logItem["type"] = "LOG";
   logItem["level"] = Level;
   logItem["content"] = String(buffer);
+  logItem["status"] = IsDeviceIdel()?"Idel":"Busy";
   String returnString;
   serializeJson(logItem, returnString);
   logItem.clear();
