@@ -12,6 +12,7 @@
 void Set_deviceConfigs_apis(AsyncWebServer &asyncServer);
 void Set_scheduleConfig_apis(AsyncWebServer &asyncServer);
 void Set_tool_apis(AsyncWebServer &asyncServer);
+void Set_Pipeline_apis(AsyncWebServer &asyncServer);
 
 uint8_t *newConfigUpdateFileBuffer;
 size_t newConfigUpdateFileBufferLen;
@@ -59,65 +60,6 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
     request->send(response);
   });
 
-
-  asyncServer.on("/api/piplines", HTTP_GET, [&](AsyncWebServerRequest *request){
-    String pipelineFilesList;
-    serializeJsonPretty(*Device_Ctrl.JSON__PipelineConfigList, pipelineFilesList);
-    AsyncWebServerResponse* response = request->beginResponse(200, "application/json", pipelineFilesList);
-    request->send(response);
-  });
-
-  asyncServer.on("/api/pipeline/config", HTTP_POST, 
-    [&](AsyncWebServerRequest *request)
-    { 
-      free(newConfigUpdateFileBuffer);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"Result\":\"OK\"}");
-      request->send(response);
-    },
-    [&](AsyncWebServerRequest * request, String filename, size_t index, uint8_t *data, size_t len, bool final)
-    {
-      if (index == 0) {
-        newConfigUpdateFileBuffer = (uint8_t *)malloc(request->contentLength());
-      }
-      memcpy(newConfigUpdateFileBuffer + index, data, len);
-      if (final) {
-        Serial.printf("檔案 %s 接收完成， len: %d ，共 %d/%d bytes\n", filename.c_str(), len ,index + len, request->contentLength());
-        newConfigUpdateFileBufferLen = index + len;
-        if (!SD.exists("/pipelines")) {
-          SD.mkdir("/pipelines");
-        }
-        File configTempFile;
-        String filePath = "/pipelines/"+filename;
-        configTempFile = SD.open(filePath, FILE_WRITE);
-        configTempFile.write(newConfigUpdateFileBuffer ,index + len);
-        configTempFile.close();
-        Serial.printf("檔案更新完成\n", filename.c_str());
-        
-        Device_Ctrl.UpdatePipelineConfigList();
-      } 
-      else {
-        Serial.printf("檔案 %s 正在傳輸， len: %d ，目前已接收 %d/%d bytes\n", filename.c_str(), len, index + len, request->contentLength());
-      }
-    }
-  );
-
-
-  asyncServer.on("^\\/api\\/pipeline\\/([a-zA-Z0-9_.-]+)\\.json$", HTTP_GET,[&](AsyncWebServerRequest *request){ 
-    String fileName = request->pathArg(0);
-    String fullPath = "/pipelines/"+fileName+".json";
-    AsyncWebServerResponse* response;
-    if (!SD.exists(fullPath)) {
-      response = request->beginResponse(500, "application/json", "{\"Result\":\"Can't Find: "+fileName+"\"}");
-    }
-    else {
-
-      File FileChose = SD.open(fullPath, "r");
-      String ContentString = FileChose.readString();
-      FileChose.close();       
-      response = request->beginResponse(200, "application/json", ContentString);       
-    }
-    request->send(response);
-  });
 
   asyncServer.on("/api/sensor", HTTP_GET,
     [&](AsyncWebServerRequest *request)
@@ -192,6 +134,85 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
   Set_deviceConfigs_apis(asyncServer);
   Set_scheduleConfig_apis(asyncServer);
   Set_tool_apis(asyncServer);
+  Set_Pipeline_apis(asyncServer);
+}
+
+//! Pipeline檔案相關API
+void Set_Pipeline_apis(AsyncWebServer &asyncServer)
+{
+  asyncServer.on("/api/piplines", HTTP_GET, [&](AsyncWebServerRequest *request){
+    String pipelineFilesList;
+    serializeJsonPretty(*Device_Ctrl.JSON__PipelineConfigList, pipelineFilesList);
+    AsyncWebServerResponse* response = request->beginResponse(200, "application/json", pipelineFilesList);
+    request->send(response);
+  });
+
+  asyncServer.on("/api/pipeline/config", HTTP_POST, 
+    [&](AsyncWebServerRequest *request)
+    { 
+      free(newConfigUpdateFileBuffer);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"Result\":\"OK\"}");
+      request->send(response);
+    },
+    [&](AsyncWebServerRequest * request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+    {
+      if (index == 0) {
+        newConfigUpdateFileBuffer = (uint8_t *)malloc(request->contentLength());
+      }
+      memcpy(newConfigUpdateFileBuffer + index, data, len);
+      if (final) {
+        Serial.printf("檔案 %s 接收完成， len: %d ，共 %d/%d bytes\n", filename.c_str(), len ,index + len, request->contentLength());
+        newConfigUpdateFileBufferLen = index + len;
+        if (!SD.exists("/pipelines")) {
+          SD.mkdir("/pipelines");
+        }
+        File configTempFile;
+        String filePath = "/pipelines/"+filename;
+        configTempFile = SD.open(filePath, FILE_WRITE);
+        configTempFile.write(newConfigUpdateFileBuffer ,index + len);
+        configTempFile.close();
+        Serial.printf("檔案更新完成\n", filename.c_str());
+        
+        Device_Ctrl.UpdatePipelineConfigList();
+      } 
+      else {
+        Serial.printf("檔案 %s 正在傳輸， len: %d ，目前已接收 %d/%d bytes\n", filename.c_str(), len, index + len, request->contentLength());
+      }
+    }
+  );
+
+  asyncServer.on("^\\/api\\/pipeline\\/([a-zA-Z0-9_.-]+)\\.json$", HTTP_GET,[&](AsyncWebServerRequest *request){ 
+    String fileName = request->pathArg(0);
+    String fullPath = "/pipelines/"+fileName+".json";
+    AsyncWebServerResponse* response;
+    if (!SD.exists(fullPath)) {
+      response = request->beginResponse(500, "application/json", "{\"Result\":\"Can't Find: "+fileName+"\"}");
+    }
+    else {
+
+      File FileChose = SD.open(fullPath, "r");
+      String ContentString = FileChose.readString();
+      FileChose.close();       
+      response = request->beginResponse(200, "application/json", ContentString);       
+    }
+    request->send(response);
+  });
+
+  asyncServer.on("^\\/api\\/pipeline\\/([a-zA-Z0-9_.-]+)\\.json$", HTTP_DELETE,[&](AsyncWebServerRequest *request){ 
+    String fileName = request->pathArg(0);
+    String fullPath = "/pipelines/"+fileName+".json";
+    AsyncWebServerResponse* response;
+    if (!SD.exists(fullPath)) {
+      response = request->beginResponse(500, "application/json", "{\"Result\":\"Can't Find: "+fileName+"\"}");
+    }
+    else {
+      SD.remove(fullPath);
+      Device_Ctrl.UpdatePipelineConfigList();
+      response = request->beginResponse(200, "application/json", "{\"Result\":\"Delete file: "+fullPath+"\"}");       
+    }
+    request->send(response);
+  });
+
 }
 
 //! 儀器設定檔相關API
