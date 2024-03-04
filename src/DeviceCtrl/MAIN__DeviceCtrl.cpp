@@ -20,6 +20,7 @@
 #include "qrcode.h"
 #include <HTTPClient.h>
 #include <ESP_Mail_Client.h>
+#include "mbedtls/aes.h"
 // SMTPSession smtp;
 
 const long  gmtOffset_sec = 3600*8; // GMT+8
@@ -585,9 +586,64 @@ DynamicJsonDocument C_Device_Ctrl::GetWebsocketConnectInfo()
 //   );
 // }
 
+String C_Device_Ctrl::AES_encode(String content)
+{
+  mbedtls_aes_context aes_ctx;
+  unsigned char key[16] = { 'i', 'd', 'w', 'a', 't', 'e', 'r', '5','6','6','5','1','5','8','8'};
+  unsigned char iv[16];
+  for (int i=0;i<16;i++) { iv[i] = 0x01; }
+  unsigned char plain[64];
+  unsigned char cipher[64] = {0};
+  memset(plain, 0, sizeof(plain));
+  strncpy(reinterpret_cast<char*>(plain), content.c_str(), sizeof(plain) - 1);
+  unsigned char dec_plain[64] = {0};
+  // Serial.printf("加密前: %s\n", plain);
+  mbedtls_aes_init(&aes_ctx);
+  mbedtls_aes_setkey_enc(&aes_ctx, key, 128);
+  mbedtls_aes_crypt_cbc(&aes_ctx, MBEDTLS_AES_ENCRYPT, 64, iv, plain, cipher);
+  mbedtls_aes_free(&aes_ctx);
+  String cipherText="";
+  for (int i=0;i<64;i++) { 
+    char str[3];
+    sprintf(str, "%02X", cipher[i]);
+    cipherText = cipherText + String(str);
+  } 
+  return cipherText;
+}
+
+String C_Device_Ctrl::AES_decode(String content)
+{
+  mbedtls_aes_context aes_ctx;
+  unsigned char key[16] = { 'i', 'd', 'w', 'a', 't', 'e', 'r', '5','6','6','5','1','5','8','8'};
+  unsigned char iv[16];
+  unsigned char dec_plain[64] = {0};
+  for (int i=0;i<16;i++) { iv[i] = 0x01; }
+  String hexDigits = "0123456789ABCDEF";
+  uint8_t result = 0;
+  unsigned char cipherTest[64] = {0};
+  for (int i = 0; i < content.length(); i=i+2) {
+    result = hexDigits.indexOf(content[i])*16+hexDigits.indexOf(content[i+1]);
+    cipherTest[i/2] = result;
+  }
+  mbedtls_aes_setkey_dec(&aes_ctx, key, 128);
+  mbedtls_aes_crypt_cbc(&aes_ctx, MBEDTLS_AES_DECRYPT, 64, iv, cipherTest, dec_plain);
+  mbedtls_aes_free(&aes_ctx);
+  String returnString = "";
+  for (int i = 0; i < sizeof(dec_plain); i++) {
+    returnString += String((char)dec_plain[i]);
+  }
+  return returnString;
+}
+
 void C_Device_Ctrl::SendLineNotifyMessage(String content)
 {
-  String LINE_Notify_id = (*Device_Ctrl.JSON__DeviceBaseInfo)["LINE_Notify_id"].as<String>();
+  String LINE_Notify_id;
+  String LINE_Notify_id_encode = (*Device_Ctrl.JSON__DeviceBaseInfo)["LINE_Notify_id"].as<String>();
+  if (LINE_Notify_id_encode != "null") {
+    LINE_Notify_id = Device_Ctrl.AES_decode(LINE_Notify_id_encode);
+  } else {
+    LINE_Notify_id = "";
+  }
   bool LINE_Notify_switch = (*Device_Ctrl.JSON__DeviceBaseInfo)["LINE_Notify_switch"].as<bool>();
   if (LINE_Notify_id != "" & LINE_Notify_switch) {
     HTTPClient http;
@@ -663,10 +719,11 @@ int C_Device_Ctrl::SendGmailNotifyMessage(String MailSubject, String content)
       return -4;
     }
 
-    String Key = (*JSON__DeviceBaseInfo)["Mail_Notify_Key"].as<String>();
-    if (Key=="null") {
+    String Key_encode = (*JSON__DeviceBaseInfo)["Mail_Notify_Key"].as<String>();
+    if (Key_encode=="null") {
       return -5;
     }
+    String Key = Device_Ctrl.AES_decode(Key_encode);
     String TargetMail = (*JSON__DeviceBaseInfo)["Mail_Notify_Target"].as<String>();
     if (TargetMail=="null") {
       return -6;

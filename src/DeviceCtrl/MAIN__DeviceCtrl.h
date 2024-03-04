@@ -146,6 +146,9 @@ class C_Device_Ctrl
 
     //! 錯誤警報相關功能
 
+    String AES_encode(String content);
+    String AES_decode(String content);
+
     void SendLineNotifyMessage(String content);
 
     SMTPSession smtp;

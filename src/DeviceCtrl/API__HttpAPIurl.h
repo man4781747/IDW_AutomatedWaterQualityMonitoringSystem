@@ -239,7 +239,8 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       }
       if (request->hasParam("LINE_Notify_id")) {
         String LINE_Notify_id = request->getParam("LINE_Notify_id")->value();
-        (*Device_Ctrl.JSON__DeviceBaseInfo)["LINE_Notify_id"].set(LINE_Notify_id);
+        String EncodeKey = Device_Ctrl.AES_encode(LINE_Notify_id);
+        (*Device_Ctrl.JSON__DeviceBaseInfo)["LINE_Notify_id"] .set(EncodeKey);
       }
       if (request->hasParam("LINE_Notify_switch")) {
         bool LINE_Notify_switch = request->getParam("LINE_Notify_switch")->value()=="true"?true:false;
@@ -255,7 +256,8 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       }
       if (request->hasParam("Mail_Notify_Key")) {
         String Mail_Notify_Key = request->getParam("Mail_Notify_Key")->value();
-        (*Device_Ctrl.JSON__DeviceBaseInfo)["Mail_Notify_Key"].set(Mail_Notify_Key);
+        String EncodeKey = Device_Ctrl.AES_encode(Mail_Notify_Key);
+        (*Device_Ctrl.JSON__DeviceBaseInfo)["Mail_Notify_Key"].set(EncodeKey);
       }
       if (request->hasParam("Mail_Notify_Target")) {
         String Mail_Notify_Target = request->getParam("Mail_Notify_Target")->value();
