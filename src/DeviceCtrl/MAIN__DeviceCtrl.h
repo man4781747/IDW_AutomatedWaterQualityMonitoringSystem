@@ -126,9 +126,10 @@ class C_Device_Ctrl
     DynamicJsonDocument *JSON__PipelineConfigList = new DynamicJsonDocument(10000);
 
     //! WiFi相關功能
+
+    void preLoadWebJSFile();
     void ConnectWiFi();
     void INITWebServer();
-    void preLoadWebJSFile();
     uint8_t *webJS_Buffer;
     size_t webJS_BufferLen;
     void CreateOTAService();

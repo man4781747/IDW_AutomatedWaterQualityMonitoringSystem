@@ -17,6 +17,9 @@ void Set_Pipeline_apis(AsyncWebServer &asyncServer);
 uint8_t *newConfigUpdateFileBuffer;
 size_t newConfigUpdateFileBufferLen;
 
+uint8_t *newWebUpdateFileBuffer;
+size_t newWebUpdateFileBufferLen;
+
 void Set_Http_apis(AsyncWebServer &asyncServer)
 {
   //! CORS 檢查用
@@ -31,7 +34,7 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
 
   asyncServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     Serial.println("API: /");
-    AsyncWebServerResponse* response = request->beginResponse(SPIFFS, "/web/index.html", "text/html", false);
+    AsyncWebServerResponse* response = request->beginResponse(SD, "/web/index.html", "text/html", false);
     request->send(response);
   });
 
@@ -618,6 +621,55 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+
+  asyncServer.on("/api/web", HTTP_GET, [](AsyncWebServerRequest *request){
+    AsyncWebServerResponse* response = request->beginResponse(200, "text/html", "<html><body><div><div>HTML update:</div><input type='file' id='new-html-input'><button onclick='uploadNew(`html`)'>upload</button></div><div><div>JS update:</div><input type='file' id='new-js-input'><button onclick='uploadNew(`js`)'>upload</button></div><script>function uploadNew(type) {const fileInput = document.getElementById('new-'+type+'-input');const file = fileInput.files[0];const reader = new FileReader();reader.onload = function(event) {const fileContent = event.target.result;const fileBlob = new Blob([fileContent],{ type:file.type});var formData = new FormData();formData.append('file', fileBlob, file.name);fetch('web?type='+type, {method: 'POST',body: formData}).then(response => response.json()).then(data => {console.log('Response from server:', data);}).catch(error => {console.error('Error:', error);});};reader.readAsArrayBuffer(file);}</script></body></html>");
+    request->send(response);
+  });
+
+  asyncServer.on("/api/web", HTTP_POST, 
+    [&](AsyncWebServerRequest *request)
+    { 
+      free(newWebUpdateFileBuffer);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"Result\":\"OK\"}");
+      request->send(response);
+    },
+    [&](AsyncWebServerRequest * request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+    {
+      if (index == 0) {
+        newWebUpdateFileBuffer = (uint8_t *)malloc(request->contentLength());
+      }
+      memcpy(newWebUpdateFileBuffer + index, data, len);
+      if (final) {
+        Serial.printf("檔案 %s 接收完成， len: %d ，共 %d/%d bytes\n", filename.c_str(), len ,index + len, request->contentLength());
+        newWebUpdateFileBufferLen = index + len;
+        if (!SD.exists("/pipelines")) {
+          SD.mkdir("/pipelines");
+        }
+        String fileType = request->getParam("type")->value();
+        String filePath;
+        if (fileType == "html") {
+          filePath = "/web/index.html";
+        } else if (fileType == "js"){
+          filePath = "/assets/index.js.gz";
+        }
+        ExFile_CreateFile(SD, filePath);
+        File configTempFile;
+        configTempFile = SD.open(filePath, FILE_WRITE);
+        configTempFile.write(newWebUpdateFileBuffer ,index + len);
+        configTempFile.close();
+        Serial.printf("檔案更新完成\n", filename.c_str());
+        
+        if (fileType == "js"){
+          Device_Ctrl.preLoadWebJSFile();
+        }
+      } 
+      else {
+        Serial.printf("檔案 %s 正在傳輸， len: %d ，目前已接收 %d/%d bytes\n", filename.c_str(), len, index + len, request->contentLength());
+      }
+    }
+  );
+
 
 }
 

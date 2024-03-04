@@ -387,12 +387,14 @@ void C_Device_Ctrl::INITWebServer()
 
 void C_Device_Ctrl::preLoadWebJSFile()
 {
-  File JSFile = SPIFFS.open("/assets/index.js.gz", "r");
+  File JSFile = SD.open("/assets/index.js.gz", "r");
+  // File JSFile = SPIFFS.open("/assets/index.js.gz", "r");
   webJS_BufferLen = JSFile.size();
   if (webJS_BufferLen == 0) {
-    ESP_LOGD("網頁檔案初始化", "無法讀取SPIFFS中的網頁檔案");
+    ESP_LOGD("網頁檔案初始化", "無法讀取SD中的網頁檔案");
   }
   else {
+    free(webJS_Buffer);
     webJS_Buffer = (uint8_t *)malloc(webJS_BufferLen);
     JSFile.read(webJS_Buffer, webJS_BufferLen);
     JSFile.close();
