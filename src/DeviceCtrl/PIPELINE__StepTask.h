@@ -133,7 +133,7 @@ void StepTask(void* parameter) {
         }
         else if (eventItem.containsKey("spectrophotometer_list")) {
           StepResult actionResult = Do_SpectrophotometerAction(eventItem, StepTaskDetailItem);
-          if (actionResult.code != ResultCode::KEEP_RUN) {
+          if (actionResult.code == ResultCode::KEEP_RUN) {
             String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
             sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
@@ -145,7 +145,7 @@ void StepTask(void* parameter) {
         }
         else if (eventItem.containsKey("ph_meter")) {
           StepResult actionResult = Do_PHmeterAction(eventItem, StepTaskDetailItem);
-          if (actionResult.code != ResultCode::KEEP_RUN) {
+          if (actionResult.code == ResultCode::KEEP_RUN) {
             String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
             sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
