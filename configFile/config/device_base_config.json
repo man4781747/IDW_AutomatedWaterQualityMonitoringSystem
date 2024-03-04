@@ -1,4 +1,10 @@
 {
   "device_no": "ID_PoolSensor",
-  "mode": "Mode_Slave"
+  "mode": "Mode_Slave",
+  "LINE_Notify_switch": true,
+  "LINE_Notify_id": "",
+  "Mail_Notify_switch": true,
+  "Mail_Notify_Auther": "man4781747@gmail.com",
+  "Mail_Notify_Key": "",
+  "Mail_Notify_Target": "man4781747@gmail.com"
 }
