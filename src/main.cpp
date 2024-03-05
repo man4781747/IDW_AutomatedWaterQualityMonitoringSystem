@@ -59,6 +59,8 @@ void setup() {
   Device_Ctrl.CreateScheduleManagerTask();
   Device_Ctrl.AddNewOledLog("CreateTimerCheckerTask");
   Device_Ctrl.CreateTimerCheckerTask();
+  Device_Ctrl.AddNewOledLog("CreateNotifyTask");
+  Device_Ctrl.CreateLINE_MAIN_NotifyTask();
   
   Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "開機完畢");
   Device_Ctrl.CreateOledQRCodeTask();
@@ -72,7 +74,4 @@ void loop() {
     }
   }
   vTaskDelay(5000/portTICK_PERIOD_MS);
-  // Device_Ctrl.DeleteOldLog();
-  // Device_Ctrl.SendGmailNotifyMessage("TSET", "test");
-  // vTaskDelay(5000000/portTICK_PERIOD_MS);
 }
