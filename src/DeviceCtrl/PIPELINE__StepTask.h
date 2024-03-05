@@ -706,9 +706,6 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
       //! 需要套用校正參數，獲得真實濃度
       double mValue = spectrophotometerConfigChose["m"].as<double>();
       double bValue = spectrophotometerConfigChose["b"].as<double>();
-      // double mValue = spectrophotometerConfigChose["calibration"][0]["ret"]["m"].as<double>();
-      // double bValue = spectrophotometerConfigChose["calibration"][0]["ret"]["b"].as<double>();
-      serializeJsonPretty(spectrophotometerConfigChose["calibration"][0]["ret"], Serial);
       String TargetType = value_name.substring(0,3); 
       double A0_Value = 0;
       if (TargetType == "NO2") {
@@ -717,9 +714,8 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
         A0_Value = Device_Ctrl.lastLightValue_NH4;
       }
       double finalValue_after = -log10(finalValue/A0_Value)*mValue+bValue;
-      if (finalValue_after < 0) {
-        finalValue_after = 0;
-      }
+      if (finalValue_after < 1) { finalValue_after-=bValue;}  //! 在低濃度時發現量測值會受 bias 數值影響過於嚴重，因此把他減回來
+      if (finalValue_after < 0) { finalValue_after = 0; }
       (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][TargetType]["Value"].set(String(finalValue_after,2).toDouble());
       (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][TargetType]["data_time"].set(GetDatetimeString());
       char buffer[1024];
@@ -733,7 +729,6 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
       );
       Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 5, "%s", buffer);
       Device_Ctrl.BroadcastLogToClient(NULL, 5, "%s", buffer);
-
       Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, TargetType, finalValue_after);
       ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__LastSensorDataSave, *Device_Ctrl.JSON__sensorDataSave);
     }
