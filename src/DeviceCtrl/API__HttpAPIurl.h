@@ -597,8 +597,12 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/test/line_notify", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
-      Device_Ctrl.SendLineNotifyMessage("手動測試");
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"OK\"}");
+      AsyncWebServerResponse* response;
+      if (Device_Ctrl.AddLineNotifyEvent("手動測試")) {
+        response = request->beginResponse(200, "application/json", "{\"message\":\"OK\"}");
+      } else {
+        response = request->beginResponse(200, "application/json", "{\"message\":\"FAIL\"}");
+      }
       request->send(response);
     }
   );
@@ -606,8 +610,12 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/test/mail_notify", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
-      Device_Ctrl.SendGmailNotifyMessage("手動測試","手動測試");
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"OK\"}");
+      AsyncWebServerResponse* response;
+      if (Device_Ctrl.AddGmailNotifyEvent("手動測試","手動測試")) {
+        response = request->beginResponse(200, "application/json", "{\"message\":\"OK\"}");
+      } else {
+        response = request->beginResponse(200, "application/json", "{\"message\":\"FAIL\"}");
+      }
       request->send(response);
     }
   );

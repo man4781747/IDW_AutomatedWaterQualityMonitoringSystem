@@ -84,8 +84,11 @@ void StepTask(void* parameter) {
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
             sendString += "\n後續處理方法: 整機停止\n";
-            Device_Ctrl.SendLineNotifyMessage(sendString);
-            Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",sendString);
+
+            Device_Ctrl.AddLineNotifyEvent(sendString);
+            // Device_Ctrl.SendLineNotifyMessage(FailMessage);
+            Device_Ctrl.AddGmailNotifyEvent("機台錯誤訊息",sendString);
+            // Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",FailMessage);
             isStepFail = true;
             EmergencyStop = true;
             break;
@@ -112,8 +115,10 @@ void StepTask(void* parameter) {
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
             sendString += "後續處理方法: 跳過當前流程\n";
-            Device_Ctrl.SendLineNotifyMessage(sendString);
-            Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",sendString);
+            Device_Ctrl.AddLineNotifyEvent(sendString);
+            // Device_Ctrl.SendLineNotifyMessage(FailMessage);
+            Device_Ctrl.AddGmailNotifyEvent("機台錯誤訊息",sendString);
+            // Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",FailMessage);
             isStepFail = true;
             OnlyPipelineStop = true;
             break;
@@ -124,8 +129,10 @@ void StepTask(void* parameter) {
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
             sendString += "後續處理方法: 整機停止\n";
-            Device_Ctrl.SendLineNotifyMessage(sendString);
-            Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",sendString);
+            Device_Ctrl.AddLineNotifyEvent(sendString);
+            // Device_Ctrl.SendLineNotifyMessage(FailMessage);
+            Device_Ctrl.AddGmailNotifyEvent("機台錯誤訊息",sendString);
+            // Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",FailMessage);
             isStepFail = true;
             EmergencyStop = true;
             break;
@@ -139,8 +146,10 @@ void StepTask(void* parameter) {
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
             sendString += "後續處理方法: 繼續執行\n";
-            Device_Ctrl.SendLineNotifyMessage(sendString);
-            Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",sendString);
+            Device_Ctrl.AddLineNotifyEvent(sendString);
+            // Device_Ctrl.SendLineNotifyMessage(FailMessage);
+            Device_Ctrl.AddGmailNotifyEvent("機台錯誤訊息",sendString);
+            // Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",FailMessage);
           }
         }
         else if (eventItem.containsKey("ph_meter")) {
@@ -151,8 +160,10 @@ void StepTask(void* parameter) {
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
             sendString += "後續處理方法: 繼續執行\n";
-            Device_Ctrl.SendLineNotifyMessage(sendString);
-            Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",sendString);
+            Device_Ctrl.AddLineNotifyEvent(sendString);
+            // Device_Ctrl.SendLineNotifyMessage(FailMessage);
+            Device_Ctrl.AddGmailNotifyEvent("機台錯誤訊息",sendString);
+            // Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",FailMessage);
           }
         }
       

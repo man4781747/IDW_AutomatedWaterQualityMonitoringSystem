@@ -60,8 +60,11 @@ void PipelineFlowScan(void* parameter) {
           ESP_LOGE("", "檔案: %s 不存在,跳至下一流程", pipelineConfigFileFullPath.c_str());
           String FailMessage = "執行流程時發現未知的檔案名稱: "+pipelineConfigFileFullPath+"\n";
           FailMessage += "請檢查相關設定檔案是否正確";
-          Device_Ctrl.SendLineNotifyMessage(FailMessage);
-          Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",FailMessage);
+
+          Device_Ctrl.AddLineNotifyEvent(FailMessage);
+          // Device_Ctrl.SendLineNotifyMessage(FailMessage);
+          Device_Ctrl.AddGmailNotifyEvent("機台錯誤訊息",FailMessage);
+          // Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",FailMessage);
           // Device_Ctrl.SetLog(1, "檔案不存在，跳至下一流程", pipelineConfigFileFullPath, Device_Ctrl.BackendServer.ws_);
           continue;
         }
@@ -72,8 +75,10 @@ void PipelineFlowScan(void* parameter) {
           ESP_LOGE("", "無法打開檔案: %s ,跳至下一流程", pipelineConfigFileFullPath.c_str());
           String FailMessage = "執行流程時發現無法打開的檔案: "+pipelineConfigFileFullPath+"\n";
           FailMessage += "請檢查相關設定檔案是否正確";
-          Device_Ctrl.SendLineNotifyMessage(FailMessage);
-          Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",FailMessage);
+          Device_Ctrl.AddLineNotifyEvent(FailMessage);
+          // Device_Ctrl.SendLineNotifyMessage(FailMessage);
+          Device_Ctrl.AddGmailNotifyEvent("機台錯誤訊息",FailMessage);
+          // Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",FailMessage);
           // Device_Ctrl.SetLog(1, "無法打開檔案，跳至下一流程", pipelineConfigFileFullPath, Device_Ctrl.BackendServer.ws_);
           continue;
         }
@@ -86,8 +91,10 @@ void PipelineFlowScan(void* parameter) {
           ESP_LOGE("", "JOSN解析失敗: %s ,跳至下一流程", error.c_str());
           String FailMessage = "執行流程時發現JOSN解析失敗的檔案: "+pipelineConfigFileFullPath+"\n";
           FailMessage += "請檢查相關設定檔案是否正確";
-          Device_Ctrl.SendLineNotifyMessage(FailMessage);
-          Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",FailMessage);
+          Device_Ctrl.AddLineNotifyEvent(FailMessage);
+          // Device_Ctrl.SendLineNotifyMessage(FailMessage);
+          Device_Ctrl.AddGmailNotifyEvent("機台錯誤訊息",FailMessage);
+          // Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",FailMessage);
           // Device_Ctrl.SetLog(1, "JOSN解析失敗, 跳至下一流程", String(error.c_str()), Device_Ctrl.BackendServer.ws_);
           continue;
         }

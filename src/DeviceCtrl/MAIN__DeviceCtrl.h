@@ -30,7 +30,7 @@ enum class TaskPriority : UBaseType_t {
   DeviceInfoCheckTask,  //? 定期自我檢查並記錄儀器各項數值與狀態
   OLEDCheckTask,        //? OLED螢幕顯示專用Task
   skip_1,
-  APICheckerTask,       
+  LINE_MAIN_Notify,       
   TimeCheckTask,        //? 時鐘檢查用Task
   ScheduleManager,      //? 儀器本地端排程檢查Task
   PiplelineFlowTask_6,  //? 流程Thread-6
@@ -148,12 +148,16 @@ class C_Device_Ctrl
 
     String AES_encode(String content);
     String AES_decode(String content);
-
     void SendLineNotifyMessage(String content);
-
     SMTPSession smtp;
     int SendGmailNotifyMessage(String MailSubject,String content);
 
+    bool AddLineNotifyEvent(String content);
+    bool AddGmailNotifyEvent(String MailSubject,String content);
+
+    xQueueHandle _async_queue__LINE_MAIN_Notify_Task;  //? 實現同步的警告功能 
+    TaskHandle_t TASK__LINE_MAIN_Notify = NULL;
+    void CreateLINE_MAIN_NotifyTask();
 
     //! Websocket相關
     void INIT_AllWsAPI();

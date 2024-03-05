@@ -647,7 +647,11 @@ void C_Device_Ctrl::SendLineNotifyMessage(String content)
   bool LINE_Notify_switch = (*Device_Ctrl.JSON__DeviceBaseInfo)["LINE_Notify_switch"].as<bool>();
   if (LINE_Notify_id != "" & LINE_Notify_switch) {
     HTTPClient http;
+    http.setTimeout(2000);
+    http.setConnectTimeout(2000);
     http.begin("https://notify-api.line.me/api/notify");
+    http.setTimeout(2000);
+    http.setConnectTimeout(2000);
     http.addHeader("Host", "notify-api.line.me");
     String AuthorizationInfo = "Bearer "+LINE_Notify_id;
     http.addHeader("Authorization", AuthorizationInfo);
@@ -700,7 +704,6 @@ void smtpCallback(SMTP_Status status){
     Device_Ctrl.smtp.sendingResult.clear();
   }
 }
-
 
 int C_Device_Ctrl::SendGmailNotifyMessage(String MailSubject, String content)
 {
@@ -756,7 +759,6 @@ int C_Device_Ctrl::SendGmailNotifyMessage(String MailSubject, String content)
     message.addRecipient(User, TargetMail);  // "收信人的名字", "收信人的e-mail"
 
     /* 設定郵件內容（HTML格式訊息） */
-    // String htmlMsg = "<div style=\"color:#2f4468;\"><h1>學程式就是要動手實作</h1><p>- 從ESP32開發板傳送</p></div>";
     message.html.content = content.c_str();  // 設定信件內容
     message.text.charSet = "utf-8";          // 設定訊息文字的編碼
     if (!MailClient.sendMail(&smtp, &message)) {
@@ -770,6 +772,96 @@ int C_Device_Ctrl::SendGmailNotifyMessage(String MailSubject, String content)
   }
   else {
     return -1;
+  }
+}
+
+typedef enum {
+  LINE, GMAIL
+} line_mail_event_t;
+
+typedef struct {
+  line_mail_event_t event;
+  union {
+    struct {
+      String content;
+    } line_event;
+    struct {
+      String title;
+      String content;
+    } gmail_event;
+  };
+} line_mail_notify_t;
+
+static inline bool _send_async_line_mail_event(line_mail_notify_t ** e){
+  return Device_Ctrl._async_queue__LINE_MAIN_Notify_Task && 
+    xQueueSend(Device_Ctrl._async_queue__LINE_MAIN_Notify_Task, e, portMAX_DELAY) == pdPASS;
+}
+
+bool C_Device_Ctrl::AddLineNotifyEvent(String content) {
+  line_mail_notify_t * e = (line_mail_notify_t *)malloc(sizeof(line_mail_notify_t));
+  e->event = line_mail_event_t::LINE;
+  e->line_event.content = content;
+  if (!_send_async_line_mail_event(&e)) {
+    free((void*)(e));
+    return false;
+  }
+  return true;
+};
+
+bool C_Device_Ctrl::AddGmailNotifyEvent(String MailSubject,String content) {
+  line_mail_notify_t * e = (line_mail_notify_t *)malloc(sizeof(line_mail_notify_t));
+  e->event = line_mail_event_t::GMAIL;
+  e->gmail_event.title = MailSubject;
+  e->gmail_event.content = content;
+  if (!_send_async_line_mail_event(&e)) {
+    free((void*)(e));
+    return false;
+  }
+  return true;
+};
+
+static inline bool _get_async_line_mail_event(line_mail_notify_t ** e){
+  return Device_Ctrl._async_queue__LINE_MAIN_Notify_Task && 
+    xQueueReceive(Device_Ctrl._async_queue__LINE_MAIN_Notify_Task, e, portMAX_DELAY) == pdPASS;
+}
+
+static void _handle_async_line_mail_event(line_mail_notify_t * e){
+  if (e->event == line_mail_event_t::GMAIL) {
+    Device_Ctrl.SendGmailNotifyMessage(e->gmail_event.title, e->gmail_event.content);
+  } else if (e->event == line_mail_event_t::LINE) {
+    Device_Ctrl.SendLineNotifyMessage(e->line_event.content);
+  }
+  free((void*)(e));
+}
+
+void LINE_MAIN_NotifyTask(void* parameter) 
+{
+  line_mail_notify_t * packet = NULL;
+  for (;;) {
+    if(_get_async_line_mail_event(&packet)){
+      _handle_async_line_mail_event(packet);
+    }
+    vTaskDelay(100/portTICK_PERIOD_MS);
+  }
+  Device_Ctrl._async_queue__LINE_MAIN_Notify_Task = NULL;
+  vTaskDelete(NULL);
+}
+
+void C_Device_Ctrl::CreateLINE_MAIN_NotifyTask()
+{
+  _async_queue__LINE_MAIN_Notify_Task = xQueueCreate(32, sizeof(line_mail_notify_t *));
+  if(_async_queue__LINE_MAIN_Notify_Task){
+    xTaskCreatePinnedToCore(
+      LINE_MAIN_NotifyTask, 
+      "LINEMAINNotify", 
+      10000, 
+      NULL, 
+      (UBaseType_t)TaskPriority::LINE_MAIN_Notify, 
+      &TASK__LINE_MAIN_Notify, 
+      1
+    );
+  } else {
+    ESP_LOGE("", "通知功能駐列空間要求失敗");
   }
 }
 
@@ -891,10 +983,12 @@ void C_Device_Ctrl::StopAllStepTask()
     }
     if (now() - waitStart >= timeOut) {
       ESP_LOGE("嚴重系統性錯誤", "停止所有Step流程Timeout，請聯絡工程師排除此BUG");
-      Device_Ctrl.SendGmailNotifyMessage(
-        "嚴重系統性錯誤", "停止所有Step流程Timeout，請聯絡工程師排除此BUG"
-      );
-      Device_Ctrl.SendLineNotifyMessage("[嚴重系統性錯誤]停止所有Step流程Timeout，請聯絡工程師排除此BUG");
+      Device_Ctrl.AddGmailNotifyEvent("嚴重系統性錯誤", "停止所有Step流程Timeout，請聯絡工程師排除此BUG");
+      // Device_Ctrl.SendGmailNotifyMessage(
+      //   "嚴重系統性錯誤", "停止所有Step流程Timeout，請聯絡工程師排除此BUG"
+      // );
+      Device_Ctrl.AddLineNotifyEvent("[嚴重系統性錯誤]停止所有Step流程Timeout，請聯絡工程師排除此BUG");
+      // Device_Ctrl.SendLineNotifyMessage("[嚴重系統性錯誤]停止所有Step流程Timeout，請聯絡工程師排除此BUG");
       break;
     }
     vTaskDelay(100/portTICK_PERIOD_MS);
