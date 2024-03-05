@@ -44,7 +44,8 @@ int db_exec(sqlite3 *db, String sql, JsonDocument *jsonData=NULL) {
       SD.begin(PIN__SD_CS);
       sqlite3_initialize();
       sqlite3_open(Device_Ctrl.FilePath__SD__MainDB.c_str(), &Device_Ctrl.DB_Main);
-      int retry_rc = sqlite3_exec(Device_Ctrl.DB_Main, sql.c_str(), callback, (void*)jsonData, &zErrMsg);
+      sqlite3_open(Device_Ctrl.FilePath__SD__LogDB.c_str(), &Device_Ctrl.DB_Log);
+      int retry_rc = sqlite3_exec(db, sql.c_str(), callback, (void*)jsonData, &zErrMsg);
       if (retry_rc != SQLITE_OK) {
         ESP_LOGE("Sqlite", "Sqlite發現DB無法讀寫，強制重開機");
         ESP.restart();

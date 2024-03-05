@@ -126,13 +126,20 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
       SQL_String += "' ORDER BY rowid DESC LIMIT 100";
       AsyncJsonResponse *response = new AsyncJsonResponse(true, 100000);
       JsonArray root = response->getRoot();
-      db_exec_http(Device_Ctrl.DB_Main, SQL_String, &root);
+      db_exec_http(Device_Ctrl.DB_Log, SQL_String, &root);
       response->setLength();
       request->send(response);
     }
   );
 
-
+  asyncServer.on("/api/logs", HTTP_DELETE,
+    [&](AsyncWebServerRequest *request)
+    { 
+      Device_Ctrl.DropLogsTable();
+      AsyncWebServerResponse* response = request->beginResponse(200, "text/plain", "OK");
+      request->send(response);
+    }
+  );
 
   Set_deviceConfigs_apis(asyncServer);
   Set_scheduleConfig_apis(asyncServer);
@@ -619,7 +626,6 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
-
 
   //! 獲得當前Websocket所有連線單位的狀態
   asyncServer.on("/api/wifi/websocket", HTTP_GET,

@@ -204,14 +204,31 @@ int C_Device_Ctrl::INIT_SqliteDB()
   sqlite3_initialize();
   int rc = sqlite3_open(FilePath__SD__MainDB.c_str(), &DB_Main);
   if (rc) {
-    ESP_LOGE("DB", "Can't open database: %s", sqlite3_errmsg(DB_Main));
+    ESP_LOGE("DB", "Can't open sensor database: %s", sqlite3_errmsg(DB_Main));
     return rc;
   } else {
-    ESP_LOGV("DB", "Opened database successfully");
-    db_exec(DB_Main, "CREATE TABLE logs ( time TEXT, level INTEGER, content TEXT );");
+    ESP_LOGV("DB", "Opened sensor database successfully");
     db_exec(DB_Main, "CREATE TABLE sensor ( time TEXT, pool TEXT , value_name TEXT , result REAL );");
   }
+
+  rc = sqlite3_open(FilePath__SD__LogDB.c_str(), &DB_Log);
+  if (rc) {
+    ESP_LOGE("DB", "Can't open log database: %s", sqlite3_errmsg(DB_Log));
+    return rc;
+  } else {
+    ESP_LOGV("DB", "Opened log database successfully");
+    db_exec(DB_Log, "CREATE TABLE logs ( time TEXT, level INTEGER, content TEXT );");
+  }
   return rc;
+}
+
+int C_Device_Ctrl::DropLogsTable()
+{
+  ESP_LOGV("DB", "Opened log database successfully");
+  sqlite3_close(DB_Log);
+  SD.remove("/logDB.db");
+  sqlite3_open(FilePath__SD__LogDB.c_str(), &DB_Log);
+  db_exec(DB_Log, "CREATE TABLE logs ( time TEXT, level INTEGER, content TEXT );");
 }
 
 void C_Device_Ctrl::LoadConfigJsonFiles()
@@ -255,7 +272,7 @@ void C_Device_Ctrl::InsertNewLogToDB(String time, int level, const char* content
   SqlString += "' ,'";
   SqlString += String(buffer);
   SqlString += "' );";
-  db_exec(DB_Main, SqlString);
+  db_exec(DB_Log, SqlString);
 }
 
 //? 刪除過舊的LOG資訊
@@ -265,11 +282,11 @@ void C_Device_Ctrl::DeleteOldLog()
 {
   DynamicJsonDocument tempJSONItem(1000);
   String sql = "SELECT min(rowid) AS rowid FROM( SELECT rowid FROM logs ORDER BY rowid DESC LIMIT 1000);";
-  db_exec(DB_Main, sql, &tempJSONItem);
+  db_exec(DB_Log, sql, &tempJSONItem);
   String minId = tempJSONItem[0]["rowid"].as<String>();
   // serializeJsonPretty(tempJSONItem, Serial);
   sql = "DELETE FROM logs WHERE rowid < "+minId+";";
-  db_exec(DB_Main, sql);
+  db_exec(DB_Log, sql);
 }
 
 void C_Device_Ctrl::UpdatePipelineConfigList()

@@ -87,8 +87,12 @@ class C_Device_Ctrl
 
     //! Sqlite3相關操作
     int INIT_SqliteDB();
+    int DropLogsTable();
     sqlite3 *DB_Main;
     String FilePath__SD__MainDB = "/sd/mainDB.db";
+    sqlite3 *DB_Log;
+    String FilePath__SD__LogDB = "/sd/logDB.db";
+
     void InsertNewDataToDB(String time, String pool, String ValueName, double result);
     
     /**
