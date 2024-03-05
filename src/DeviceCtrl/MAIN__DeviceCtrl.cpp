@@ -229,6 +229,7 @@ int C_Device_Ctrl::DropLogsTable()
   SD.remove("/logDB.db");
   sqlite3_open(FilePath__SD__LogDB.c_str(), &DB_Log);
   db_exec(DB_Log, "CREATE TABLE logs ( time TEXT, level INTEGER, content TEXT );");
+  return 0;
 }
 
 void C_Device_Ctrl::LoadConfigJsonFiles()
@@ -703,6 +704,7 @@ void smtpCallback(SMTP_Status status){
 
 int C_Device_Ctrl::SendGmailNotifyMessage(char * MailSubject, char * content)
 {
+  //? https://support.google.com/accounts/answer/185833
   bool isSendMail = (*JSON__DeviceBaseInfo)["Mail_Notify_switch"].as<bool>();
   if (isSendMail) {
     String SMTP_HOST = "smtp.gmail.com";
@@ -715,7 +717,6 @@ int C_Device_Ctrl::SendGmailNotifyMessage(char * MailSubject, char * content)
       ESP_LOGE("Mail", "Mail警告訊息功能缺乏");
       return -4;
     }
-
     String Key_encode = (*JSON__DeviceBaseInfo)["Mail_Notify_Key"].as<String>();
     if (Key_encode=="null") {
       return -5;
@@ -750,11 +751,19 @@ int C_Device_Ctrl::SendGmailNotifyMessage(char * MailSubject, char * content)
     message.sender.name = SenderName;    // 寄信人的名字
     message.sender.email = AutherMail;  // 寄信人的e-mail
     message.subject = "[自動化水質機台]"+String(MailSubject);       // 信件主旨
-    message.addRecipient(User, TargetMail);  // "收信人的名字", "收信人的e-mail"
 
-    /* 設定郵件內容（HTML格式訊息） */
-    message.html.content = content;  // 設定信件內容
-    message.text.charSet = "utf-8";          // 設定訊息文字的編碼
+    int strIndex[] = { 0, -1 };
+    int maxIndex = TargetMail.length() - 1;
+    for (int i = 0; i <= maxIndex; i++) {
+      if (TargetMail.charAt(i) == ';' || i == maxIndex) {
+        strIndex[0] = strIndex[1] + 1;
+        strIndex[1] = (i == maxIndex) ? i+1 : i;
+        message.addRecipient("USER", TargetMail.substring(strIndex[0], strIndex[1]));
+      }
+    }
+
+    message.html.content = content;  // 設定郵件內容（HTML格式訊息
+    message.text.charSet = "utf-8";  // 設定訊息文字的編碼
     if (!MailClient.sendMail(&smtp, &message)) {
       Serial.println("寄信時出錯了：" + smtp.errorReason());
       smtp.closeSession();
