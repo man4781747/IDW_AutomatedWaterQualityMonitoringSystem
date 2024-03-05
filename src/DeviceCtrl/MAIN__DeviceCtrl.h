@@ -148,9 +148,9 @@ class C_Device_Ctrl
 
     String AES_encode(String content);
     String AES_decode(String content);
-    void SendLineNotifyMessage(String content);
+    void SendLineNotifyMessage(char * content);
     SMTPSession smtp;
-    int SendGmailNotifyMessage(String MailSubject,String content);
+    int SendGmailNotifyMessage(char * MailSubject, char * content);
 
     bool AddLineNotifyEvent(String content);
     bool AddGmailNotifyEvent(String MailSubject,String content);

@@ -41,8 +41,6 @@ void C_Device_Ctrl::ScanI2C()
   byte error, address;
   int nDevices;
 
-  Serial.println("Scanning...");
-
   nDevices = 0;
   for(address = 1; address < 127; address++ )
   {
@@ -206,12 +204,10 @@ int C_Device_Ctrl::INIT_SqliteDB()
   sqlite3_initialize();
   int rc = sqlite3_open(FilePath__SD__MainDB.c_str(), &DB_Main);
   if (rc) {
-    Serial.printf("Can't open database: %s\n", sqlite3_errmsg(DB_Main));
+    ESP_LOGE("DB", "Can't open database: %s", sqlite3_errmsg(DB_Main));
     return rc;
   } else {
-    Serial.printf("Opened database successfully\n");
-
-    // db_exec(DB_Main, "DROP TABLE logs;");
+    ESP_LOGV("DB", "Opened database successfully");
     db_exec(DB_Main, "CREATE TABLE logs ( time TEXT, level INTEGER, content TEXT );");
     db_exec(DB_Main, "CREATE TABLE sensor ( time TEXT, pool TEXT , value_name TEXT , result REAL );");
   }
@@ -271,7 +267,7 @@ void C_Device_Ctrl::DeleteOldLog()
   String sql = "SELECT min(rowid) AS rowid FROM( SELECT rowid FROM logs ORDER BY rowid DESC LIMIT 1000);";
   db_exec(DB_Main, sql, &tempJSONItem);
   String minId = tempJSONItem[0]["rowid"].as<String>();
-  serializeJsonPretty(tempJSONItem, Serial);
+  // serializeJsonPretty(tempJSONItem, Serial);
   sql = "DELETE FROM logs WHERE rowid < "+minId+";";
   db_exec(DB_Main, sql);
 }
@@ -544,7 +540,6 @@ void C_Device_Ctrl::BroadcastLogToClient(AsyncWebSocketClient *client, int Level
   String returnString;
   serializeJson(logItem, returnString);
   logItem.clear();
-  Serial.println(returnString);
   if (client != NULL) {
     client->binary(returnString);
   }
@@ -597,7 +592,6 @@ String C_Device_Ctrl::AES_encode(String content)
   memset(plain, 0, sizeof(plain));
   strncpy(reinterpret_cast<char*>(plain), content.c_str(), sizeof(plain) - 1);
   unsigned char dec_plain[64] = {0};
-  // Serial.printf("加密前: %s\n", plain);
   mbedtls_aes_init(&aes_ctx);
   mbedtls_aes_setkey_enc(&aes_ctx, key, 128);
   mbedtls_aes_crypt_cbc(&aes_ctx, MBEDTLS_AES_ENCRYPT, 64, iv, plain, cipher);
@@ -635,7 +629,7 @@ String C_Device_Ctrl::AES_decode(String content)
   return returnString;
 }
 
-void C_Device_Ctrl::SendLineNotifyMessage(String content)
+void C_Device_Ctrl::SendLineNotifyMessage(char * content)
 {
   String LINE_Notify_id;
   String LINE_Notify_id_encode = (*Device_Ctrl.JSON__DeviceBaseInfo)["LINE_Notify_id"].as<String>();
@@ -657,24 +651,9 @@ void C_Device_Ctrl::SendLineNotifyMessage(String content)
     http.addHeader("Authorization", AuthorizationInfo);
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
     http.addHeader("Connection", "close");
-    String payload = "message="+content;
+    String payload = "message="+String(content);
     http.POST(payload);
   }
-
-  // #ifdef LINE_NOTIFY_KEY
-  // #ifdef LINE_NOTIFY_API
-  // HTTPClient http;
-  // http.begin(LINE_NOTIFY_API);;
-  // DynamicJsonDocument postData(10000);
-  // postData["key"] = LINE_NOTIFY_KEY;
-  // postData["content"] = content;
-  // String sendContent;
-  // serializeJson(postData, sendContent);
-  // postData.clear();
-  // int httpResponseCode = http.POST(sendContent);
-  // http.end();
-  // #endif
-  // #endif
 }
 
 /* 取得信件寄送狀態的回呼函式本體 */
@@ -705,10 +684,8 @@ void smtpCallback(SMTP_Status status){
   }
 }
 
-int C_Device_Ctrl::SendGmailNotifyMessage(String MailSubject, String content)
+int C_Device_Ctrl::SendGmailNotifyMessage(char * MailSubject, char * content)
 {
-  //! https://swf.com.tw/?p=1787
-
   bool isSendMail = (*JSON__DeviceBaseInfo)["Mail_Notify_switch"].as<bool>();
   if (isSendMail) {
     String SMTP_HOST = "smtp.gmail.com";
@@ -755,11 +732,11 @@ int C_Device_Ctrl::SendGmailNotifyMessage(String MailSubject, String content)
     /* 設定郵件標頭 */
     message.sender.name = SenderName;    // 寄信人的名字
     message.sender.email = AutherMail;  // 寄信人的e-mail
-    message.subject = "[自動化水質機台]"+MailSubject;       // 信件主旨
+    message.subject = "[自動化水質機台]"+String(MailSubject);       // 信件主旨
     message.addRecipient(User, TargetMail);  // "收信人的名字", "收信人的e-mail"
 
     /* 設定郵件內容（HTML格式訊息） */
-    message.html.content = content.c_str();  // 設定信件內容
+    message.html.content = content;  // 設定信件內容
     message.text.charSet = "utf-8";          // 設定訊息文字的編碼
     if (!MailClient.sendMail(&smtp, &message)) {
       Serial.println("寄信時出錯了：" + smtp.errorReason());
@@ -775,6 +752,7 @@ int C_Device_Ctrl::SendGmailNotifyMessage(String MailSubject, String content)
   }
 }
 
+
 typedef enum {
   LINE, GMAIL
 } line_mail_event_t;
@@ -783,11 +761,11 @@ typedef struct {
   line_mail_event_t event;
   union {
     struct {
-      String content;
+      char * content;
     } line_event;
     struct {
-      String title;
-      String content;
+      char * title;
+      char * content;
     } gmail_event;
   };
 } line_mail_notify_t;
@@ -800,9 +778,12 @@ static inline bool _send_async_line_mail_event(line_mail_notify_t ** e){
 bool C_Device_Ctrl::AddLineNotifyEvent(String content) {
   line_mail_notify_t * e = (line_mail_notify_t *)malloc(sizeof(line_mail_notify_t));
   e->event = line_mail_event_t::LINE;
-  e->line_event.content = content;
+  char *contentCharArray = (char*)malloc((content.length()+1) * sizeof(char));
+  content.toCharArray(contentCharArray, content.length()+1);
+  e->line_event.content = contentCharArray;
   if (!_send_async_line_mail_event(&e)) {
     free((void*)(e));
+    free(contentCharArray);
     return false;
   }
   return true;
@@ -811,9 +792,15 @@ bool C_Device_Ctrl::AddLineNotifyEvent(String content) {
 bool C_Device_Ctrl::AddGmailNotifyEvent(String MailSubject,String content) {
   line_mail_notify_t * e = (line_mail_notify_t *)malloc(sizeof(line_mail_notify_t));
   e->event = line_mail_event_t::GMAIL;
-  e->gmail_event.title = MailSubject;
-  e->gmail_event.content = content;
+  char *titleCharArray = (char*)malloc((MailSubject.length()+1) * sizeof(char));
+  MailSubject.toCharArray(titleCharArray, MailSubject.length()+1);
+  e->gmail_event.title = titleCharArray;
+  char *contentCharArray = (char*)malloc((content.length()+1) * sizeof(char));
+  content.toCharArray(contentCharArray, content.length()+1);
+  e->gmail_event.content = contentCharArray;
   if (!_send_async_line_mail_event(&e)) {
+    free(titleCharArray);
+    free(contentCharArray);
     free((void*)(e));
     return false;
   }
@@ -828,8 +815,11 @@ static inline bool _get_async_line_mail_event(line_mail_notify_t ** e){
 static void _handle_async_line_mail_event(line_mail_notify_t * e){
   if (e->event == line_mail_event_t::GMAIL) {
     Device_Ctrl.SendGmailNotifyMessage(e->gmail_event.title, e->gmail_event.content);
+    free(e->gmail_event.title);
+    free(e->gmail_event.content);
   } else if (e->event == line_mail_event_t::LINE) {
     Device_Ctrl.SendLineNotifyMessage(e->line_event.content);
+    free(e->line_event.content);
   }
   free((void*)(e));
 }

@@ -265,7 +265,7 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
     for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
       if (ServoStatusSave[String(servoMotorItem["index"].as<int>())] == false) {
         int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
-        ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"伺服馬達(LX-20S) %d 轉至 %d 度(%d)", 
+        ESP_LOGD(StepTaskDetailItem->TaskName.c_str(),"伺服馬達(LX-20S) %d 轉至 %d 度(%d)", 
           servoMotorItem["index"].as<int>(), 
           servoMotorItem["status"].as<int>(), targetAngValue
         );
@@ -303,7 +303,7 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
           readAng = LX_20S_SerialServoReadPosition(Serial2, servoMotorItem["index"].as<int>());
         }
         int d_ang = targetAngValue - readAng;
-        ESP_LOGW("", "伺服馬達 %d 目標角度: %d\t真實角度: %d", servoMotorItem["index"].as<int>(), targetAngValue, readAng);
+        ESP_LOGD("", "伺服馬達 %d 目標角度: %d\t真實角度: %d", servoMotorItem["index"].as<int>(), targetAngValue, readAng);
         if (abs(d_ang)>20) {
           // char logBuffer[1000];
           // sprintf(
@@ -368,7 +368,6 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
 StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
 {
   StepResult result;
-  // serializeJsonPretty(eventItem, Serial);
   pinMode(PIN__EN_Peristaltic_Motor, OUTPUT);
   //? endTimeCheckList: 記錄各蠕動馬達最大運行結束時間
   DynamicJsonDocument endTimeCheckList(10000);
@@ -670,7 +669,6 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
     //?  最終量測的結果數值 (mV)
     double finalValue = busvoltage_ina226*1000;
     digitalWrite(activePin, LOW);
-    Serial.printf("%s - %s:%.2f", poolChose.c_str(), value_name.c_str(), finalValue);
     (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][value_name]["Value"].set(String(finalValue,2).toDouble());
     (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][value_name]["data_time"].set(GetDatetimeString());
 
@@ -718,12 +716,6 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
       } else if (TargetType == "NH4") {
         A0_Value = Device_Ctrl.lastLightValue_NH4;
       }
-      Serial.printf("finalValue: %.2f, A0_Value: %.2f, mValue: %.2f, bValue: %.2f\n",
-        finalValue, A0_Value, mValue, bValue
-      );
-      Serial.printf("-log10(finalValue/A0_Value): %.2f\n",
-        -log10(finalValue/A0_Value)
-      );
       double finalValue_after = -log10(finalValue/A0_Value)*mValue+bValue;
       if (finalValue_after < 0) {
         finalValue_after = 0;
@@ -744,7 +736,6 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
 
       Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, TargetType, finalValue_after);
       ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__LastSensorDataSave, *Device_Ctrl.JSON__sensorDataSave);
-      Serial.printf("%s - %s:%.2f", poolChose.c_str(), TargetType.c_str(), finalValue_after);
     }
   }
   result.code = ResultCode::SUCCESS;
