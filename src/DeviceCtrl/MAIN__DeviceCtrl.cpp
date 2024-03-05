@@ -1,7 +1,6 @@
 #include "MAIN__DeviceCtrl.h"
 #include <esp_log.h>
 #include <SD.h>
-#include <SPIFFS.h>
 #include "StorgeSystemExternalFunction.h"
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
@@ -150,22 +149,6 @@ bool C_Device_Ctrl::INIT_SD()
     return false;
   }
   ESP_LOGD("", "SD卡讀取成功");
-  return true;
-}
-
-bool C_Device_Ctrl::INIT_SPIFFS()
-{
-  if(!SPIFFS.begin(true)){
-    ESP_LOGE("", "讀取SPIFFS失敗");
-    vTaskDelay(1000/portTICK_PERIOD_MS);
-    ESP.restart();
-    return false;
-  }
-  ESP_LOGD("", "讀取SPIFFS成功");
-  // serializeJsonPretty(
-  //   ExFile_listDir(SPIFFS, "/web"),
-  //   Serial
-  // );
   return true;
 }
 
@@ -403,7 +386,6 @@ void C_Device_Ctrl::INITWebServer()
 void C_Device_Ctrl::preLoadWebJSFile()
 {
   File JSFile = SD.open("/assets/index.js.gz", "r");
-  // File JSFile = SPIFFS.open("/assets/index.js.gz", "r");
   webJS_BufferLen = JSFile.size();
   if (webJS_BufferLen == 0) {
     ESP_LOGD("網頁檔案初始化", "無法讀取SD中的網頁檔案");

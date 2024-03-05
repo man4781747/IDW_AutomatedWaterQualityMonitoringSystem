@@ -25,9 +25,6 @@ void setup() {
   ESP_LOGV("MAIN", "初始化SD卡");
   Device_Ctrl.AddNewOledLog("INIT_SD");
   Device_Ctrl.INIT_SD();
-  ESP_LOGV("MAIN", "初始化SPIFFS");
-  Device_Ctrl.AddNewOledLog("INIT_SPIFFS");
-  Device_Ctrl.INIT_SPIFFS();
   ESP_LOGV("MAIN", "初始化SQLITE資料庫");
   Device_Ctrl.AddNewOledLog("INIT_SqliteDB");
   Device_Ctrl.INIT_SqliteDB();

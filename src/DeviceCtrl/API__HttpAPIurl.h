@@ -6,7 +6,6 @@
 #include "SqliteFunctions.h"
 #include "AsyncJson.h"
 #include <SD.h>
-#include <SPIFFS.h>
 #include "StorgeSystemExternalFunction.h"
 
 void Set_deviceConfigs_apis(AsyncWebServer &asyncServer);
@@ -271,7 +270,6 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
         (*Device_Ctrl.JSON__DeviceBaseInfo)["Mail_Notify_Target"].set(Mail_Notify_Target);
       }
 
-
       ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__DeviceBaseInfo, (*Device_Ctrl.JSON__DeviceBaseInfo));
       String RetuenString;
       serializeJson((*Device_Ctrl.JSON__DeviceBaseInfo), RetuenString);
@@ -304,18 +302,6 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/config/pwm_motor_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
-      String RetuenString;
-      serializeJson((*Device_Ctrl.JSON__ServoConfig), RetuenString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
-      request->send(response);
-    }
-  );
-
-  asyncServer.on("/api/config/pwm_motor_config", HTTP_DELETE,
-    [&](AsyncWebServerRequest *request)
-    { 
-      (*Device_Ctrl.JSON__ServoConfig).clear();
-      ExFile_LoadJsonFile(SPIFFS, "/config/pwm_motor_config.json", (*Device_Ctrl.JSON__ServoConfig));
       String RetuenString;
       serializeJson((*Device_Ctrl.JSON__ServoConfig), RetuenString);
       AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
@@ -405,18 +391,6 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
     }
   );
 
-  asyncServer.on("/api/config/spectrophotometer_config", HTTP_DELETE,
-    [&](AsyncWebServerRequest *request)
-    { 
-      (*Device_Ctrl.JSON__SpectrophotometerConfig).clear();
-      ExFile_LoadJsonFile(SPIFFS, "/config/spectrophotometer.json", (*Device_Ctrl.JSON__SpectrophotometerConfig));
-      String RetuenString;
-      serializeJson((*Device_Ctrl.JSON__SpectrophotometerConfig), RetuenString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
-      request->send(response);
-    }
-  );
-
   asyncServer.on("/api/config/PHmeter_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -465,20 +439,6 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
 //! 排程相關API
 void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
 {
-  asyncServer.on("/api/schedule", HTTP_DELETE,
-    [&](AsyncWebServerRequest *request)
-    { 
-      (*Device_Ctrl.JSON__ScheduleConfig).clear();
-      // for (int i=0;i<24;i++) {
-      //   (*Device_Ctrl.JSON__ScheduleConfig).add("-");
-      // }
-      ExFile_LoadJsonFile(SPIFFS, "/config/schedule_config.json", *Device_Ctrl.JSON__ScheduleConfig);
-      ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__ScheduleConfig, *Device_Ctrl.JSON__ScheduleConfig);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"message\":\"OK\"}");
-      request->send(response);
-    }
-  );
-
   asyncServer.on("/api/schedule", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 

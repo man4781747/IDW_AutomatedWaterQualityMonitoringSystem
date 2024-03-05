@@ -81,7 +81,6 @@ class C_Device_Ctrl
     bool INIT_PoolData();
     //? 初始化SD卡
     bool INIT_SD();
-    bool INIT_SPIFFS();
     bool INIT_oled();
 
 
