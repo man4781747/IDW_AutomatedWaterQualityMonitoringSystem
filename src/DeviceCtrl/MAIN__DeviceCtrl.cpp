@@ -589,7 +589,7 @@ void C_Device_Ctrl::CreateWifiManagerTask()
     xTaskCreatePinnedToCore(
     WifiManager, 
     "WifiManager", 
-    10000, 
+    1024*4, 
     NULL, 
     (UBaseType_t)TaskPriority::DeviceInfoCheckTask, 
     &TASK__WifiManager,
