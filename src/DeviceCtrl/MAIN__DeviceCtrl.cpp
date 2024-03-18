@@ -313,6 +313,8 @@ void C_Device_Ctrl::ConnectWiFi()
     (*JSON__WifiConfig)["Remote"]["remote_Password"].as<String>().c_str()
   );
   WiFi.setAutoReconnect(true);
+  WiFi.setAutoConnect(true);
+
 }
 
 void C_Device_Ctrl::AddWebsocketAPI(String APIPath, String METHOD, void (*func)(AsyncWebSocket*, AsyncWebSocketClient*, DynamicJsonDocument*, DynamicJsonDocument*, DynamicJsonDocument*, DynamicJsonDocument*))
@@ -562,24 +564,38 @@ DynamicJsonDocument C_Device_Ctrl::GetWebsocketConnectInfo()
   return returnData;
 }
 
-// void WifiManager(void* parameter)
-// { 
-  
-//   vTaskDelay(1000/portTICK_PERIOD_MS);
-// }
+void WifiManager(void* parameter)
+{ 
+  time_t lastConnectTime = now();
+  for (;;) {
+    if (WiFi.status() == wl_status_t::WL_CONNECTED) {
+      lastConnectTime = now();
+    }
+    else {
+      if (now()-lastConnectTime > 60*10 & Device_Ctrl.IsDeviceIdel()) {
+        ESP.restart();
+      }
+      Device_Ctrl.InsertNewLogToDB(
+        GetDatetimeString(),1, "發現WiFi連線失敗，累積失敗 %d 秒，Fail Code: %d", 
+        now()-lastConnectTime, WiFi.status()
+      );
+    }
+    vTaskDelay(10*1000/portTICK_PERIOD_MS);
+  }
+}
 
-// void C_Device_Ctrl::CreateWifiManagerTask()
-// {
-//     xTaskCreatePinnedToCore(
-//     WifiManager, 
-//     "WifiManager", 
-//     10000, 
-//     NULL, 
-//     (UBaseType_t)TaskPriority::APICheckerTask, 
-//     &TASK__WifiManager,
-//     1
-//   );
-// }
+void C_Device_Ctrl::CreateWifiManagerTask()
+{
+    xTaskCreatePinnedToCore(
+    WifiManager, 
+    "WifiManager", 
+    10000, 
+    NULL, 
+    (UBaseType_t)TaskPriority::DeviceInfoCheckTask, 
+    &TASK__WifiManager,
+    1
+  );
+}
 
 String C_Device_Ctrl::AES_encode(String content)
 {
@@ -931,6 +947,10 @@ void C_Device_Ctrl::StopDeviceAllAction()
 
 bool C_Device_Ctrl::IsDeviceIdel()
 {
+  if (all_INIT_done == false) {
+    return false;
+  }
+
   //? 嘗試獲得 xMutex__pipelineFlowScan 
   //? 若要得到，代表沒有流程在跑
   if (xSemaphoreTake(Device_Ctrl.xMutex__pipelineFlowScan, 0) != pdTRUE) {

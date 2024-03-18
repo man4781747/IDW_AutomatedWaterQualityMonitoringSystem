@@ -73,6 +73,9 @@ void setup() {
   
   Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "開機完畢");
   Device_Ctrl.CreateOledQRCodeTask();
+
+  Device_Ctrl.CreateWifiManagerTask();
+  Device_Ctrl.all_INIT_done = true;
 }
 
 void loop() {

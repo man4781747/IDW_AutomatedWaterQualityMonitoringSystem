@@ -257,7 +257,7 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
     ServoStatusSave[String(servoMotorItem["index"].as<int>())] = false;
   }
 
-  for (int ReTry=0;ReTry<4;ReTry++) {
+  for (int ReTry=0;ReTry<10;ReTry++) {
     if (ReTry != 0) {
       ESP_LOGW("", "(重試第%d次)前次伺服馬達 (%s) 運作有誤，即將重試", ReTry, anyFail.c_str());
     }

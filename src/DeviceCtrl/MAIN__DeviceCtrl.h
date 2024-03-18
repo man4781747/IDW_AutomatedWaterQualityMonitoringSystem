@@ -84,6 +84,7 @@ class C_Device_Ctrl
     //? 初始化SD卡
     bool INIT_SD();
     bool INIT_oled();
+    bool all_INIT_done = false;
 
 
     //! Sqlite3相關操作
