@@ -2,7 +2,9 @@
 #define DEVICE_CTRL_H
 
 #define MAX_STEP_TASK_NUM 4
-#define FIRMWARE_VERSION "V4.24.0301.0"
+#ifndef FIRMWARE_VERSION
+  #define FIRMWARE_VERSION "V4.24.0303.0"
+#endif
 
 #include "CONFIG__pinMap.h"
 #include <Arduino.h>

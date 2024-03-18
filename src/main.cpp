@@ -2,19 +2,31 @@
 #include <esp_log.h>
 #include "./DeviceCtrl/MAIN__DeviceCtrl.h"
 #include "TimeLibExternalFunction.h"
+#include "hal/efuse_hal.h"
 
 void setup() {
   setCpuFrequencyMhz(240); //? CPU效能全開
   Serial.begin(115200);
+  multi_heap_info_t heap_info;
+  heap_caps_get_info(&heap_info, MALLOC_CAP_SPIRAM);
+  
+  ESP_IDF_VERSION;
+  efuse_hal_get_major_chip_version();
+  efuse_hal_get_minor_chip_version();
+  efuse_ll_get_blk_version_major();
+  efuse_ll_get_blk_version_minor();
+
   ESP_LOGI("MAIN", "儀器啟動中, 以下為相關基本資訊");
   ESP_LOGI("MAIN", "Cpu Frequency: %d MHz", getCpuFrequencyMhz());
   ESP_LOGI("MAIN", "Apb Frequency: %d MHz", getApbFrequency());
   ESP_LOGI("MAIN", "Spiram Size: %d Byte", esp_spiram_get_size());
   ESP_LOGI("MAIN", "Flash Chip Size: %d Byte", spi_flash_get_chip_size());
-  ESP_LOGI("MAIN", "Heap Size %u", ESP.getHeapSize());
-  ESP_LOGI("MAIN", "Max Alloc Heap %u", ESP.getMaxAllocHeap());
-  ESP_LOGI("MAIN", "Min Free Heap %u", ESP.getMinFreeHeap());
-  ESP_LOGI("MAIN", "Free internal heap before TLS %u", ESP.getFreeHeap());
+  ESP_LOGI("MAIN", "Heap Size %d", ESP.getHeapSize());
+  ESP_LOGI("MAIN", "Max Alloc Heap %d", ESP.getMaxAllocHeap());
+  ESP_LOGI("MAIN", "Min Free Heap %d", ESP.getMinFreeHeap());
+  ESP_LOGI("MAIN", "Free internal heap before TLS %d", ESP.getFreeHeap());
+  ESP_LOGI("MAIN", "Psram Size %d", ESP.getPsramSize());
+  ESP_LOGI("MAIN", "Free Psram Size %d", ESP.getFreePsram());
 
   ESP_LOGI("MAIN", "=====================================");
   Device_Ctrl.INIT_Pins();

@@ -52,7 +52,7 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
   });
 
   asyncServer.on("/api/hi", HTTP_GET, [](AsyncWebServerRequest *request){
-    AsyncWebServerResponse* response = request->beginResponse(200, "text/plain", "HI");
+    AsyncWebServerResponse* response = request->beginResponse(200, "text/plain", FIRMWARE_VERSION);
     request->send(response);
   });
 
