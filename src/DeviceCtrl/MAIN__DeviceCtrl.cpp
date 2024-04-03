@@ -570,6 +570,9 @@ void WifiManager(void* parameter)
   for (;;) {
     if (WiFi.status() == wl_status_t::WL_CONNECTED) {
       lastConnectTime = now();
+      ESP_LOGI("WIFI", "RSSI: %d, SSID: %s, BSSID: %s", 
+        WiFi.RSSI(), WiFi.SSID().c_str(), WiFi.BSSIDstr().c_str()
+      );
     }
     else {
       if (now()-lastConnectTime > 60*10 & Device_Ctrl.IsDeviceIdel()) {
@@ -580,7 +583,7 @@ void WifiManager(void* parameter)
         now()-lastConnectTime, WiFi.status()
       );
     }
-    vTaskDelay(10*1000/portTICK_PERIOD_MS);
+    vTaskDelay(60*1000/portTICK_PERIOD_MS);
   }
 }
 
