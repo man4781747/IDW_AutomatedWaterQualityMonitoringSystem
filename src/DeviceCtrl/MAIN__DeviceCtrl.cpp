@@ -502,9 +502,19 @@ void OTAServiceTask(void* parameter) {
 void C_Device_Ctrl::CreateOTAService()
 {
   xTaskCreatePinnedToCore(
-    OTAServiceTask, "TASK__OTAService",
-    10000, NULL, (UBaseType_t)TaskPriority::OTAService, &Device_Ctrl.TASK__OTAService, 1
+    OTAServiceTask, 
+    TaskSettingMap["OTAService"].TaskName,
+    TaskSettingMap["OTAService"].stack_depth, 
+    NULL, 
+    (UBaseType_t)TaskSettingMap["OTAService"].task_priority,
+    TaskSettingMap["OTAService"].task_handle, 
+    1
   );
+
+  // xTaskCreatePinnedToCore(
+  //   OTAServiceTask, "TASK__OTAService",
+  //   1024*10, NULL, (UBaseType_t)TaskPriority::OTAService, &Device_Ctrl.TASK__OTAService, 1
+  // );
 }
 
 void C_Device_Ctrl::UpdateDeviceTimerByNTP()
@@ -589,15 +599,25 @@ void WifiManager(void* parameter)
 
 void C_Device_Ctrl::CreateWifiManagerTask()
 {
-    xTaskCreatePinnedToCore(
+  xTaskCreatePinnedToCore(
     WifiManager, 
-    "WifiManager", 
-    1024*4, 
+    TaskSettingMap["WifiManager"].TaskName, 
+    TaskSettingMap["WifiManager"].stack_depth, 
     NULL, 
-    (UBaseType_t)TaskPriority::DeviceInfoCheckTask, 
-    &TASK__WifiManager,
+    (UBaseType_t)TaskSettingMap["WifiManager"].task_priority, 
+    TaskSettingMap["WifiManager"].task_handle,
     1
   );
+
+  // xTaskCreatePinnedToCore(
+  //   WifiManager, 
+  //   "WifiManager", 
+  //   1024*4, 
+  //   NULL, 
+  //   (UBaseType_t)TaskPriority::DeviceInfoCheckTask, 
+  //   &TASK__WifiManager,
+  //   1
+  // );
 }
 
 String C_Device_Ctrl::AES_encode(String content)
@@ -870,13 +890,22 @@ void C_Device_Ctrl::CreateLINE_MAIN_NotifyTask()
   if(_async_queue__LINE_MAIN_Notify_Task){
     xTaskCreatePinnedToCore(
       LINE_MAIN_NotifyTask, 
-      "LINEMAINNotify", 
-      10000, 
+      TaskSettingMap["LINEMAINNotify"].TaskName, 
+      TaskSettingMap["LINEMAINNotify"].stack_depth, 
       NULL, 
-      (UBaseType_t)TaskPriority::LINE_MAIN_Notify, 
-      &TASK__LINE_MAIN_Notify, 
+      (UBaseType_t)TaskSettingMap["LINEMAINNotify"].task_priority, 
+      TaskSettingMap["LINEMAINNotify"].task_handle,
       1
     );
+    // xTaskCreatePinnedToCore(
+    //   LINE_MAIN_NotifyTask, 
+    //   "LINEMAINNotify", 
+    //   1024*10, 
+    //   NULL, 
+    //   (UBaseType_t)TaskPriority::LINE_MAIN_Notify, 
+    //   &TASK__LINE_MAIN_Notify, 
+    //   1
+    // );
   } else {
     ESP_LOGE("", "通知功能駐列空間要求失敗");
   }
@@ -886,13 +915,23 @@ void C_Device_Ctrl::CreatePipelineFlowScanTask()
 {
   xTaskCreatePinnedToCore(
     PipelineFlowScan, 
-    "PipelineScan", 
-    20000, 
+    TaskSettingMap["PipelineScan"].TaskName, 
+    TaskSettingMap["PipelineScan"].stack_depth, 
     NULL, 
-    (UBaseType_t)TaskPriority::PipelineFlowScan, 
-    &TASK__pipelineFlowScan, 
+    (UBaseType_t)TaskSettingMap["PipelineScan"].task_priority, 
+    TaskSettingMap["PipelineScan"].task_handle,
     1
   );
+
+  // xTaskCreatePinnedToCore(
+  //   PipelineFlowScan, 
+  //   "PipelineScan", 
+  //   1024*30, 
+  //   NULL, 
+  //   (UBaseType_t)TaskPriority::PipelineFlowScan, 
+  //   &TASK__pipelineFlowScan, 
+  //   1
+  // );
 }
 
 void C_Device_Ctrl::StopNowPipelineAndAllStepTask()
@@ -1020,16 +1059,26 @@ void C_Device_Ctrl::CreateStepTasks()
 {
   for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
     String TaskName = "StepTask-"+String(i);
+    std::string TaskName_cSting = std::string(TaskName.c_str());
     StepTaskDetailList[i].TaskName = TaskName;
     xTaskCreatePinnedToCore(
       StepTask, 
-      TaskName.c_str(), 
-      15000, 
+      TaskSettingMap[TaskName_cSting].TaskName, 
+      TaskSettingMap[TaskName_cSting].stack_depth, 
       (void*)(&StepTaskDetailList[i]), 
-      (UBaseType_t)TaskPriority::PiplelineFlowTask_1 - i, 
-      &TASKLIST__StepTask[i], 
+      (UBaseType_t)TaskSettingMap[TaskName_cSting].task_priority, 
+      TaskSettingMap[TaskName_cSting].task_handle,
       1
     );
+    // xTaskCreatePinnedToCore(
+    //   StepTask, 
+    //   TaskName.c_str(), 
+    //   15000, 
+    //   (void*)(&StepTaskDetailList[i]), 
+    //   (UBaseType_t)TaskPriority::PiplelineFlowTask_1 - i, 
+    //   &TASKLIST__StepTask[i], 
+    //   1
+    // );
   }
 }
 
@@ -1080,13 +1129,22 @@ void C_Device_Ctrl::CreateScheduleManagerTask()
 {
   xTaskCreatePinnedToCore(
     ScheduleManager, 
-    "ScheduleManager", 
-    10000, 
+    TaskSettingMap["ScheduleManager"].TaskName, 
+    TaskSettingMap["ScheduleManager"].stack_depth, 
     NULL, 
-    (UBaseType_t)TaskPriority::ScheduleManager, 
-    &TASK__ScheduleManager, 
+    (UBaseType_t)TaskSettingMap["ScheduleManager"].task_priority, 
+    TaskSettingMap["ScheduleManager"].task_handle,
     1
   );
+  // xTaskCreatePinnedToCore(
+  //   ScheduleManager, 
+  //   "ScheduleManager", 
+  //   10000, 
+  //   NULL, 
+  //   (UBaseType_t)TaskPriority::ScheduleManager, 
+  //   &TASK__ScheduleManager, 
+  //   1
+  // );
 }
 
 void TimeCheckTask(void* parameter)
@@ -1108,13 +1166,22 @@ void C_Device_Ctrl::CreateTimerCheckerTask()
 {
   xTaskCreatePinnedToCore(
     TimeCheckTask, 
-    "TimeCheckTask", 
-    10000, 
+    TaskSettingMap["TimeCheckTask"].TaskName, 
+    TaskSettingMap["TimeCheckTask"].stack_depth, 
     NULL, 
-    (UBaseType_t)TaskPriority::TimeCheckTask, 
-    &TASK__TimerChecker, 
+    (UBaseType_t)TaskSettingMap["TimeCheckTask"].task_priority, 
+    TaskSettingMap["TimeCheckTask"].task_handle,
     1
   );
+  // xTaskCreatePinnedToCore(
+  //   TimeCheckTask, 
+  //   "TimeCheckTask", 
+  //   1024*10, 
+  //   NULL, 
+  //   (UBaseType_t)TaskPriority::TimeCheckTask, 
+  //   &TASK__TimerChecker, 
+  //   1
+  // );
 }
 
 void C_Device_Ctrl::AddNewOledLog(const char* content, ...)
@@ -1221,13 +1288,22 @@ void C_Device_Ctrl::CreateOledQRCodeTask()
 {
   xTaskCreatePinnedToCore(
     OledQRCode, 
-    "OledQRCode", 
-    10000, 
+    TaskSettingMap["OledQRCode"].TaskName, 
+    TaskSettingMap["OledQRCode"].stack_depth, 
     NULL, 
-    (UBaseType_t)TaskPriority::OLEDCheckTask, 
-    &TASK__OledQRCode, 
+    (UBaseType_t)TaskSettingMap["OledQRCode"].task_priority, 
+    TaskSettingMap["OledQRCode"].task_handle,
     1
   );
+  // xTaskCreatePinnedToCore(
+  //   OledQRCode, 
+  //   "OledQRCode", 
+  //   1024*10, 
+  //   NULL, 
+  //   (UBaseType_t)TaskPriority::OLEDCheckTask, 
+  //   &TASK__OledQRCode, 
+  //   1
+  // );
 }
 
 C_Device_Ctrl Device_Ctrl;

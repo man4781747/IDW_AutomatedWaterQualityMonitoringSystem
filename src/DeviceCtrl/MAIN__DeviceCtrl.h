@@ -21,8 +21,6 @@
 #include "Adafruit_SH1106.h"
 #include <ESP_Mail_Client.h>
 
-
-
 //! 為了保證各Task優先級不會打架，用enum來自動分配優先級數字，
 //! 所有Task應該都要先在此定義優先級，也方便統計當前有多少Task
 //! 越往下數字越大，優先級越高
@@ -43,6 +41,15 @@ enum class TaskPriority : UBaseType_t {
   PiplelineFlowTask_1,  //? 流程Thread-1
   PipelineFlowScan      //? 整理流程管理
 };
+
+typedef struct {
+  char TaskName[17];
+  TaskPriority task_priority;
+  uint32_t stack_depth;
+  TaskHandle_t* task_handle = NULL;
+} task_setting_t;
+
+
 
 class C_WebsocketAPI;
 
@@ -66,6 +73,17 @@ class C_Device_Ctrl
     C_Device_Ctrl(void){
       vSemaphoreCreateBinary(xMutex__pipelineFlowScan);
       vSemaphoreCreateBinary(xMutex__LX_20S);
+      AddTask("OTAService", TaskPriority::OTAService, 1024*10);
+      AddTask("WifiManager", TaskPriority::DeviceInfoCheckTask, 1024*4);
+      AddTask("LINEMAINNotify", TaskPriority::LINE_MAIN_Notify, 1024*10);
+      AddTask("PipelineScan", TaskPriority::PipelineFlowScan, 1024*20);
+      for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
+        String TaskName = "StepTask-"+String(i);
+        AddTask(TaskName, (TaskPriority)((UBaseType_t)TaskPriority::PiplelineFlowTask_1 - i), 1024*15);
+      }
+      AddTask("ScheduleManager", TaskPriority::ScheduleManager, 1024*10);
+      AddTask("TimeCheckTask", TaskPriority::TimeCheckTask, 1024*10);
+      AddTask("OledQRCode", TaskPriority::OLEDCheckTask, 1024*10);
     };
 
     //! 初始化相關
@@ -247,8 +265,15 @@ class C_Device_Ctrl
     void AddNewOledLog(const char* content, ...);
     void CreateOledQRCodeTask();
     TaskHandle_t TASK__OledQRCode = NULL;
-
+    std::unordered_map<std::string, task_setting_t> TaskSettingMap;
   private:
+    void AddTask(String TaskName_, TaskPriority task_priority_, uint32_t stack_depth_) {
+      task_setting_t newTask;
+      strcpy(newTask.TaskName, TaskName_.c_str());
+      newTask.task_priority = task_priority_;
+      newTask.stack_depth = stack_depth_;
+      TaskSettingMap[TaskName_.c_str()] = newTask;
+    };
 };
 
 //! //////////////////////////////////////////////////////////////
