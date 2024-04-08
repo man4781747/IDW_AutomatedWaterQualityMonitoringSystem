@@ -307,14 +307,36 @@ void C_Device_Ctrl::UpdatePipelineConfigList()
 
 void C_Device_Ctrl::ConnectWiFi()
 {
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(
-    (*JSON__WifiConfig)["Remote"]["remote_Name"].as<String>().c_str(),
-    (*JSON__WifiConfig)["Remote"]["remote_Password"].as<String>().c_str()
-  );
-  WiFi.setAutoReconnect(true);
-  WiFi.setAutoConnect(true);
+  WiFi.disconnect();
+  // WiFi.mode(STA_AP);
+  WiFi.mode(WIFI_AP_STA);
+  // WiFi.setAutoReconnect(false);
+  // Serial.println(WiFi.getAutoConnect());
+  // WiFi.begin(
+  //   (*JSON__WifiConfig)["Remote"]["remote_Name"].as<String>().c_str(),
+  //   (*JSON__WifiConfig)["Remote"]["remote_Password"].as<String>().c_str()
+  // );
+  IPAddress AP_IP;
+  AP_IP.fromString((*JSON__WifiConfig)["AP"]["AP_IP"].as<String>());
+  IPAddress AP_gateway;
+  AP_gateway.fromString((*JSON__WifiConfig)["AP"]["AP_gateway"].as<String>());
+  IPAddress AP_subnet_mask;
+  AP_subnet_mask.fromString((*JSON__WifiConfig)["AP"]["AP_subnet_mask"].as<String>());
 
+
+  WiFi.softAPConfig(AP_IP,AP_gateway,AP_subnet_mask);
+  WiFi.softAP(
+    (*JSON__WifiConfig)["AP"]["AP_Name"].as<String>()
+  );
+  Serial.print("AP IP address: ");
+  Serial.println(WiFi.softAPIP());
+  Serial.print("softAP macAddress: ");
+  Serial.println(WiFi.softAPmacAddress());
+  Serial.println("Server started.....");
+
+  // WiFi.setAutoReconnect(true);
+  // WiFi.setAutoConnect(true);
+  // WiFi.setAutoConnect(false);
 }
 
 void C_Device_Ctrl::AddWebsocketAPI(String APIPath, String METHOD, void (*func)(AsyncWebSocket*, AsyncWebSocketClient*, DynamicJsonDocument*, DynamicJsonDocument*, DynamicJsonDocument*, DynamicJsonDocument*))
@@ -576,23 +598,45 @@ DynamicJsonDocument C_Device_Ctrl::GetWebsocketConnectInfo()
 
 void WifiManager(void* parameter)
 { 
+  long CONNECT_TIMEOUT = 10*60*1000;
   time_t lastConnectTime = now();
+  //! 一開始會使用 STA 模式，來與外部的 WiFi 基地台連線
+  // WiFi.mode(WIFI_STA);
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.begin(
+    (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Name"].as<String>().c_str(),
+    (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Password"].as<String>().c_str()
+  );
+  WiFi.setAutoReconnect(true);
+  WiFi.setAutoConnect(true);
   for (;;) {
-    if (WiFi.status() == wl_status_t::WL_CONNECTED) {
-      lastConnectTime = now();
-      ESP_LOGI("WIFI", "RSSI: %d, SSID: %s, BSSID: %s", 
-        WiFi.RSSI(), WiFi.SSID().c_str(), WiFi.BSSIDstr().c_str()
-      );
-    }
-    else {
-      if (now()-lastConnectTime > 60*10 & Device_Ctrl.IsDeviceIdel()) {
-        ESP.restart();
+    //! 以下為 WiFi STA 模式下的行為
+    if (WiFi.getMode() == wifi_mode_t::WIFI_MODE_STA) {
+      if (WiFi.status() == wl_status_t::WL_CONNECTED) {
+        lastConnectTime = now(); //! 更新最後一次連線的狀態
+      } else {
+        if (now() - lastConnectTime > CONNECT_TIMEOUT) {
+
+        }
       }
-      Device_Ctrl.InsertNewLogToDB(
-        GetDatetimeString(),1, "發現WiFi連線失敗，累積失敗 %d 秒，Fail Code: %d", 
-        now()-lastConnectTime, WiFi.status()
-      );
     }
+
+
+    // if (WiFi.status() == wl_status_t::WL_CONNECTED) {
+    //   lastConnectTime = now();
+    //   ESP_LOGI("WIFI", "RSSI: %d, SSID: %s, BSSID: %s", 
+    //     WiFi.RSSI(), WiFi.SSID().c_str(), WiFi.BSSIDstr().c_str()
+    //   );
+    // }
+    // else {
+    //   if (now()-lastConnectTime > 60*10 & Device_Ctrl.IsDeviceIdel()) {
+    //     ESP.restart();
+    //   }
+    //   Device_Ctrl.InsertNewLogToDB(
+    //     GetDatetimeString(),1, "發現WiFi連線失敗，累積失敗 %d 秒，Fail Code: %d", 
+    //     now()-lastConnectTime, WiFi.status()
+    //   );
+    // }
     vTaskDelay(60*1000/portTICK_PERIOD_MS);
   }
 }
@@ -1304,6 +1348,32 @@ void C_Device_Ctrl::CreateOledQRCodeTask()
   //   &TASK__OledQRCode, 
   //   1
   // );
+}
+
+void C_Device_Ctrl::WriteSysInfo()
+{
+  String InfoFileName = GetDateString("")+".log";
+  String InfoFileFullPath = "/sys/"+InfoFileName;
+  if(SD.exists("/sys")==false) {
+    SD.mkdir("/sys");
+  }
+  File logFile = SD.open(InfoFileFullPath, "a");
+  for (const auto& pair : Device_Ctrl.TaskSettingMap) {
+    logFile.println("===========================================");
+    logFile.printf("Time: %s\n", GetDatetimeString().c_str());
+    logFile.println("FreeRTOS Task:");
+    logFile.printf(
+      " - %s %d/%d\n", pair.first.c_str(), pair.second.stack_depth-uxTaskGetStackHighWaterMark(pair.second.task_handle),pair.second.stack_depth
+    );
+    logFile.println("WiFi:");
+    WiFi.getMode();
+    // if (WiFi.isConnected()) {
+
+    // } else {
+
+    // }
+  }
+  logFile.close();
 }
 
 C_Device_Ctrl Device_Ctrl;

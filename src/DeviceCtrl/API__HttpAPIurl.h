@@ -434,6 +434,35 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       }
     }
   );
+
+  asyncServer.on("/api/config/wifi_config", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      String RetuenString;
+      serializeJson((*Device_Ctrl.JSON__WifiConfig), RetuenString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      request->send(response);
+      
+    }
+  );
+
+  asyncServer.on("/api/config/wifi_config", HTTP_PATCH,
+    [&](AsyncWebServerRequest *request)
+    { 
+      if (request->hasParam("STA_Name")) {
+        (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Name"].set(request->getParam("STA_Name")->value());
+      }
+      if (request->hasParam("STA_Password")) {
+        (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Password"].set(request->getParam("STA_Password")->value());
+      }
+      ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__WiFiConfig, (*Device_Ctrl.JSON__WifiConfig));
+      String RetuenString;
+      serializeJson((*Device_Ctrl.JSON__WifiConfig), RetuenString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      request->send(response);
+      Device_Ctrl.ConnectWiFi();
+    }
+  );
 }
 
 //! 排程相關API

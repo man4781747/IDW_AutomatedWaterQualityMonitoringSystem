@@ -624,10 +624,8 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
       sensorAddr = 0x45;
       // sensorAddr = 0x4F;
     }
-
     digitalWrite(activePin, HIGH);
     vTaskDelay(500/portTICK_PERIOD_MS);
-
 
     Device_Ctrl._Wire.beginTransmission(sensorAddr);
     byte error = Device_Ctrl._Wire.endTransmission();
