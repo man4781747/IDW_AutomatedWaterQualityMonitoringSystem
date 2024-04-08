@@ -124,7 +124,7 @@ void ws_GetAllPoolData(AsyncWebSocket *server, AsyncWebSocketClient *client, Dyn
     DynamicJsonDocument D_poolSensorDataSended(5000);
     JsonObject D_poolsSensorData = JsonPair_poolsSensorData.value();
     String S_PoolID = String(JsonPair_poolsSensorData.key().c_str());
-    if (S_PoolID == "test") {
+    if (S_PoolID == "test" | S_PoolID == "RO") {
       continue;
     }
     // serializeJsonPretty((*Device_Ctrl.JSON__PoolConfig), Serial);
