@@ -32,6 +32,7 @@ enum class TaskPriority : UBaseType_t {
   skip_1,
   LINE_MAIN_Notify,       
   TimeCheckTask,        //? 時鐘檢查用Task
+  WiFiManager,     
   ScheduleManager,      //? 儀器本地端排程檢查Task
   PiplelineFlowTask_6,  //? 流程Thread-6
   PiplelineFlowTask_5,  //? 流程Thread-5
@@ -74,16 +75,16 @@ class C_Device_Ctrl
       vSemaphoreCreateBinary(xMutex__pipelineFlowScan);
       vSemaphoreCreateBinary(xMutex__LX_20S);
       AddTask("OTAService", TaskPriority::OTAService, 1024*10);
-      AddTask("WifiManager", TaskPriority::DeviceInfoCheckTask, 1024*4);
+      AddTask("WifiManager", TaskPriority::WiFiManager, 1024*4);
       AddTask("LINEMAINNotify", TaskPriority::LINE_MAIN_Notify, 1024*10);
       AddTask("PipelineScan", TaskPriority::PipelineFlowScan, 1024*20);
       for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
         String TaskName = "StepTask-"+String(i);
         AddTask(TaskName, (TaskPriority)((UBaseType_t)TaskPriority::PiplelineFlowTask_1 - i), 1024*15);
       }
-      AddTask("ScheduleManager", TaskPriority::ScheduleManager, 1024*10);
-      AddTask("TimeCheckTask", TaskPriority::TimeCheckTask, 1024*10);
-      AddTask("OledQRCode", TaskPriority::OLEDCheckTask, 1024*10);
+      AddTask("ScheduleManager", TaskPriority::ScheduleManager, 1024*6);
+      AddTask("TimeCheckTask", TaskPriority::TimeCheckTask, 1024*6);
+      AddTask("OledQRCode", TaskPriority::OLEDCheckTask, 1024*6);
     };
 
     //! 初始化相關
@@ -150,7 +151,6 @@ class C_Device_Ctrl
     DynamicJsonDocument *JSON__PipelineConfigList = new DynamicJsonDocument(10000);
 
     //! WiFi相關功能
-
     void preLoadWebJSFile();
     void ConnectWiFi();
     void INITWebServer();
@@ -265,7 +265,11 @@ class C_Device_Ctrl
     void AddNewOledLog(const char* content, ...);
     void CreateOledQRCodeTask();
     TaskHandle_t TASK__OledQRCode = NULL;
-    std::unordered_map<std::string, task_setting_t> TaskSettingMap;
+    std::map<std::string, task_setting_t> TaskSettingMap;
+
+    //! 
+    void WriteSysInfo();
+
   private:
     void AddTask(String TaskName_, TaskPriority task_priority_, uint32_t stack_depth_) {
       task_setting_t newTask;
