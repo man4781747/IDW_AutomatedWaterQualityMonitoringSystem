@@ -59,6 +59,7 @@ void setup() {
   Device_Ctrl.AddNewOledLog("preLoadWebJSFile");
   Device_Ctrl.preLoadWebJSFile();
   Device_Ctrl.AddNewOledLog("ConnectWiFi");
+  
   Device_Ctrl.ConnectWiFi();
   Device_Ctrl.AddNewOledLog("INITWebServer");
   Device_Ctrl.INITWebServer();
@@ -73,17 +74,31 @@ void setup() {
   
   Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "開機完畢");
   Device_Ctrl.CreateOledQRCodeTask();
-
   Device_Ctrl.CreateWifiManagerTask();
   Device_Ctrl.all_INIT_done = true;
 }
 
 void loop() {
-  if (Serial.available()){
-    String getMessage = Serial.readString();
-    if (getMessage == "restart") {
-      esp_restart();
-    }
-  }
-  vTaskDelay(5000/portTICK_PERIOD_MS);
+  // if (Serial.available()){
+  //   String getMessage = Serial.readString();
+  //   if (getMessage == "restart") {
+  //     esp_restart();
+  //   }
+  // }
+  // vTaskDelay(5000/portTICK_PERIOD_MS);
+
+  vTaskDelay(10000/portTICK_PERIOD_MS);
+  Device_Ctrl.WriteSysInfo();
+  // for (const auto& pair : Device_Ctrl.TaskSettingMap) {
+  //   ESP_LOGI("Test", "%s %d/%d", pair.first.c_str(), pair.second.stack_depth-uxTaskGetStackHighWaterMark(pair.second.task_handle),pair.second.stack_depth);
+
+  // }
+  // Serial.println("===================");
+  // Serial.println(WiFi.BSSIDstr());
+  // Serial.println(WiFi.getMode());
+  // Serial.println(WiFi.getStatusBits());
+  // Serial.println(WiFi.broadcastIP());
+  // Serial.println(WiFi.localIP());
+  // Serial.println(WiFi.waitForConnectResult(1000));
+
 }

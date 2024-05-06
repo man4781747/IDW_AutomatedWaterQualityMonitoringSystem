@@ -1357,23 +1357,24 @@ void C_Device_Ctrl::WriteSysInfo()
   if(SD.exists("/sys")==false) {
     SD.mkdir("/sys");
   }
-  File logFile = SD.open(InfoFileFullPath, "a");
+  // File logFile = SD.open(InfoFileFullPath, "a");
+  ESP_LOGD("SYS", "Time: %s", GetDatetimeString().c_str());
+  ESP_LOGD("SYS", "FreeRTOS Task Info:");
   for (const auto& pair : Device_Ctrl.TaskSettingMap) {
-    logFile.println("===========================================");
-    logFile.printf("Time: %s\n", GetDatetimeString().c_str());
-    logFile.println("FreeRTOS Task:");
-    logFile.printf(
-      " - %s %d/%d\n", pair.first.c_str(), pair.second.stack_depth-uxTaskGetStackHighWaterMark(pair.second.task_handle),pair.second.stack_depth
-    );
-    logFile.println("WiFi:");
-    WiFi.getMode();
-    // if (WiFi.isConnected()) {
-
-    // } else {
-
-    // }
+    ESP_LOGD("SYS", " - %s:\t%d/%d", pair.first.c_str(), pair.second.stack_depth-uxTaskGetStackHighWaterMark(pair.second.task_handle),pair.second.stack_depth);
   }
-  logFile.close();
+  ESP_LOGD("SYS", "WiFi Mode: %d", WiFi.getMode());
+  ESP_LOGD("SYS", "WiFi isConnected: %s", WiFi.isConnected()?"Y":"N");
+  ESP_LOGD("SYS", "WiFi status: %d", WiFi.status());
+  ESP_LOGD("SYS", "WiFi RSSI: %d", WiFi.RSSI());
+  ESP_LOGD("SYS", "STA IP: %s", WiFi.localIP().toString().c_str());
+  // ESP_LOGD("SYS", "AP IP: %s", WiFi.broadcastIP().toString());
+  // if (WiFi.isConnected()) {
+
+  // } else {
+
+  // }
+  // logFile.close();
 }
 
 C_Device_Ctrl Device_Ctrl;
