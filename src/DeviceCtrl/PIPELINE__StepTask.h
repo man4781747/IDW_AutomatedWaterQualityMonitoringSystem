@@ -210,7 +210,7 @@ void StepTask(void* parameter) {
 void StopStep(StepTaskDetail* StepTaskDetailItem) {
   ESP_LOGD("","Step Task: %s 執行流程完畢", StepTaskDetailItem->TaskName.c_str());
   StepTaskDetailItem->StepName = "";
-  StepTaskDetailItem->TaskStatus = StepTaskStatus::Idel;
+  StepTaskDetailItem->TaskStatus = StepTaskStatus::Idle;
 }
 
 StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)

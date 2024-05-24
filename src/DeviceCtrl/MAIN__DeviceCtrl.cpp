@@ -448,11 +448,12 @@ DynamicJsonDocument C_Device_Ctrl::GetBaseWSReturnData(String MessageString)
   BaseWSReturnData["action"]["status"].set("看到這行代表API設定時忘記設定本項目了，請通知工程師修正，謝謝");
   BaseWSReturnData.createNestedObject("parameter");
   BaseWSReturnData["cmd_detail"].set(MessageString);
-  if (IsDeviceIdel()) {
+  if (IsDeviceIdle()) {
     BaseWSReturnData["device_status"].set("Idle");
   }
   else {
-    BaseWSReturnData["device_status"].set("Busy");
+    String PipelineName = (*Device_Ctrl.JSON__pipelineConfig)["title"].as<String>();
+    BaseWSReturnData["device_status"].set(PipelineName);
   }
 
   // if (xSemaphoreTake(Machine_Ctrl.LOAD__ACTION_V2_xMutex, 0) == pdFALSE) {
@@ -570,7 +571,28 @@ void C_Device_Ctrl::BroadcastLogToClient(AsyncWebSocketClient *client, int Level
   logItem["type"] = "LOG";
   logItem["level"] = Level;
   logItem["content"] = String(buffer);
-  logItem["status"] = IsDeviceIdel()?"Idel":"Busy";
+  if (IsDeviceIdle() == true) {
+    logItem["status"] = "Idle";
+  } else {
+    if (Device_Ctrl.StopNowPipeline == true) {
+      logItem["status"] = "儀器運行終止中";
+    } else {
+      String NowPiplineName = (*Device_Ctrl.JSON__pipelineConfig)["title"].as<String>();
+      if (NowPiplineName == "null") {
+        logItem["status"] = "準備運行中";
+      }
+      else {
+        logItem["status"] = NowPiplineName;
+      }
+    }
+  }
+  // String NowPiplineName = (*Device_Ctrl.JSON__pipelineConfig)["title"].as<String>();
+  // Serial.println(NowPiplineName);
+  // Serial.println(NowPiplineName==nullptr);
+  // Serial.println(NowPiplineName==NULL);
+  // Serial.println(NowPiplineName=="null");
+  // NowPiplineName = NowPiplineName==NULL?"Busy":NowPiplineName;
+  // logItem["status"] = IsDeviceIdle()?"Idle":NowPiplineName;
   String returnString;
   serializeJson(logItem, returnString);
   logItem.clear();
@@ -629,7 +651,7 @@ void WifiManager(void* parameter)
     //   );
     // }
     // else {
-    //   if (now()-lastConnectTime > 60*10 & Device_Ctrl.IsDeviceIdel()) {
+    //   if (now()-lastConnectTime > 60*10 & Device_Ctrl.IsDeviceIdle()) {
     //     ESP.restart();
     //   }
     //   Device_Ctrl.InsertNewLogToDB(
@@ -1031,7 +1053,7 @@ void C_Device_Ctrl::StopDeviceAllAction()
   // }
 }
 
-bool C_Device_Ctrl::IsDeviceIdel()
+bool C_Device_Ctrl::IsDeviceIdle()
 {
   if (all_INIT_done == false) {
     return false;
@@ -1045,9 +1067,9 @@ bool C_Device_Ctrl::IsDeviceIdel()
   //? 要到後記得還回去
   xSemaphoreGive(Device_Ctrl.xMutex__pipelineFlowScan);
 
-  //? 另外再檢查是否各個 Step 都在 Idel
+  //? 另外再檢查是否各個 Step 都在 Idle
   for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
-    if (StepTaskDetailList[i].TaskStatus != StepTaskStatus::Idel) {
+    if (StepTaskDetailList[i].TaskStatus != StepTaskStatus::Idle) {
       return false;
     }
   }
@@ -1080,7 +1102,7 @@ void C_Device_Ctrl::StopAllStepTask()
   while (allStop) {
     allStop = true;
     for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
-      if (StepTaskDetailList[i].TaskStatus != StepTaskStatus::Idel) {
+      if (StepTaskDetailList[i].TaskStatus != StepTaskStatus::Idle) {
         allStop = false;
         break;
       }

@@ -388,7 +388,7 @@ void PipelineFlowScan(void* parameter) {
       Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "所有流程執行完畢，清空流程列隊");
       (*Device_Ctrl.JSON__pipelineStack).clear();
       xSemaphoreGive(Device_Ctrl.xMutex__pipelineFlowScan);
-      while (!Device_Ctrl.IsDeviceIdel())
+      while (!Device_Ctrl.IsDeviceIdle())
       {
         vTaskDelay(1000/portTICK_PERIOD_MS);
       }
@@ -403,7 +403,7 @@ void PipelineFlowScan(void* parameter) {
 int_fast16_t TryToRunStep(String StepName, String PipelineName)
 {
   for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
-    if (Device_Ctrl.StepTaskDetailList[i].TaskStatus == StepTaskStatus::Idel) {
+    if (Device_Ctrl.StepTaskDetailList[i].TaskStatus == StepTaskStatus::Idle) {
       Device_Ctrl.StepTaskDetailList[i].TaskStatus = StepTaskStatus::Busy;
       Device_Ctrl.StepTaskDetailList[i].StepName = StepName;
       Device_Ctrl.StepTaskDetailList[i].PipelineName = PipelineName;

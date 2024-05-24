@@ -55,13 +55,13 @@ typedef struct {
 class C_WebsocketAPI;
 
 enum class StepTaskStatus : uint8_t {
-  Idel,
+  Idle,
   Busy,
   Close
 };
 
 struct StepTaskDetail {
-  StepTaskStatus TaskStatus = StepTaskStatus::Idel;
+  StepTaskStatus TaskStatus = StepTaskStatus::Idle;
   String TaskName;
   String StepName="";
   String PipelineName="";
@@ -219,16 +219,16 @@ class C_Device_Ctrl
 
     SemaphoreHandle_t xMutex__LX_20S = NULL;
 
-    //? 停止所有Step流程，使之回歸 Idel狀態
+    //? 停止所有Step流程，使之回歸 Idle狀態
     //? 執行此方程會同時停止當前Pipeline，並確認Pipeline停止後，才陸續將Step停止
     //? 最後將所有Step停止後，才結束方程
     void StopAllStepTask();
     //? 停止當前的Pipeline以及所有Theard Task，讓下一個Pipeline執行
     void StopNowPipelineAndAllStepTask();
-    //? 停止所有Pipeline以及所有Theard Task，回歸Idel
+    //? 停止所有Pipeline以及所有Theard Task，回歸Idle
     void StopDeviceAllAction();
     //? 獲得儀器是否為待機狀態
-    bool IsDeviceIdel();
+    bool IsDeviceIdle();
 
     //? 是否停止當前執行中的流程
     //? 如果為true，則會陸續將當前流程相關的步驟關閉
