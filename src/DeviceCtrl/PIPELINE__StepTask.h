@@ -253,8 +253,26 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
 
   String anyFail;
   DynamicJsonDocument ServoStatusSave(3000);
+  DynamicJsonDocument ServoOldPostion(3000);
+  //? 初始化流程所需的資料
   for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
-    ServoStatusSave[String(servoMotorItem["index"].as<int>())] = false;
+    int servoMotorIndex = servoMotorItem["index"].as<int>();
+    String servoMotorIndexString = String(servoMotorIndex);
+    int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
+    //? 首先讀取目標馬達的角度
+    int retryCount = 0;
+    int nowPosition = (LX_20S_SerialServoReadPosition(Serial2, servoMotorIndex));
+    while (nowPosition < -100) {
+      retryCount++;
+      nowPosition = (LX_20S_SerialServoReadPosition(Serial2, servoMotorIndex));
+      if (retryCount > 3) {break;}
+    }
+    ServoOldPostion[String(servoMotorItem["index"].as<int>())] = nowPosition;
+    if (abs(targetAngValue - nowPosition) > 20) {
+      ServoStatusSave[String(servoMotorItem["index"].as<int>())] = false;
+    } else {
+      ServoStatusSave[String(servoMotorItem["index"].as<int>())] = true;
+    }
   }
 
   for (int ReTry=0;ReTry<10;ReTry++) {
@@ -291,35 +309,32 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
       return result;
     }
     for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
-      if (ServoStatusSave[String(servoMotorItem["index"].as<int>())] == false) {
+      int ServoIndex = servoMotorItem["index"].as<int>();
+      String ServoIndexString = String(ServoIndex);
+      if (ServoStatusSave[ServoIndexString] == false) {
         int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
-        int readAng = LX_20S_SerialServoReadPosition(Serial2, servoMotorItem["index"].as<int>());
+        int readAng = LX_20S_SerialServoReadPosition(Serial2, ServoIndex);
         for (int readAngRetry = 0;readAngRetry<3;readAngRetry++) {
           if (readAng > -100) {
             break;
           }
           // ESP_LOGW("", "伺服馬達 %d 讀取角度有誤: %d", servoMotorItem["index"].as<int>(), readAng);
           vTaskDelay(100/portTICK_PERIOD_MS);
-          readAng = LX_20S_SerialServoReadPosition(Serial2, servoMotorItem["index"].as<int>());
+          readAng = LX_20S_SerialServoReadPosition(Serial2, ServoIndex);
         }
         int d_ang = targetAngValue - readAng;
-        ESP_LOGD("", "伺服馬達 %d 目標角度: %d\t真實角度: %d", servoMotorItem["index"].as<int>(), targetAngValue, readAng);
+        ESP_LOGD("", "伺服馬達 %d 目標角度: %d\t真實角度: %d", ServoIndex, targetAngValue, readAng);
         if (abs(d_ang)>20) {
-          // char logBuffer[1000];
-          // sprintf(
-          //   logBuffer, 
-          //   "伺服馬達(LX-20S) 編號 %d 並無轉到指定角度: %d，讀取到的角度為: %d",
-          //   servoMotorItem["index"].as<int>(), servoMotorItem["status"].as<int>(),
-          //   map(readAng, 0, 1000, -30, 210)
-          // );
-          // ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "%s", logBuffer);
-          // Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, logBuffer);
-          // Device_Ctrl.BroadcastLogToClient(NULL, 1, logBuffer);
-          anyFail += String(servoMotorItem["index"].as<int>());
+          anyFail += ServoIndexString;
           anyFail += ",";
         }
         else {
-          ServoStatusSave[String(servoMotorItem["index"].as<int>())] = true;
+          ServoStatusSave[ServoIndexString] = true;
+          if (abs(ServoOldPostion[ServoIndexString].as<int>() - readAng) > 500) {
+            Device_Ctrl.ItemUsedAdd("Servo_"+ServoIndexString, 2);
+          } else {
+            Device_Ctrl.ItemUsedAdd("Servo_"+ServoIndexString, 1);
+          }
         }
         if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
           ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");

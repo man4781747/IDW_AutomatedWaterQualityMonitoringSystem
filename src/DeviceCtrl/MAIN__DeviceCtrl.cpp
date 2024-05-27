@@ -194,6 +194,17 @@ int C_Device_Ctrl::INIT_SqliteDB()
     db_exec(DB_Main, "CREATE TABLE sensor ( time TEXT, pool TEXT , value_name TEXT , result REAL );");
   }
 
+  // SD.remove("/usedDB.db");
+  rc = sqlite3_open(FilePath__SD__UsedDB.c_str(), &DB_Used);
+  if (rc) {
+    ESP_LOGE("DB", "Can't open used database: %s", sqlite3_errmsg(DB_Used));
+    return rc;
+  } else {
+    ESP_LOGV("DB", "Opened used database successfully");
+    db_exec(DB_Used, "CREATE TABLE used ( time INTEGER, item TEXT, count INTEGER );");
+  }
+
+
   rc = sqlite3_open(FilePath__SD__LogDB.c_str(), &DB_Log);
   if (rc) {
     ESP_LOGE("DB", "Can't open log database: %s", sqlite3_errmsg(DB_Log));
@@ -226,6 +237,7 @@ void C_Device_Ctrl::LoadConfigJsonFiles()
   ExFile_LoadJsonFile(SD, FilePath__SD__ScheduleConfig, *JSON__ScheduleConfig);
   ExFile_LoadJsonFile(SD, FilePath__SD__DeviceConfig, *JSON__DeviceConfig);
   ExFile_LoadJsonFile(SD, FilePath__SD__WiFiConfig, *JSON__WifiConfig);
+  ExFile_LoadJsonFile(SD, FilePath__SD__ItemUseCount, *JSON__ItemUseCount);
 }
 
 void C_Device_Ctrl::InsertNewDataToDB(String time, String pool, String ValueName, double result)
@@ -1372,6 +1384,7 @@ void C_Device_Ctrl::CreateOledQRCodeTask()
   // );
 }
 
+
 void C_Device_Ctrl::WriteSysInfo()
 {
   String InfoFileName = GetDateString("")+".log";
@@ -1397,6 +1410,39 @@ void C_Device_Ctrl::WriteSysInfo()
 
   // }
   // logFile.close();
+}
+
+/**
+ * @brief 計數增加會對2種檔案進行寫入
+ * 1. Sqlite 檔案: 預計純寫入，紀錄項目,時間,次數
+ * 2. json 檔案: 會讀取 + 重寫
+ * 
+ * @param ItemName 
+ * @param countAdd 
+ */
+void C_Device_Ctrl::ItemUsedAdd(String ItemName, int countAdd)
+{
+  //? 寫入 sqlite DB
+  InsertNewUsedDataToDB(now(), ItemName, countAdd);
+  //? 寫入JSON
+  if ((*JSON__ItemUseCount)[ItemName] == nullptr) {
+    (*JSON__ItemUseCount)[ItemName] = countAdd;
+  } else {
+    (*JSON__ItemUseCount)[ItemName] = (*JSON__ItemUseCount)[ItemName].as<int>() + countAdd;
+  }
+  ExFile_WriteJsonFile(SD, FilePath__SD__ItemUseCount, *JSON__ItemUseCount);
+}
+
+void C_Device_Ctrl::InsertNewUsedDataToDB(time_t time, String item, int count)
+{
+  String SqlString = "INSERT INTO used ( time, item, count ) VALUES ( ";
+  SqlString += String(time);
+  SqlString += " ,'";
+  SqlString += item;
+  SqlString += "' ,";
+  SqlString += String(count);
+  SqlString += " );";
+  db_exec(DB_Used, SqlString);
 }
 
 C_Device_Ctrl Device_Ctrl;

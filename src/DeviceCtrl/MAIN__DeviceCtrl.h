@@ -113,6 +113,9 @@ class C_Device_Ctrl
     String FilePath__SD__MainDB = "/sd/mainDB.db";
     sqlite3 *DB_Log;
     String FilePath__SD__LogDB = "/sd/logDB.db";
+    sqlite3 *DB_Used;
+    String FilePath__SD__UsedDB = "/sd/usedDB.db";
+
 
     void InsertNewDataToDB(String time, String pool, String ValueName, double result);
     
@@ -147,6 +150,10 @@ class C_Device_Ctrl
     String FilePath__SD__DeviceBaseInfo = "/config/device_base_config.json";
     DynamicJsonDocument *JSON__DeviceBaseInfo = new DynamicJsonDocument(1024);
     String FilePath__SD__LastSensorDataSave = "/datas/temp.json";
+
+    DynamicJsonDocument *JSON__ItemUseCount = new DynamicJsonDocument(1024*5); //? 裝置使用累積檔案
+    String FilePath__SD__ItemUseCount = "/datas/ItemUseCount.json";
+
     void UpdatePipelineConfigList();
     DynamicJsonDocument *JSON__PipelineConfigList = new DynamicJsonDocument(10000);
 
@@ -267,8 +274,12 @@ class C_Device_Ctrl
     TaskHandle_t TASK__OledQRCode = NULL;
     std::map<std::string, task_setting_t> TaskSettingMap;
 
+    //! 裝置各部件使用累積數量相關
+    void ItemUsedAdd(String ItemName, int countAdd);
+
     //! 
     void WriteSysInfo();
+    void InsertNewUsedDataToDB(time_t time, String item, int count);
 
   private:
     void AddTask(String TaskName_, TaskPriority task_priority_, uint32_t stack_depth_) {
