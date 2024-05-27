@@ -7,6 +7,7 @@ enum PeristalticMotorStatus : int {
   FORWARD = 0b10,
   STOP = 0b00,
   REVERSR = 0b01,
+  NOUSE = 0b11,
 };
 
 class C_Peristaltic_Motors_Ctrl
@@ -19,6 +20,7 @@ class C_Peristaltic_Motors_Ctrl
     void SetAllMotorStop();
     void RunMotor(uint8_t *moduleDataList);
     void SetMotorStatus(int index, PeristalticMotorStatus status);
+    PeristalticMotorStatus GetMotorStatusSetting(int index);
     void ShowNowSetting();
     void OpenAllPin();
     bool IsAllStop();

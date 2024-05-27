@@ -95,6 +95,14 @@ void C_Peristaltic_Motors_Ctrl::SetMotorStatus(int index, PeristalticMotorStatus
   }
 }
 
+PeristalticMotorStatus C_Peristaltic_Motors_Ctrl::GetMotorStatusSetting(int index)
+{
+  int moduleChoseIndex = index / 4;
+  int motortChoseIndexInModule = index % 4;
+  int status = moduleDataList[moduleChoseIndex] >> motortChoseIndexInModule*2;
+  return (PeristalticMotorStatus)status;
+}
+
 void C_Peristaltic_Motors_Ctrl::ShowNowSetting()
 {
   char btyeContent[9];

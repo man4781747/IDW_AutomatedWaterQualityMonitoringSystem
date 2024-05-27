@@ -497,8 +497,15 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
             //! 觸發timeout，並且停止當前Step的運行
             for (const auto& motorChose : endTimeCheckList.as<JsonObject>()) {
               //? 強制停止當前step執行的馬達
-              Device_Ctrl.peristalticMotorsCtrl.SetMotorStatus(motorIndex, PeristalticMotorStatus::STOP);
-              Device_Ctrl.peristalticMotorsCtrl.RunMotor(Device_Ctrl.peristalticMotorsCtrl.moduleDataList);
+              if (Device_Ctrl.peristalticMotorsCtrl.GetMotorStatusSetting(motorIndex) == PeristalticMotorStatus::STOP) {
+
+              } else {
+                Device_Ctrl.peristalticMotorsCtrl.SetMotorStatus(motorIndex, PeristalticMotorStatus::STOP);
+                Device_Ctrl.peristalticMotorsCtrl.RunMotor(Device_Ctrl.peristalticMotorsCtrl.moduleDataList);
+                int usedTime = millis() - endTimeCheckList[String(motorIndex)]["startTime"].as<int>();
+                String itemName = "motor_"+String(motorIndex);
+                Device_Ctrl.ItemUsedAdd(itemName, usedTime);
+              }
             }
             endTimeCheckJSON["finish"].set(true);
             // (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][stepsGroupNameString]["RESULT"].set("FAIL");
@@ -524,15 +531,29 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
             return result;
           }
           //? 若非，則正常停止馬達運行
-          Device_Ctrl.peristalticMotorsCtrl.SetMotorStatus(motorIndex, PeristalticMotorStatus::STOP);
-          Device_Ctrl.peristalticMotorsCtrl.RunMotor(Device_Ctrl.peristalticMotorsCtrl.moduleDataList);
+          if (Device_Ctrl.peristalticMotorsCtrl.GetMotorStatusSetting(motorIndex) == PeristalticMotorStatus::STOP) {
+
+          } else {
+            Device_Ctrl.peristalticMotorsCtrl.SetMotorStatus(motorIndex, PeristalticMotorStatus::STOP);
+            Device_Ctrl.peristalticMotorsCtrl.RunMotor(Device_Ctrl.peristalticMotorsCtrl.moduleDataList);
+            int usedTime = millis() - endTimeCheckList[String(motorIndex)]["startTime"].as<int>();
+            String itemName = "motor_"+String(motorIndex);
+            Device_Ctrl.ItemUsedAdd(itemName, usedTime);
+          }
           ESP_LOGV(StepTaskDetailItem->TaskName.c_str(), "蠕動馬達(%d)執行至最大時間，停止其動作", motorIndex);
           endTimeCheckJSON["finish"].set(true);
         }
         else {
           //? 若非，則正常停止馬達運行
-          Device_Ctrl.peristalticMotorsCtrl.SetMotorStatus(motorIndex, PeristalticMotorStatus::STOP);
-          Device_Ctrl.peristalticMotorsCtrl.RunMotor(Device_Ctrl.peristalticMotorsCtrl.moduleDataList);
+          if (Device_Ctrl.peristalticMotorsCtrl.GetMotorStatusSetting(motorIndex) == PeristalticMotorStatus::STOP) {
+
+          } else {
+            Device_Ctrl.peristalticMotorsCtrl.SetMotorStatus(motorIndex, PeristalticMotorStatus::STOP);
+            Device_Ctrl.peristalticMotorsCtrl.RunMotor(Device_Ctrl.peristalticMotorsCtrl.moduleDataList);
+            int usedTime = millis() - endTimeCheckList[String(motorIndex)]["startTime"].as<int>();
+            String itemName = "motor_"+String(motorIndex);
+            Device_Ctrl.ItemUsedAdd(itemName, usedTime);
+          }
           ESP_LOGV(StepTaskDetailItem->TaskName.c_str(), "蠕動馬達(%d)執行至最大時間，停止其動作", motorIndex);
           endTimeCheckJSON["finish"].set(true);
         }
@@ -542,8 +563,15 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
         pinMode(until, INPUT);
         int value = digitalRead(until);
         if (value == HIGH) {
-          Device_Ctrl.peristalticMotorsCtrl.SetMotorStatus(motorIndex, PeristalticMotorStatus::STOP);
-          Device_Ctrl.peristalticMotorsCtrl.RunMotor(Device_Ctrl.peristalticMotorsCtrl.moduleDataList);
+          if (Device_Ctrl.peristalticMotorsCtrl.GetMotorStatusSetting(motorIndex) == PeristalticMotorStatus::STOP) {
+
+          } else {
+            Device_Ctrl.peristalticMotorsCtrl.SetMotorStatus(motorIndex, PeristalticMotorStatus::STOP);
+            Device_Ctrl.peristalticMotorsCtrl.RunMotor(Device_Ctrl.peristalticMotorsCtrl.moduleDataList);
+            int usedTime = millis() - endTimeCheckList[String(motorIndex)]["startTime"].as<int>();
+            String itemName = "motor_"+String(motorIndex);
+            Device_Ctrl.ItemUsedAdd(itemName, usedTime);
+          }
           ESP_LOGV(StepTaskDetailItem->TaskName.c_str(), "浮球觸發，關閉蠕動馬達(%d)", motorIndex);
           //? 判斷是否有觸發錯誤
           if (thisFailType == "connect") {
@@ -551,8 +579,15 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
             if (thisFailAction=="stepStop") {
               for (const auto& motorChose : endTimeCheckList.as<JsonObject>()) {
                 //? 強制停止當前step執行的馬達
-                Device_Ctrl.peristalticMotorsCtrl.SetMotorStatus(motorIndex, PeristalticMotorStatus::STOP);
-                Device_Ctrl.peristalticMotorsCtrl.RunMotor(Device_Ctrl.peristalticMotorsCtrl.moduleDataList);
+                if (Device_Ctrl.peristalticMotorsCtrl.GetMotorStatusSetting(motorIndex) == PeristalticMotorStatus::STOP) {
+
+                } else {
+                  Device_Ctrl.peristalticMotorsCtrl.SetMotorStatus(motorIndex, PeristalticMotorStatus::STOP);
+                  Device_Ctrl.peristalticMotorsCtrl.RunMotor(Device_Ctrl.peristalticMotorsCtrl.moduleDataList);
+                  int usedTime = millis() - endTimeCheckList[String(motorIndex)]["startTime"].as<int>();
+                  String itemName = "motor_"+String(motorIndex);
+                  Device_Ctrl.ItemUsedAdd(itemName, usedTime);
+                }
               }
               endTimeCheckJSON["finish"].set(true);
               ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "停止當前Step的運行");

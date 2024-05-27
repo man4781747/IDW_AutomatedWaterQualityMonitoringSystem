@@ -577,6 +577,15 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
 
 void Set_tool_apis(AsyncWebServer &asyncServer)
 {
+  asyncServer.on("/api/device/used", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      String returnString;
+      serializeJson(*Device_Ctrl.JSON__ItemUseCount, returnString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+      request->send(response);
+    }
+  );
   asyncServer.on("/api/SD/info", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
