@@ -717,6 +717,9 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
     //?  最終量測的結果數值 (mV)
     double finalValue = busvoltage_ina226*1000;
     digitalWrite(activePin, LOW);
+
+    Device_Ctrl.ItemUsedAdd("Light"+String(spectrophotometerIndex), 1);
+
     (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][value_name]["Value"].set(String(finalValue,2).toDouble());
     (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][value_name]["data_time"].set(GetDatetimeString());
 
@@ -791,6 +794,8 @@ StepResult Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetail
   ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"PH計控制");
   for (JsonObject PHmeterItem : eventItem["ph_meter"].as<JsonArray>()) {
     pinMode(PIN__ADC_PH_IN, INPUT);
+    Device_Ctrl.ItemUsedAdd("PH-0", 1);
+    // Device_Ctrl.ItemUsedAdd("PH-0", 1);
     vTaskDelay(1000/portTICK_PERIOD_MS);
     String poolChose = PHmeterItem["pool"].as<String>();
     uint16_t phValue[30];
@@ -827,7 +832,6 @@ StepResult Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetail
     Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, "pH_volt", PH_RowValue);
     Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, "pH", pHValue);
     ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__LastSensorDataSave, *Device_Ctrl.JSON__sensorDataSave);
-
     char logBuffer[1024];
     sprintf(logBuffer, "[%s][%s] %s 第 %s 池 PH量測結果, 測量原始值: %s, 轉換後PH值: %s", 
       StepTaskDetailItem->PipelineName.c_str(), 

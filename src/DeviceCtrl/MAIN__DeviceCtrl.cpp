@@ -194,17 +194,6 @@ int C_Device_Ctrl::INIT_SqliteDB()
     db_exec(DB_Main, "CREATE TABLE sensor ( time TEXT, pool TEXT , value_name TEXT , result REAL );");
   }
 
-  // SD.remove("/usedDB.db");
-  rc = sqlite3_open(FilePath__SD__UsedDB.c_str(), &DB_Used);
-  if (rc) {
-    ESP_LOGE("DB", "Can't open used database: %s", sqlite3_errmsg(DB_Used));
-    return rc;
-  } else {
-    ESP_LOGV("DB", "Opened used database successfully");
-    db_exec(DB_Used, "CREATE TABLE used ( time INTEGER, item TEXT, count INTEGER );");
-  }
-
-
   rc = sqlite3_open(FilePath__SD__LogDB.c_str(), &DB_Log);
   if (rc) {
     ESP_LOGE("DB", "Can't open log database: %s", sqlite3_errmsg(DB_Log));
@@ -212,6 +201,7 @@ int C_Device_Ctrl::INIT_SqliteDB()
   } else {
     ESP_LOGV("DB", "Opened log database successfully");
     db_exec(DB_Log, "CREATE TABLE logs ( time TEXT, level INTEGER, content TEXT );");
+    db_exec(DB_Log, "CREATE TABLE used ( time INTEGER, item TEXT, count INTEGER );");
   }
   return rc;
 }
@@ -223,6 +213,7 @@ int C_Device_Ctrl::DropLogsTable()
   SD.remove("/logDB.db");
   sqlite3_open(FilePath__SD__LogDB.c_str(), &DB_Log);
   db_exec(DB_Log, "CREATE TABLE logs ( time TEXT, level INTEGER, content TEXT );");
+  db_exec(DB_Log, "CREATE TABLE used ( time INTEGER, item TEXT, count INTEGER );");
   return 0;
 }
 
@@ -1442,7 +1433,7 @@ void C_Device_Ctrl::InsertNewUsedDataToDB(time_t time, String item, int count)
   SqlString += "' ,";
   SqlString += String(count);
   SqlString += " );";
-  db_exec(DB_Used, SqlString);
+  db_exec(DB_Log, SqlString);
 }
 
 C_Device_Ctrl Device_Ctrl;

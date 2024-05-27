@@ -62,6 +62,8 @@ inline bool ExFile_WriteJsonFile(fs::FS& fileSystem, String filePath, JsonDocume
   File file = fileSystem.open(filePath, FILE_WRITE);
   size_t writeSize = serializeJson(jsonData, file);
   file.close();
+  file.close();
+  file.close();
   ESP_LOGD("", "已將JSON格式資料寫入檔案: %s, 寫入長度: %d", filePath.c_str(), writeSize);
   return true;
 }

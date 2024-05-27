@@ -113,8 +113,6 @@ class C_Device_Ctrl
     String FilePath__SD__MainDB = "/sd/mainDB.db";
     sqlite3 *DB_Log;
     String FilePath__SD__LogDB = "/sd/logDB.db";
-    sqlite3 *DB_Used;
-    String FilePath__SD__UsedDB = "/sd/usedDB.db";
 
 
     void InsertNewDataToDB(String time, String pool, String ValueName, double result);
