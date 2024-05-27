@@ -577,6 +577,30 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
 
 void Set_tool_apis(AsyncWebServer &asyncServer)
 {
+  asyncServer.on("/api/device/used", HTTP_DELETE,
+    [&](AsyncWebServerRequest *request)
+    { 
+      if (request->hasParam("name")) {
+        String resetName = request->getParam("name")->value();
+        if ((*Device_Ctrl.JSON__ItemUseCount)[resetName] == nullptr) {
+          AsyncWebServerResponse* response = request->beginResponse(500, "application/json", "{\"Result\":\"找不到 name: "+resetName+"\"}");
+          request->send(response);
+        } else {
+          (*Device_Ctrl.JSON__ItemUseCount)[resetName] = 0;
+          ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__ItemUseCount, *Device_Ctrl.JSON__ItemUseCount);
+          String returnString;
+          serializeJson(*Device_Ctrl.JSON__ItemUseCount, returnString);
+          AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+          request->send(response);
+        }
+      } 
+      else {
+        AsyncWebServerResponse* response = request->beginResponse(500, "application/json", "{\"Result\":\"需要參數: name\"}");
+        request->send(response);
+      }
+    }
+  );
+
   asyncServer.on("/api/device/used", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -586,6 +610,7 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+
   asyncServer.on("/api/SD/info", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
