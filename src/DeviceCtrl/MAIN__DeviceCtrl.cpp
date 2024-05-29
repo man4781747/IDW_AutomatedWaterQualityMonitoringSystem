@@ -20,21 +20,25 @@
 #include <HTTPClient.h>
 #include <ESP_Mail_Client.h>
 #include "mbedtls/aes.h"
-// SMTPSession smtp;
 
 const long  gmtOffset_sec = 3600*8; // GMT+8
 const int   daylightOffset_sec = 0; // DST+0
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", gmtOffset_sec, daylightOffset_sec);
 
+// web server 主物件
 AsyncWebServer asyncServer(80);
+// websocket service 控制物件
 AsyncWebSocket ws("/ws");
 
-// U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, PIN__SCL_1, PIN__SDA_1);
-// U8G2_SH1106_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, PIN__SCL_1, PIN__SDA_1);
-
+// led 螢幕控制物件
 Adafruit_SH1106 display(PIN__SDA_1, PIN__SCL_1);
 
+
+/**
+ * @brief 測試用 - 掃描當前所有 I2C 裝置
+ * 
+ */
 void C_Device_Ctrl::ScanI2C()
 {
   byte error, address;
@@ -43,9 +47,6 @@ void C_Device_Ctrl::ScanI2C()
   nDevices = 0;
   for(address = 1; address < 127; address++ )
   {
-    // The i2c_scanner uses the return value of
-    // the Write.endTransmisstion to see if
-    // a device did acknowledge to the address.
     _Wire.beginTransmission(address);
     error = _Wire.endTransmission();
 
@@ -56,7 +57,6 @@ void C_Device_Ctrl::ScanI2C()
         Serial.print("0");
       Serial.print(address,HEX);
       Serial.println("  !");
-
       nDevices++;
     }
     else if (error==4)
@@ -73,36 +73,49 @@ void C_Device_Ctrl::ScanI2C()
     Serial.println("done\n");
 }
 
+
+/**
+ * @brief 初始化各個PIN的初始化狀態
+ * 
+ */
 void C_Device_Ctrl::INIT_Pins()
 {
   pinMode(PIN__ADC_POOL_FULL, INPUT);
   pinMode(PIN__ADC_RO_FULL, INPUT);
-  
   pinMode(PIN__Peristaltic_Motor_SHCP, OUTPUT);
   pinMode(PIN__Peristaltic_Motor_SHTP, OUTPUT);
   pinMode(PIN__Peristaltic_Motor_DATA, OUTPUT);
   pinMode(PIN__EN_Peristaltic_Motor, OUTPUT);
   digitalWrite(PIN__EN_Peristaltic_Motor, LOW);
-  
   pinMode(PIN__EN_Servo_Motor, OUTPUT);
   digitalWrite(PIN__EN_Servo_Motor, LOW);
-
   pinMode(PIN__ADC_PH_IN, INPUT);
   pinMode(PIN__EN_PH, OUTPUT);
   digitalWrite(PIN__EN_PH, HIGH); 
-
   pinMode(PIN__EN_BlueSensor, OUTPUT);
   digitalWrite(PIN__EN_BlueSensor, LOW);
   pinMode(PIN__EN_GreenSensor, OUTPUT);
   digitalWrite(PIN__EN_GreenSensor, LOW);
 }
 
+/**
+ * @brief 設定 Device Ctrl 用的 I2C Wire
+ * 
+ * @param WireChose 
+ */
 void C_Device_Ctrl::INIT_I2C_Wires(TwoWire &WireChose)
 {
   _Wire = WireChose;
   _Wire.begin(PIN__SDA_1, PIN__SCL_1, 800000UL);
 }
 
+/**
+ * @brief 初始化 - 讀取最新 PoolData 檔案
+ * 如果讀取失敗，則會重新建立一個初始檔案，所有池最新資料為 1990-01-01，數值皆為-1
+ * 
+ * @return true 
+ * @return false 
+ */
 bool C_Device_Ctrl::INIT_PoolData()
 {
   if (SD.exists(FilePath__SD__LastSensorDataSave)) {
@@ -140,6 +153,12 @@ bool C_Device_Ctrl::INIT_PoolData()
   return false;
 }
 
+/**
+ * @brief 初始化 - 初始化 SD 卡，如果讀取不到 SD 卡則會自動重開機
+ * 
+ * @return true 
+ * @return false 
+ */
 bool C_Device_Ctrl::INIT_SD()
 {
   if (!SD.begin(PIN__SD_CS)) {
@@ -152,9 +171,14 @@ bool C_Device_Ctrl::INIT_SD()
   return true;
 }
 
+/**
+ * @brief 初始化 - 初始化 led 螢幕
+ * 
+ * @return true 
+ * @return false 
+ */
 bool C_Device_Ctrl::INIT_oled()
 {
-  // display._i2caddr = 0x3C;
   display.begin(SH1106_SWITCHCAPVCC, 0x3C, false);
   display.clearDisplay();
   display.setTextSize(1);
@@ -162,25 +186,17 @@ bool C_Device_Ctrl::INIT_oled()
   display.setCursor(0,0);
   display.println("HI");
   display.display();
-  
-  // u8g2.setBusClock(400000UL);
-  // u8g2.begin();
-  // u8g2.clearBuffer();
-  // u8g2.setFont(u8g2_font_HelvetiPixelOutline_te);
-  // u8g2.drawStr(0,10,"Hello World!");
-  // u8g2.sendBuffer();
-  // u8g2.setFont(u8g2_font_HelvetiPixelOutline_te);
-  // u8g2.firstPage();
-  // do {
-  //   u8g2.setFont(u8g2_font_VCR_OSD_tn);
-  //   u8g2.setColorIndex(1); // 設成白色
-  //   // u8g2.drawStr(0,13,"Hello World !");
-  //   u8g2.drawUTF8(0,13,"Hello World !");
-  //   // u8g2.printf("test123%s","testtest");
-  // } while ( u8g2.nextPage() );
   return false;
 }
 
+/**
+ * @brief 初始化 - 初始化 Sqlite DB
+ * 目前有 2 DB 檔案:
+ *  1. "/mainDB.db" : 負責記錄 sensor 資料
+ *  2. "/logDB.db"  : 負責記錄 log 以及 儀器歷程 資料
+ * 
+ * @return int 
+ */
 int C_Device_Ctrl::INIT_SqliteDB()
 {
   // SD.remove("/mainDB.db");
@@ -206,6 +222,13 @@ int C_Device_Ctrl::INIT_SqliteDB()
   return rc;
 }
 
+
+/**
+ * @brief 刪除 logDB.db 檔案，並重建他
+ * 如果 log 資料庫過大讓機器沒法運行才需要執行這個 function
+ * 
+ * @return int 
+ */
 int C_Device_Ctrl::DropLogsTable()
 {
   ESP_LOGV("DB", "Opened log database successfully");
@@ -217,6 +240,11 @@ int C_Device_Ctrl::DropLogsTable()
   return 0;
 }
 
+
+/**
+ * @brief 初始化用 - 讀取各個 json 格式設定檔
+ * 
+ */
 void C_Device_Ctrl::LoadConfigJsonFiles()
 {
   ExFile_LoadJsonFile(SD, FilePath__SD__DeviceBaseInfo, *JSON__DeviceBaseInfo);
@@ -231,6 +259,15 @@ void C_Device_Ctrl::LoadConfigJsonFiles()
   ExFile_LoadJsonFile(SD, FilePath__SD__ItemUseCount, *JSON__ItemUseCount);
 }
 
+
+/**
+ * @brief 對 sensor DB Insert 一筆新的資料 
+ * 
+ * @param time        格式: YYYY-mm-dd HH:MM:SS
+ * @param pool        目標名稱 ex: "pool-1" or "test" or "RO"
+ * @param ValueName   資料名稱 ex: "NO2_wash_volt" or "NH4_test_volt"
+ * @param result      資料數值
+ */
 void C_Device_Ctrl::InsertNewDataToDB(String time, String pool, String ValueName, double result)
 {
   String SqlString = "INSERT INTO sensor ( time, pool, value_name, result ) VALUES ( '";
@@ -245,6 +282,14 @@ void C_Device_Ctrl::InsertNewDataToDB(String time, String pool, String ValueName
   db_exec(DB_Main, SqlString);
 }
 
+/**
+ * @brief 對 log DB Insert 一筆新的資料
+ * 
+ * @param time      格式: YYYY-mm-dd HH:MM:SS
+ * @param level     log level : 0: DEBUG, 1: ERROR, 2: WARNING, 3: INFO, 4: DETAIL, 5: SUCCESS, 6: FAIL
+ * @param content   log content format
+ * @param ...       log content 
+ */
 void C_Device_Ctrl::InsertNewLogToDB(String time, int level, const char* content, ...)
 {
   char buffer[1024];  // 用于存储格式化后的文本
@@ -262,22 +307,14 @@ void C_Device_Ctrl::InsertNewLogToDB(String time, int level, const char* content
   db_exec(DB_Log, SqlString);
 }
 
-//? 刪除過舊的LOG資訊
-//! 目前還在考慮是否真的要加入這功能，有發現SQLITE的DELETE耗時超久，有當機風險
-//! 不如把整個Table砍掉重來
-void C_Device_Ctrl::DeleteOldLog()
-{
-  DynamicJsonDocument tempJSONItem(1000);
-  String sql = "SELECT min(rowid) AS rowid FROM( SELECT rowid FROM logs ORDER BY rowid DESC LIMIT 1000);";
-  db_exec(DB_Log, sql, &tempJSONItem);
-  String minId = tempJSONItem[0]["rowid"].as<String>();
-  // serializeJsonPretty(tempJSONItem, Serial);
-  sql = "DELETE FROM logs WHERE rowid < "+minId+";";
-  db_exec(DB_Log, sql);
-}
-
+/**
+ * @brief 更新 Pipeline 資料列表
+ * ! 盡量別在初始化以外的場合使用，速度很慢
+ * 如果有列表項目重載、新增、刪除，請用其他的 function
+ */
 void C_Device_Ctrl::UpdatePipelineConfigList()
 {
+  ESP_LOGD("", "準備重建 Pipeline 列表");
   (*JSON__PipelineConfigList).clear();
   File folder = SD.open("/pipelines");
   while (true) {
@@ -287,6 +324,7 @@ void C_Device_Ctrl::UpdatePipelineConfigList()
     }
     String FileName = String(Entry.name());
     if (FileName == "__temp__.json") {
+      Entry.close();
       continue;
     }
     ESP_LOGD("", "準備讀取設定檔: %s", FileName.c_str());
@@ -294,24 +332,32 @@ void C_Device_Ctrl::UpdatePipelineConfigList()
     fileInfo["size"].set(Entry.size());
     fileInfo["name"].set(FileName);
     fileInfo["getLastWrite"].set(Entry.getLastWrite());
-    DynamicJsonDocument fileContent(120000);
+    DynamicJsonDocument fileContent(1024*50);
     DeserializationError error = deserializeJson(fileContent, Entry);
     Entry.close();
+    if (error) {
+      ESP_LOGD("", "設定檔 %s 讀取失敗: %s", FileName.c_str(), error.c_str());
+      continue;
+    }
     ESP_LOGD("", "設定檔讀取完畢: %s", FileName.c_str());
     fileInfo["title"].set(fileContent["title"].as<String>());
     fileInfo["desp"].set(fileContent["desp"].as<String>());
     fileInfo["tag"].set(fileContent["tag"].as<JsonArray>());
     (*JSON__PipelineConfigList).add(fileInfo);
+    vTaskDelay(10/portTICK_PERIOD_MS);
   }
-
+  ESP_LOGD("", "重建 Pipeline 列表完畢");
 }
 
 //! WiFi相關功能
 
+/**
+ * @brief 
+ * 
+ */
 void C_Device_Ctrl::ConnectWiFi()
 {
   WiFi.disconnect();
-  // WiFi.mode(STA_AP);
   WiFi.mode(WIFI_AP_STA);
   // WiFi.setAutoReconnect(false);
   // Serial.println(WiFi.getAutoConnect());
@@ -360,30 +406,12 @@ void C_Device_Ctrl::INIT_AllWsAPI()
 {
   AddWebsocketAPI("/api/System/STOP", "GET", &ws_StopAllActionTask);
 
-  // AddWebsocketAPI("/api/System", "GET", &ws_StopAllActionTask);
-
-
-  // AddWebsocketAPI("/api/DeiveConfig", "GET", &ws_GetDeiveConfig);
-  // AddWebsocketAPI("/api/DeiveConfig", "PATCH", &ws_PatchDeiveConfig);
-
-
   AddWebsocketAPI("/api/GetState", "GET", &ws_GetNowStatus);
-
-  // //!LOG相關API
-  // AddWebsocketAPI("/api/LOG", "GET", &ws_GetLogs);
-
 
   // //!Sensor結果資料
 
   AddWebsocketAPI("/api/PoolData", "GET", &ws_GetAllPoolData);
 
-  // //!蝦池設定相關API
-
-  // AddWebsocketAPI("/api/Pool/(<name>.*)", "DELETE", &ws_DeletePoolInfo);
-  // AddWebsocketAPI("/api/Pool/(<name>.*)", "GET", &ws_GetPoolInfo);
-  // AddWebsocketAPI("/api/Pool/(<name>.*)", "PATCH", &ws_PatchPoolInfo);
-  // AddWebsocketAPI("/api/Pool", "GET", &ws_GetAllPoolInfo);
-  // AddWebsocketAPI("/api/Pool", "POST", &ws_AddNewPoolInfo);
 
   // //? [GET]/api/Pipeline/pool_all_data_get/RUN 這支API比較特別，目前是寫死的
   // //? 目的在於執行時，他會依序執行所有池的資料，每池檢測完後丟出一次NewData
@@ -396,7 +424,6 @@ void C_Device_Ctrl::INIT_AllWsAPI()
   AddWebsocketAPI("/api/v2/DeviceCtrl/Spectrophotometer", "GET", &ws_v2_RunPipeline);
   AddWebsocketAPI("/api/v2/DeviceCtrl/PwmMotor", "GET", &ws_v2_RunPwmMotor);
   AddWebsocketAPI("/api/v2/DeviceCtrl/PeristalticMotor", "GET", &ws_v2_RunPeristalticMotor);
-  // AddWebsocketAPI("/api/v2/DeviceCtrl/PHmeter", "GET", &ws_v2_RunPipeline);
 }
 
 void C_Device_Ctrl::INITWebServer()
@@ -560,7 +587,6 @@ void C_Device_Ctrl::UpdateDeviceTimerByNTP()
   setTime((time_t)timeClient.getEpochTime());
   timeClient.end();
   ESP_LOGI("Time", "Time: %s", timeClient.getFormattedTime().c_str());
-  // DeleteOldLog();
 }
 
 void C_Device_Ctrl::BroadcastLogToClient(AsyncWebSocketClient *client, int Level, const char *content, ...)
@@ -621,13 +647,31 @@ DynamicJsonDocument C_Device_Ctrl::GetWebsocketConnectInfo()
   return returnData;
 }
 
+/**
+ * @brief WiFi Manager 設定
+ * 
+ * @param parameter 
+ */
 void WifiManager(void* parameter)
 { 
+  WiFi.disconnect(); // 先斷開所有連接
   long CONNECT_TIMEOUT = 10*60*1000;
   time_t lastConnectTime = now();
-  //! 一開始會使用 STA 模式，來與外部的 WiFi 基地台連線
-  // WiFi.mode(WIFI_STA);
   WiFi.mode(WIFI_AP_STA);
+
+  //? 先建立 AP 熱點
+  IPAddress AP_IP;
+  AP_IP.fromString((*Device_Ctrl.JSON__WifiConfig)["AP"]["AP_IP"].as<String>());
+  IPAddress AP_gateway;
+  AP_gateway.fromString((*Device_Ctrl.JSON__WifiConfig)["AP"]["AP_gateway"].as<String>());
+  IPAddress AP_subnet_mask;
+  AP_subnet_mask.fromString((*Device_Ctrl.JSON__WifiConfig)["AP"]["AP_subnet_mask"].as<String>());
+  WiFi.softAPConfig(AP_IP,AP_gateway,AP_subnet_mask);
+  WiFi.softAP((*Device_Ctrl.JSON__WifiConfig)["AP"]["AP_Name"].as<String>());
+  ESP_LOGI("", "AP 熱點 IP address: %s, macAddress: %s", WiFi.softAPIP().toString().c_str(), WiFi.softAPmacAddress().c_str());
+
+  //? 而後嘗試與基地台連接
+
   WiFi.begin(
     (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Name"].as<String>().c_str(),
     (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Password"].as<String>().c_str()
@@ -666,6 +710,10 @@ void WifiManager(void* parameter)
   }
 }
 
+/**
+ * @brief 建立 WiFi Manager Task
+ * 
+ */
 void C_Device_Ctrl::CreateWifiManagerTask()
 {
   xTaskCreatePinnedToCore(
@@ -677,16 +725,6 @@ void C_Device_Ctrl::CreateWifiManagerTask()
     TaskSettingMap["WifiManager"].task_handle,
     1
   );
-
-  // xTaskCreatePinnedToCore(
-  //   WifiManager, 
-  //   "WifiManager", 
-  //   1024*4, 
-  //   NULL, 
-  //   (UBaseType_t)TaskPriority::DeviceInfoCheckTask, 
-  //   &TASK__WifiManager,
-  //   1
-  // );
 }
 
 String C_Device_Ctrl::AES_encode(String content)

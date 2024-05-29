@@ -94,13 +94,9 @@ class C_Device_Ctrl
 
     void ScanI2C();
 
-    //? 初始化各個PIN的初始化狀態
     void INIT_Pins();
-
     void INIT_I2C_Wires(TwoWire &WireChose);
-
     bool INIT_PoolData();
-    //? 初始化SD卡
     bool INIT_SD();
     bool INIT_oled();
     bool all_INIT_done = false;
@@ -116,16 +112,7 @@ class C_Device_Ctrl
 
 
     void InsertNewDataToDB(String time, String pool, String ValueName, double result);
-    
-    /**
-     * @brief 
-     * 
-     * @param level 0: DEBUG, 1: ERROR, 2: WARNING, 3: INFO, 4: DETAIL, 5: SUCCESS, 6: FAIL
-     * @param time 
-     * @param content 
-     */
     void InsertNewLogToDB(String time, int level, const char* content, ...);
-    void DeleteOldLog();
 
     //! SD相關操作與函式
     void LoadConfigJsonFiles();
@@ -153,7 +140,20 @@ class C_Device_Ctrl
     String FilePath__SD__ItemUseCount = "/datas/ItemUseCount.json";
 
     void UpdatePipelineConfigList();
-    DynamicJsonDocument *JSON__PipelineConfigList = new DynamicJsonDocument(10000);
+
+    /**
+     * @brief Pipeline 列表
+     * 格式範例: [{
+     *      "size": 2399,
+     *      "name": "Clean_All_Path.json",
+     *      "getLastWrite": 1702915764,
+     *      "title": "清空整台儀器",
+     *      "desp": "",
+     *      "tag": ["操作"]
+     * },...]
+     * 
+     */
+    DynamicJsonDocument *JSON__PipelineConfigList = new DynamicJsonDocument(1024*10);
 
     //! WiFi相關功能
     void preLoadWebJSFile();
