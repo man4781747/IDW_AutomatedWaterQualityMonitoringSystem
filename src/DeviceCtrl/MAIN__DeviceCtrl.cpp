@@ -343,10 +343,57 @@ void C_Device_Ctrl::UpdatePipelineConfigList()
     fileInfo["title"].set(fileContent["title"].as<String>());
     fileInfo["desp"].set(fileContent["desp"].as<String>());
     fileInfo["tag"].set(fileContent["tag"].as<JsonArray>());
-    (*JSON__PipelineConfigList).add(fileInfo);
+    (*JSON__PipelineConfigList)[FileName] = fileInfo;
+    // (*JSON__PipelineConfigList).add(fileInfo);
     vTaskDelay(10/portTICK_PERIOD_MS);
   }
   ESP_LOGD("", "重建 Pipeline 列表完畢");
+}
+
+/**
+ * @brief 刪除指定 Pipeline檔案並將其移除出列表
+ * 
+ */
+void C_Device_Ctrl::RemovePipelineConfig(String FileName)
+{
+  String FullFilePath = "/pipelines/" + FileName;
+  SD.remove(FullFilePath);
+  (*JSON__PipelineConfigList).remove(FileName);
+}
+
+
+/**
+ * @brief 重新讀取指定的 pipeline config JSON 檔案並更新列表內容
+ * 
+ * @param FileName 
+ */
+int C_Device_Ctrl::UpdateOnePipelineConfig(String FileName)
+{
+  String FullFilePath = "/pipelines/" + FileName;
+  if (SD.exists(FullFilePath) == false) {
+    return 1;
+  }
+  File file = SD.open(FullFilePath, FILE_READ);
+  if (!file) {return 2;}
+
+  DynamicJsonDocument fileContent(1024*50);
+  DeserializationError error = deserializeJson(fileContent, file);
+  if (error) {
+    ESP_LOGD("", "設定檔 %s 讀取失敗: %s", FileName.c_str(), error.c_str());
+    file.close();
+    return 3;
+  }
+  ESP_LOGD("", "設定檔讀取完畢: %s", FileName.c_str());
+  DynamicJsonDocument fileInfo(500);
+  fileInfo["size"].set(file.size());
+  fileInfo["getLastWrite"].set(file.getLastWrite());
+  file.close();
+  fileInfo["name"].set(FileName);
+  fileInfo["title"].set(fileContent["title"].as<String>());
+  fileInfo["desp"].set(fileContent["desp"].as<String>());
+  fileInfo["tag"].set(fileContent["tag"].as<JsonArray>());
+  (*JSON__PipelineConfigList)[FileName] = fileInfo;
+  return 0;
 }
 
 //! WiFi相關功能

@@ -181,8 +181,7 @@ void Set_Pipeline_apis(AsyncWebServer &asyncServer)
         configTempFile.write(newConfigUpdateFileBuffer ,index + len);
         configTempFile.close();
         Serial.printf("檔案更新完成\n", filename.c_str());
-        
-        Device_Ctrl.UpdatePipelineConfigList();
+        Device_Ctrl.UpdateOnePipelineConfig(filename);
       } 
       else {
         Serial.printf("檔案 %s 正在傳輸， len: %d ，目前已接收 %d/%d bytes\n", filename.c_str(), len, index + len, request->contentLength());
@@ -215,8 +214,9 @@ void Set_Pipeline_apis(AsyncWebServer &asyncServer)
       response = request->beginResponse(500, "application/json", "{\"Result\":\"Can't Find: "+fileName+"\"}");
     }
     else {
-      SD.remove(fullPath);
-      Device_Ctrl.UpdatePipelineConfigList();
+      // SD.remove(fullPath);
+      Device_Ctrl.RemovePipelineConfig(fileName+".json");
+      // Device_Ctrl.UpdatePipelineConfigList();
       response = request->beginResponse(200, "application/json", "{\"Result\":\"Delete file: "+fullPath+"\"}");       
     }
     request->send(response);

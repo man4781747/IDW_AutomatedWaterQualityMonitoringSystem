@@ -139,8 +139,7 @@ class C_Device_Ctrl
     DynamicJsonDocument *JSON__ItemUseCount = new DynamicJsonDocument(1024*5); //? 裝置使用累積檔案
     String FilePath__SD__ItemUseCount = "/datas/ItemUseCount.json";
 
-    void UpdatePipelineConfigList();
-
+  
     /**
      * @brief Pipeline 列表
      * 格式範例: [{
@@ -154,6 +153,9 @@ class C_Device_Ctrl
      * 
      */
     DynamicJsonDocument *JSON__PipelineConfigList = new DynamicJsonDocument(1024*10);
+    void UpdatePipelineConfigList();
+    void RemovePipelineConfig(String FileName);
+    int UpdateOnePipelineConfig(String configName);
 
     //! WiFi相關功能
     void preLoadWebJSFile();
