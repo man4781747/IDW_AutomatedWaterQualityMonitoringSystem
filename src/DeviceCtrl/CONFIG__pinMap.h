@@ -18,6 +18,11 @@
 #define PIN__Serial_LX_20S_RX 9
 #define PIN__Serial_LX_20S_TX 10
 
+//! 步進蠕動馬達
+#define PIN__Step_Motor_EN 19
+#define PIN__Step_Motor_STEP 21
+#define PIN__Step_Motor_DIR 14
+
 //! SD卡
 #define PIN__SPI_MOSI  11
 #define PIN__SPI_CLK   12
