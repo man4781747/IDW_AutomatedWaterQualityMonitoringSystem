@@ -460,28 +460,27 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
     }
     allFinish = true;
     for (const auto& endTimeCheck : endTimeCheckList.as<JsonObject>()) {
-      if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
-        ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"蠕動馬達流程步驟收到中斷要求");
-        digitalWrite(PIN__EN_Peristaltic_Motor, LOW);
-        result.code = ResultCode::STOP_BY_OUTSIDE;
-        return result;
-      }
+      // if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
+      //   ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"蠕動馬達流程步驟收到中斷要求");
+      //   digitalWrite(PIN__EN_Peristaltic_Motor, LOW);
+      //   result.code = ResultCode::STOP_BY_OUTSIDE;
+      //   return result;
+      // }
       JsonObject endTimeCheckJSON = endTimeCheck.value().as<JsonObject>();
       if (endTimeCheckJSON["finish"] == true) {
         //? 跳過已經確定運行完成的馬達
-        vTaskDelay(10/portTICK_PERIOD_MS);
+        vTaskDelay(1/portTICK_PERIOD_MS);
         continue;
       }
       allFinish = false;
       long endTime = endTimeCheckJSON["endTime"].as<long>();
       int until = endTimeCheckJSON["until"].as<int>();
-      int motorIndex = endTimeCheckJSON["index"].as<int>();
-      String thisFailType = endTimeCheckJSON["failType"].as<String>();
-      String thisFailAction = endTimeCheckJSON["failAction"].as<String>();
-
       //? 若馬達執行時間達到最大時間的判斷
       if (millis() >= endTime) {
         //? 執行到這，代表馬達執行到最大執行時間，如果 failType 是 timeout，則代表觸發失敗判斷
+        String thisFailType = endTimeCheckJSON["failType"].as<String>();
+        String thisFailAction = endTimeCheckJSON["failAction"].as<String>();
+        int motorIndex = endTimeCheckJSON["index"].as<int>();
         if (thisFailType == "timeout") {
           result.message="馬達:"+String(motorIndex)+" 運轉超時\n";
           char buffer[1024];
@@ -560,6 +559,9 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
       }
       //? 若要判斷滿水浮球狀態
       else if (until != -1) {
+        String thisFailType = endTimeCheckJSON["failType"].as<String>();
+        String thisFailAction = endTimeCheckJSON["failAction"].as<String>();
+        int motorIndex = endTimeCheckJSON["index"].as<int>();
         pinMode(until, INPUT);
         int value = digitalRead(until);
         if (value == HIGH) {
@@ -603,9 +605,9 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
           endTimeCheckJSON["finish"].set(true);
         }
       }
-      vTaskDelay(100/portTICK_PERIOD_MS);
+      vTaskDelay(5/portTICK_PERIOD_MS);
     }
-    vTaskDelay(100/portTICK_PERIOD_MS);
+    vTaskDelay(5/portTICK_PERIOD_MS);
   }
   if (Device_Ctrl.peristalticMotorsCtrl.IsAllStop()) {
     digitalWrite(PIN__EN_Peristaltic_Motor, LOW);
@@ -675,7 +677,7 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
       // sensorAddr = 0x4F;
     }
     digitalWrite(activePin, HIGH);
-    vTaskDelay(500/portTICK_PERIOD_MS);
+    vTaskDelay(2000/portTICK_PERIOD_MS);
 
     Device_Ctrl._Wire.beginTransmission(sensorAddr);
     byte error = Device_Ctrl._Wire.endTransmission();
@@ -706,16 +708,31 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
     );
     ina226.calibrate(0.01, 4);
     int countNum = 100;
-    double shuntvoltageBuffer_ina226 = 0;
-    double busvoltageBuffer_ina226 = 0;
+    uint16_t dataBuffer[countNum];
+    // double busvoltageBuffer_ina226 = 0;
     for (int i=0;i<countNum;i++) {
-      shuntvoltageBuffer_ina226 += (double)ina226.readShuntVoltage();
-      busvoltageBuffer_ina226 += (double)ina226.readBusVoltage();
-      vTaskDelay(10/portTICK_PERIOD_MS);
+      // busvoltageBuffer_ina226 += (double)ina226.readBusVoltage();
+      dataBuffer[i] = ina226.readBusVoltage()*1000;
+      vTaskDelay(100/portTICK_PERIOD_MS);
     }
-    double busvoltage_ina226 = busvoltageBuffer_ina226/countNum;
+    ESP_LOGD("", "STD: %.2f, AVG: %.2f, ANS: %.2f", 
+      standardDev(dataBuffer, countNum),
+      average(dataBuffer, countNum),
+      afterFilterValue(dataBuffer, countNum)
+    );
+
+    // Serial.printf("STD: %.2f, AVG: %.2f, ANS: %.2f", 
+    //   standardDev(dataBuffer, countNum),
+    //   average(dataBuffer, countNum),
+    //   afterFilterValue(dataBuffer, countNum)
+    // );
+    double busvoltage_ina226_ = afterFilterValue(dataBuffer, countNum);
+    // double busvoltage_ina226 = busvoltageBuffer_ina226/countNum;
+    // Serial.println(busvoltage_ina226_);
+    // Serial.println(busvoltage_ina226);
     //?  最終量測的結果數值 (mV)
-    double finalValue = busvoltage_ina226*1000;
+    // double finalValue = busvoltage_ina226*1000;
+    double finalValue = busvoltage_ina226_;
     digitalWrite(activePin, LOW);
 
     Device_Ctrl.ItemUsedAdd("Light"+String(spectrophotometerIndex), 1);
@@ -765,7 +782,14 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
         A0_Value = Device_Ctrl.lastLightValue_NH4;
       }
       double finalValue_after = -log10(finalValue/A0_Value)*mValue+bValue;
-      if (finalValue_after < 1) { finalValue_after-=bValue;}  //! 在低濃度時發現量測值會受 bias 數值影響過於嚴重，因此把他減回來
+      double finalValue_Original = finalValue_after;
+      if (poolChose == "RO") {
+        (*Device_Ctrl.JSON__RO_Result)[TargetType].set(finalValue_after);
+        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__RO_Result, *Device_Ctrl.JSON__RO_Result);
+      }
+      else {
+        finalValue_after -= (*Device_Ctrl.JSON__RO_Result)[TargetType].as<double>();
+      }
       if (finalValue_after < 0) { finalValue_after = 0; }
       (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][TargetType]["Value"].set(String(finalValue_after,2).toDouble());
       (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][TargetType]["data_time"].set(GetDatetimeString());
@@ -780,7 +804,12 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
       );
       Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 5, "%s", buffer);
       Device_Ctrl.BroadcastLogToClient(NULL, 5, "%s", buffer);
+      
       Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, TargetType, finalValue_after);
+      if (poolChose != "RO") {
+        String TargetTypeName = TargetType+String("_Original");
+        Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, TargetTypeName, finalValue_Original);
+      }
       ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__LastSensorDataSave, *Device_Ctrl.JSON__sensorDataSave);
     }
   }
