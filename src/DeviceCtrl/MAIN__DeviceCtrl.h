@@ -138,8 +138,9 @@ class C_Device_Ctrl
 
     DynamicJsonDocument *JSON__ItemUseCount = new DynamicJsonDocument(1024*5); //? 裝置使用累積檔案
     String FilePath__SD__ItemUseCount = "/datas/ItemUseCount.json";
+    DynamicJsonDocument *JSON__RO_Result = new DynamicJsonDocument(1024);
+    String FilePath__SD__RO_Result = "/datas/RO_Result.json";
 
-  
     /**
      * @brief Pipeline 列表
      * 格式範例: [{

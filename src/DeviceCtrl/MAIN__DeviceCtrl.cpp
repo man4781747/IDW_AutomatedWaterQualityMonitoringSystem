@@ -96,6 +96,13 @@ void C_Device_Ctrl::INIT_Pins()
   digitalWrite(PIN__EN_BlueSensor, LOW);
   pinMode(PIN__EN_GreenSensor, OUTPUT);
   digitalWrite(PIN__EN_GreenSensor, LOW);
+
+  pinMode(PIN__Step_Motor_EN, OUTPUT);
+  digitalWrite(PIN__Step_Motor_EN, LOW);
+  pinMode(PIN__Step_Motor_STEP, OUTPUT);
+  digitalWrite(PIN__Step_Motor_STEP, LOW);
+  pinMode(PIN__Step_Motor_DIR, OUTPUT);
+  digitalWrite(PIN__Step_Motor_DIR, LOW);
 }
 
 /**
@@ -257,6 +264,7 @@ void C_Device_Ctrl::LoadConfigJsonFiles()
   ExFile_LoadJsonFile(SD, FilePath__SD__DeviceConfig, *JSON__DeviceConfig);
   ExFile_LoadJsonFile(SD, FilePath__SD__WiFiConfig, *JSON__WifiConfig);
   ExFile_LoadJsonFile(SD, FilePath__SD__ItemUseCount, *JSON__ItemUseCount);
+  ExFile_LoadJsonFile(SD, FilePath__SD__RO_Result, *JSON__RO_Result);
 }
 
 
@@ -858,22 +866,23 @@ void smtpCallback(SMTP_Status status){
   if (status.success()){
     Serial.println("----------------");
     ESP_MAIL_PRINTF("訊息傳送成功：%d\n", status.completedCount());
-    ESP_MAIL_PRINTF("訊息傳送失敗：%d\n", status.failedCount());
     Serial.println("----------------\n");
     struct tm dt;
 
-    for (int i = 0; i < Device_Ctrl.smtp.sendingResult.size(); i++){
-      SMTP_Result result = Device_Ctrl.smtp.sendingResult.getItem(i);
-      time_t ts = (time_t)result.timestamp;
+    // for (int i = 0; i < Device_Ctrl.smtp.sendingResult.size(); i++){
+    //   SMTP_Result result = Device_Ctrl.smtp.sendingResult.getItem(i);
+    //   time_t ts = (time_t)result.timestamp;
 
-      ESP_MAIL_PRINTF("訊息編號：%d\n", i + 1);
-      ESP_MAIL_PRINTF("狀態：%s\n", result.completed ? "成功" : "失敗");
-      ESP_MAIL_PRINTF("日期/時間：%s\n", asctime(localtime(&ts)));
-      ESP_MAIL_PRINTF("收信人：%s\n", result.recipients.c_str());
-      ESP_MAIL_PRINTF("主旨：%s\n", result.subject.c_str());
-    }
-    Serial.println("----------------\n");
+    //   ESP_MAIL_PRINTF("訊息編號：%d\n", i + 1);
+    //   ESP_MAIL_PRINTF("狀態：%s\n", result.completed ? "成功" : "失敗");
+    //   ESP_MAIL_PRINTF("日期/時間：%s\n", asctime(localtime(&ts)));
+    //   ESP_MAIL_PRINTF("收信人：%s\n", result.recipients.c_str());
+    //   ESP_MAIL_PRINTF("主旨：%s\n", result.subject.c_str());
+    // }
+    // Serial.println("----------------\n");
     Device_Ctrl.smtp.sendingResult.clear();
+  } else {
+    ESP_MAIL_PRINTF("訊息傳送失敗：%d\n", status.failedCount());
   }
 }
 
@@ -1486,7 +1495,7 @@ void C_Device_Ctrl::WriteSysInfo()
 
   // }
   // logFile.close();
-}
+}                                                                                                  
 
 /**
  * @brief 計數增加會對2種檔案進行寫入

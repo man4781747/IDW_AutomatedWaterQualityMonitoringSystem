@@ -577,6 +577,25 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
 
 void Set_tool_apis(AsyncWebServer &asyncServer)
 {
+  asyncServer.on("/api/RO/Result", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      if (request->hasParam("NO2")) {
+        double NO2_Value = request->getParam("NO2")->value().toDouble();
+        (*Device_Ctrl.JSON__RO_Result)["NO2"].set(NO2_Value);
+        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__RO_Result, *Device_Ctrl.JSON__RO_Result);
+      }
+      if (request->hasParam("NH4")) {
+        double NH4_Value = request->getParam("NH4")->value().toDouble();
+        (*Device_Ctrl.JSON__RO_Result)["NH4"].set(NH4_Value);
+        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__RO_Result, *Device_Ctrl.JSON__RO_Result);
+      }
+      String returnString;
+      serializeJson(*Device_Ctrl.JSON__RO_Result, returnString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+      request->send(response);
+    }
+  );
   asyncServer.on("/api/device/used", HTTP_DELETE,
     [&](AsyncWebServerRequest *request)
     { 
