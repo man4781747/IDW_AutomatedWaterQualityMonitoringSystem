@@ -9,6 +9,8 @@
 #include <INA226.h>
 #include "TimeLibExternalFunction.h"
 #include "CalcFunction.h"
+#include <driver/ledc.h>
+#include <driver/timer.h>
 
 enum ResultCode: int {
   SUCCESS = 0,
@@ -30,7 +32,7 @@ int Do_WaitAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
 StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
 StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
 StepResult Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
-
+StepResult Do_StepMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
 
 void StepTask(void* parameter) {
   // ESP_LOGD("","開始執行Step執行Task");
@@ -100,6 +102,10 @@ void StepTask(void* parameter) {
             EmergencyStop = true;
             break;
           }
+        }
+        else if (eventItem.containsKey("step_motor_list")) {
+          StepResult actionResult = Do_StepMotorAction(eventItem, StepTaskDetailItem);
+
         }
         else if (eventItem.containsKey("peristaltic_motor_list")) {
           StepResult actionResult = Do_PeristalticMotorAction(eventItem, StepTaskDetailItem);
@@ -614,6 +620,141 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
   }
   result.code = ResultCode::SUCCESS;
   return result;
+}
+
+
+portMUX_TYPE stepMotor_mux0 = portMUX_INITIALIZER_UNLOCKED;
+hw_timer_t * stepMotor_timer0;
+int stepMotor_countGo = 0;
+
+void IRAM_ATTR stepMotor_onTimer0() {
+  portENTER_CRITICAL(&stepMotor_mux0); //要鎖住記憶體區塊,不然跑一跑就爆掉了
+  if (stepMotor_countGo > 0) {
+    digitalWrite(PIN__Step_Motor_STEP, !digitalRead(PIN__Step_Motor_STEP));
+    stepMotor_countGo--;
+  }
+  portEXIT_CRITICAL(&stepMotor_mux0);  //要鎖住記憶體區塊,不然跑一跑就爆掉了
+};
+
+StepResult Do_StepMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
+{
+  ESP_LOGI("TSET", "步進蠕動馬達測試");
+  //TODO 目前只有一顆 測試用
+  StepResult result;
+  Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_STEP, PIN__Step_Motor_DIR);
+  Serial1.setTimeout(3000);
+  for (JsonObject stepMotorItem : eventItem["step_motor_list"].as<JsonArray>()) {
+    DynamicJsonDocument CommandBuffer(1024*2);
+    CommandBuffer["type"] = "run";
+    int loopMax = stepMotorItem["time"].as<int>();
+    CommandBuffer["run"] = loopMax*200;
+    int status = stepMotorItem["status"].as<int>();
+    CommandBuffer["status"] = status;
+    Serial1.write("|");
+    serializeJson(CommandBuffer, Serial1);
+    Serial1.write("\n");
+    Serial1.readStringUntil('\n');
+    CommandBuffer.clear();
+    CommandBuffer["type"] = "info";
+    DynamicJsonDocument ResultBuffer(200);
+    while (true) {
+      Serial1.write("|");
+      serializeJson(CommandBuffer, Serial1);
+      Serial1.write("\n");
+      vTaskDelay(1000/portTICK_PERIOD_MS);
+      Serial1.readStringUntil('|');
+      String returnResult = Serial1.readStringUntil('\n');
+      Serial.println(returnResult);
+      deserializeJson(ResultBuffer, returnResult);
+      int resultStatus = ResultBuffer["busy"].as<int>();
+      if (resultStatus == 0) {
+        break;
+      }
+      Serial.println(resultStatus);
+      if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
+        ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"步進蠕動馬達收到緊急中斷要求，準備緊急終止儀器");
+        DynamicJsonDocument CommandBuffer(1024*2);
+        CommandBuffer["type"] = "run";
+        CommandBuffer["run"] = 0;
+        CommandBuffer["status"] = 0;
+        Serial1.write("|");
+        serializeJson(CommandBuffer, Serial1);
+        Serial1.write("\n");
+        return result;
+      }
+      vTaskDelay(50/portTICK_PERIOD_MS);
+    }
+  }
+
+
+
+
+  
+  // pinMode(PIN__Step_Motor_EN, OUTPUT);
+  // digitalWrite(PIN__Step_Motor_EN, LOW);
+  // pinMode(PIN__Step_Motor_STEP, OUTPUT);
+  // digitalWrite(PIN__Step_Motor_STEP, LOW);
+  // pinMode(PIN__Step_Motor_DIR, OUTPUT);
+  // digitalWrite(PIN__Step_Motor_DIR, LOW);
+
+  // for (JsonObject stepMotorItem : eventItem["step_motor_list"].as<JsonArray>()) {
+  //   digitalWrite(PIN__Step_Motor_EN, HIGH);
+  //   int status = stepMotorItem["status"].as<int>();
+  //   if (status == 1) {
+  //     digitalWrite(PIN__Step_Motor_DIR, HIGH);
+  //   } else {
+  //     digitalWrite(PIN__Step_Motor_DIR, LOW);
+  //   }
+
+  //   int loopMax = stepMotorItem["time"].as<int>();
+  //   ESP_LOGI("TSET", "步進蠕動馬達測試");
+  //   //! Timer 版本
+  //   // stepMotor_countGo = 200*loopMax*2;
+  //   // stepMotor_timer0 = timerBegin(0, 80, true);
+  //   // timerAttachInterrupt(stepMotor_timer0, &stepMotor_onTimer0, true);
+  //   // timerAlarmWrite(stepMotor_timer0, 1000000/1000*1.2, true);//1ms
+  //   // timerAlarmEnable(stepMotor_timer0);
+  //   // while (stepMotor_countGo > 0) {
+  //   //   if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
+  //   //     ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"步進蠕動馬達收到緊急中斷要求，準備緊急終止儀器");
+  //   //     return result;
+  //   //   }
+  //   //   vTaskDelay(100/portTICK_PERIOD_MS);
+  //   // }
+  //   // timerAlarmDisable(stepMotor_timer0);
+  //   // stepMotor_countGo = 0;
+  //   //! Timer 版本
+
+  //   //! 普通版本
+  //   for (int i = 0;i<200*loopMax;i++) {
+  //     // Serial.println(i);
+  //     if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
+  //       ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"步進蠕動馬達收到緊急中斷要求，準備緊急終止儀器");
+  //       return result;
+  //     }
+      
+  //     digitalWrite(PIN__Step_Motor_EN, HIGH);
+  //     vTaskDelay(1/portTICK_PERIOD_MS);
+  //     digitalWrite(PIN__Step_Motor_STEP, HIGH);
+  //     vTaskDelay(1/portTICK_PERIOD_MS);
+  //     digitalWrite(PIN__Step_Motor_STEP, LOW);
+  //     digitalWrite(PIN__Step_Motor_EN, LOW);
+  //   }
+  //   //! 普通版本
+
+  //   digitalWrite(PIN__Step_Motor_EN, LOW);
+  //   ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"步進蠕動馬達結束");
+  // }
+  // pinMode(PIN__Step_Motor_EN, OUTPUT);
+  // digitalWrite(PIN__Step_Motor_EN, LOW);
+  // pinMode(PIN__Step_Motor_STEP, OUTPUT);
+  // digitalWrite(PIN__Step_Motor_STEP, LOW);
+  // pinMode(PIN__Step_Motor_DIR, OUTPUT);
+  // digitalWrite(PIN__Step_Motor_DIR, LOW);
+
+
+  return result;
+  //TODO 目前只有一顆 測試用
 }
 
 

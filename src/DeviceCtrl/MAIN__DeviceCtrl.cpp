@@ -288,6 +288,9 @@ void C_Device_Ctrl::InsertNewDataToDB(String time, String pool, String ValueName
   SqlString += String(result,2).toDouble();
   SqlString += " );";
   db_exec(DB_Main, SqlString);
+
+  
+
 }
 
 /**
@@ -1105,6 +1108,22 @@ void C_Device_Ctrl::StopNowPipelineAndAllStepTask()
   digitalWrite(PIN__EN_Servo_Motor, LOW);
   Device_Ctrl.peristalticMotorsCtrl.SetAllMotorStop();
 
+  // TODO 目前只有一顆 測試中
+  // digitalWrite(PIN__Step_Motor_EN, LOW);
+  // digitalWrite(PIN__Step_Motor_STEP, LOW);
+  // digitalWrite(PIN__Step_Motor_DIR, LOW);
+
+  Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_STEP, PIN__Step_Motor_DIR);
+  DynamicJsonDocument CommandBuffer(1024*2);
+  CommandBuffer["type"] = "run";
+  CommandBuffer["run"] = 0;
+  CommandBuffer["status"] = 0;
+  Serial1.write("|");
+  serializeJson(CommandBuffer, Serial1);
+  Serial1.write("\n");
+
+  // TODO 目前只有一顆 測試中
+
   Device_Ctrl.StopAllStepTask();
 
   // Device_Ctrl.StopNowPipeline = true;
@@ -1128,6 +1147,22 @@ void C_Device_Ctrl::StopDeviceAllAction()
   Device_Ctrl.peristalticMotorsCtrl.SetAllMotorStop();
   //! 伺服馬達斷電
   digitalWrite(PIN__EN_Servo_Motor, LOW);
+  //! 關閉所有步進蠕動馬達
+  // TODO 目前只有一顆 測試中
+  // digitalWrite(PIN__Step_Motor_EN, LOW);
+  // digitalWrite(PIN__Step_Motor_STEP, LOW);
+  // digitalWrite(PIN__Step_Motor_DIR, LOW);
+
+  Serial2.begin(115200,SERIAL_8N1,PIN__Step_Motor_STEP, PIN__Step_Motor_DIR);
+  DynamicJsonDocument CommandBuffer(1024*2);
+  CommandBuffer["type"] = "run";
+  CommandBuffer["run"] = 0;
+  CommandBuffer["status"] = 0;
+  Serial1.write("|");
+  serializeJson(CommandBuffer, Serial1);
+  Serial1.write("\n");
+
+  // TODO 目前只有一顆 測試中
 
   ESP_LOGD("StopDeviceAllAction", "已斷開所有設施電源");
 
