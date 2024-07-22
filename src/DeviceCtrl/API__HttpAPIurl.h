@@ -101,6 +101,18 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
     }
   );
 
+  asyncServer.on("/api/DB/Rebuild", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      sqlite3_close(Device_Ctrl.DB_Main);
+      SD.remove("/mainDB.db");
+      int rc = sqlite3_open(Device_Ctrl.FilePath__SD__MainDB.c_str(), &Device_Ctrl.DB_Main);
+      db_exec(Device_Ctrl.DB_Main, "CREATE TABLE sensor ( time TEXT, pool TEXT , value_name TEXT , result REAL );");
+      AsyncWebServerResponse* response = request->beginResponse(200, "OK");
+      request->send(response);
+    }
+  );
+
   asyncServer.on("/api/logs", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
