@@ -289,8 +289,14 @@ void C_Device_Ctrl::InsertNewDataToDB(String time, String pool, String ValueName
   SqlString += " );";
   db_exec(DB_Main, SqlString);
 
-  
 
+  String FileSavePath = "/datas/"+GetDateString("-")+".csv";
+  ExFile_CreateFile(SD, FileSavePath);
+  File SaveFile = SD.open(FileSavePath, FILE_APPEND);
+  SaveFile.printf(
+    "%s,%s,%s,%s\n", time, pool, ValueName, String(result,2)
+  );
+  SaveFile.close();
 }
 
 /**
