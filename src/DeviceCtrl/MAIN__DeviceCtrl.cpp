@@ -294,7 +294,7 @@ void C_Device_Ctrl::InsertNewDataToDB(String time, String pool, String ValueName
   ExFile_CreateFile(SD, FileSavePath);
   File SaveFile = SD.open(FileSavePath, FILE_APPEND);
   SaveFile.printf(
-    "%s,%s,%s,%s\n", time, pool, ValueName, String(result,2)
+    "%s,%s,%s,%s\n", time.c_str(), pool.c_str(), ValueName.c_str(), String(result,2).c_str()
   );
   SaveFile.close();
 }
@@ -1005,6 +1005,8 @@ bool C_Device_Ctrl::AddLineNotifyEvent(String content) {
     free(contentCharArray);
     return false;
   }
+  free((void*)(e));
+  free(contentCharArray);
   return true;
 };
 
@@ -1023,6 +1025,9 @@ bool C_Device_Ctrl::AddGmailNotifyEvent(String MailSubject,String content) {
     free((void*)(e));
     return false;
   }
+  free(titleCharArray);
+  free(contentCharArray);
+  free((void*)(e));
   return true;
 };
 
