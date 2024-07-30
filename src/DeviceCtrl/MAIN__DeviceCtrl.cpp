@@ -20,6 +20,7 @@
 #include <HTTPClient.h>
 #include <ESP_Mail_Client.h>
 #include "mbedtls/aes.h"
+#include <Update.h>
 
 const long  gmtOffset_sec = 3600*8; // GMT+8
 const int   daylightOffset_sec = 0; // DST+0
@@ -194,6 +195,44 @@ bool C_Device_Ctrl::INIT_oled()
   display.println("HI");
   display.display();
   return false;
+}
+
+bool C_Device_Ctrl::CheckUpdate()
+{
+  if (SD.exists("/firmware/firmware.bin")) {
+    File firmware =  SD.open("/firmware/firmware.bin");
+    if (firmware) {
+      ESP_LOGI("","找到新的韌體檔案，嘗試更新");
+      Device_Ctrl.AddNewOledLog("Update Firmware");
+      Device_Ctrl.AddNewOledLog("Update: 0%");
+      Update.onProgress([](unsigned int progress, unsigned int total) {
+        Serial.printf("OTA progress: %u%%\r", (progress / (total / 100)));
+        Device_Ctrl.ChangeLastOledLog("Update: %u%%\r", (progress / (total / 100)));
+      });
+      Update.begin(firmware.size(), U_FLASH);
+      Update.writeStream(firmware);
+      if (Update.end()){
+        Serial.println(F("Update finished!"));
+        Device_Ctrl.AddNewOledLog("Update finished!");
+        firmware.close();
+      } else {
+        Device_Ctrl.AddNewOledLog("Update error!: %d", Update.getError());
+        Serial.println(F("Update error!"));
+        Serial.println(Update.getError());
+        firmware.close();
+      }
+      SD.remove("/firmware/firmware.bin");
+      // if (SD.rename("/firmware/firmware.bin", "/firmware/firmware.bak")){
+      //   Serial.println(F("Firmware rename succesfully!"));
+      // }else{
+      //   Serial.println(F("Firmware rename error!"));
+      // }
+      Device_Ctrl.AddNewOledLog("ReStart in 2s");
+      delay(2000);
+      ESP.restart();
+    }
+  }
+  return true;
 }
 
 /**
@@ -1164,7 +1203,7 @@ void C_Device_Ctrl::StopDeviceAllAction()
   // digitalWrite(PIN__Step_Motor_STEP, LOW);
   // digitalWrite(PIN__Step_Motor_DIR, LOW);
 
-  Serial2.begin(115200,SERIAL_8N1,PIN__Step_Motor_STEP, PIN__Step_Motor_DIR);
+  Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_STEP, PIN__Step_Motor_DIR);
   DynamicJsonDocument CommandBuffer(1024*2);
   CommandBuffer["type"] = "run";
   CommandBuffer["run"] = 0;
@@ -1391,6 +1430,24 @@ void C_Device_Ctrl::CreateTimerCheckerTask()
   //   &TASK__TimerChecker, 
   //   1
   // );
+}
+
+void C_Device_Ctrl::ChangeLastOledLog(const char* content, ...)
+{
+  char buffer[22];
+  va_list ap;
+  va_start(ap, content);
+  vsnprintf(buffer, 21,content, ap);
+  va_end(ap);
+  (*JSON__oledLogList).remove((*JSON__oledLogList).size()-1);
+  (*JSON__oledLogList).add(String(buffer));
+  display.clearDisplay();
+  display.setCursor(0,0);
+  for (int i = 0; i < (*JSON__oledLogList).size(); i++) {
+    String item = (*JSON__oledLogList)[i].as<String>(); // 使用 as<String>() 將元素轉換為 String
+    display.println(item);
+  }
+  display.display();
 }
 
 void C_Device_Ctrl::AddNewOledLog(const char* content, ...)

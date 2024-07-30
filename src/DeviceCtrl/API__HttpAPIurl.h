@@ -7,6 +7,7 @@
 #include "AsyncJson.h"
 #include <SD.h>
 #include "StorgeSystemExternalFunction.h"
+#include <Update.h>
 
 void Set_deviceConfigs_apis(AsyncWebServer &asyncServer);
 void Set_scheduleConfig_apis(AsyncWebServer &asyncServer);
@@ -18,6 +19,8 @@ size_t newConfigUpdateFileBufferLen;
 
 uint8_t *newWebUpdateFileBuffer;
 size_t newWebUpdateFileBufferLen;
+uint8_t *newFirmwareUpdateFileBuffer;
+size_t newFirmwareUpdateFileBufferLen;
 
 void Set_Http_apis(AsyncWebServer &asyncServer)
 {
@@ -692,8 +695,44 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
     }
   );
 
+  asyncServer.on("/api/firmware", HTTP_POST, 
+    [&](AsyncWebServerRequest *request)
+    { 
+      free(newFirmwareUpdateFileBuffer);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"Result\":\"OK\"}");
+      request->send(response);
+      vTaskDelay(500/portTICK_PERIOD_MS);
+      ESP.restart();
+    },
+    [&](AsyncWebServerRequest * request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+    {
+      String filePath = "/firmware/firmware.bin";
+      if (index == 0) {
+        newFirmwareUpdateFileBuffer = (uint8_t *)malloc(request->contentLength());
+      }
+      memcpy(newFirmwareUpdateFileBuffer + index, data, len);
+      if (final) {
+        Serial.printf("檔案 %s 接收完成， len: %d ，共 %d/%d bytes\n", filename.c_str(), len ,index + len, request->contentLength());
+        newFirmwareUpdateFileBufferLen = index + len;
+        if (!SD.exists("/firmware")) {
+          SD.mkdir("/firmware");
+        }
+        String filePath = "/firmware/firmware.bin";
+        ExFile_CreateFile(SD, filePath);
+        File configTempFile;
+        configTempFile = SD.open(filePath, FILE_WRITE);
+        configTempFile.write(newFirmwareUpdateFileBuffer ,index + len);
+        configTempFile.close();
+        Serial.printf("檔案更新完成\n", filename.c_str());
+      } 
+      else {
+        Serial.printf("檔案 %s 正在傳輸， len: %d ，目前已接收 %d/%d bytes\n", filename.c_str(), len, index + len, request->contentLength());
+      }
+    }
+  );
+
   asyncServer.on("/api/web", HTTP_GET, [](AsyncWebServerRequest *request){
-    AsyncWebServerResponse* response = request->beginResponse(200, "text/html", "<html><body><div><div>HTML update:</div><input type='file' id='new-html-input'><button onclick='uploadNew(`html`)'>upload</button></div><div><div>JS update:</div><input type='file' id='new-js-input'><button onclick='uploadNew(`js`)'>upload</button></div><script>function uploadNew(type) {const fileInput = document.getElementById('new-'+type+'-input');const file = fileInput.files[0];const reader = new FileReader();reader.onload = function(event) {const fileContent = event.target.result;const fileBlob = new Blob([fileContent],{ type:file.type});var formData = new FormData();formData.append('file', fileBlob, file.name);fetch('web?type='+type, {method: 'POST',body: formData}).then(response => response.json()).then(data => {console.log('Response from server:', data);}).catch(error => {console.error('Error:', error);});};reader.readAsArrayBuffer(file);}</script></body></html>");
+    AsyncWebServerResponse* response = request->beginResponse(200, "text/html", "<html><body><div><div>HTML update:</div><input type='file' id='new-html-input' /><button onclick='uploadNew(`html`)'>upload</button></div><div><div>JS update:</div><input type='file' id='new-js-input' /><button onclick='uploadNew(`js`)'>upload</button></div><div><div>Firmware update:</div><input type='file' id='new-bin-input' /><button onclick='uploadNewBin()'>upload</button></div><script>function uploadNew(type) {const fileInput = document.getElementById('new-' + type + '-input');const file = fileInput.files[0];const reader = new FileReader();reader.onload = function (event) {const fileContent = event.target.result;const fileBlob = new Blob([fileContent], { type: file.type });var formData = new FormData();formData.append('file', fileBlob, file.name);fetch('web?type=' + type, { method: 'POST', body: formData }).then((response) => response.json()).then((data) => {console.log('Response from server:', data);}).catch((error) => {console.error('Error:', error);});};reader.readAsArrayBuffer(file);}function uploadNewBin() {const fileInput = document.getElementById('new-bin-input');const file = fileInput.files[0];const reader = new FileReader();reader.onload = function (event) {const fileContent = event.target.result;const fileBlob = new Blob([fileContent], { type: file.type });var formData = new FormData();formData.append('file', fileBlob, file.name);fetch('firmware' , { method: 'POST', body: formData }).then((response) => response.json()).then((data) => {console.log('Response from server:', data);}).catch((error) => {console.error('Error:', error);});};reader.readAsArrayBuffer(file);}</script></body></html>");
     request->send(response);
   });
 

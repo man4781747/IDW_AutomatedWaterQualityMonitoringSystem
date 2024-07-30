@@ -100,6 +100,7 @@ class C_Device_Ctrl
     bool INIT_SD();
     bool INIT_oled();
     bool all_INIT_done = false;
+    bool CheckUpdate();
 
 
     //! Sqlite3相關操作
@@ -270,6 +271,7 @@ class C_Device_Ctrl
     //! oled螢幕相關
     DynamicJsonDocument *JSON__oledLogList = new DynamicJsonDocument(50000);
     // void AddNewOledLog(String content);
+    void ChangeLastOledLog(const char* content, ...);
     void AddNewOledLog(const char* content, ...);
     void CreateOledQRCodeTask();
     TaskHandle_t TASK__OledQRCode = NULL;
