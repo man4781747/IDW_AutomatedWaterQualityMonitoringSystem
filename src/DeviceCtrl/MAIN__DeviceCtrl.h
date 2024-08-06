@@ -142,6 +142,9 @@ class C_Device_Ctrl
     DynamicJsonDocument *JSON__RO_Result = new DynamicJsonDocument(1024);
     String FilePath__SD__RO_Result = "/datas/RO_Result.json";
 
+    DynamicJsonDocument *JSON__Consume = new DynamicJsonDocument(1024);
+    String FilePath__SD__Consume = "/datas/Consume.json";
+
     /**
      * @brief Pipeline 列表
      * 格式範例: [{

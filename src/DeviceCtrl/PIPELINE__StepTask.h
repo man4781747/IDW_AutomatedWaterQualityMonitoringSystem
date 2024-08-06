@@ -417,6 +417,9 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
     //? 3. stopImmediately: 整台機器停止動作
     String failAction = peristalticMotorItem["failAction"].as<String>();
 
+    String consumeTarget = peristalticMotorItem["consumeTarget"].as<String>();
+    double consumeRate = peristalticMotorItem["consumeRate"].as<double>();
+
     if (endTimeCheckList.containsKey(motorIndexString)) {
       continue;
     }
@@ -436,6 +439,8 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
     endTimeCheckList[motorIndexString]["failType"] = failType;
     endTimeCheckList[motorIndexString]["failAction"] = failAction;
     endTimeCheckList[motorIndexString]["finish"] = false;
+    endTimeCheckList[motorIndexString]["consumeTarget"] = consumeTarget;
+    endTimeCheckList[motorIndexString]["consumeRate"] = consumeRate;
     
     if (untilString == "RO") {
       endTimeCheckList[motorIndexString]["until"] = PIN__ADC_RO_FULL;
@@ -558,6 +563,14 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
             int usedTime = millis() - endTimeCheckList[String(motorIndex)]["startTime"].as<int>();
             String itemName = "motor_"+String(motorIndex);
             Device_Ctrl.ItemUsedAdd(itemName, usedTime);
+            //! 若設定檔有消耗紀錄設定，則計算預估消耗量，並紀錄之
+            String consumeTarget = endTimeCheckJSON["consumeTarget"].as<String>();
+            if (consumeTarget) {
+              double consumeRate = endTimeCheckJSON["consumeRate"].as<double>();
+              double consumeRemaining = (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].as<double>();
+              (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].set(consumeRemaining - consumeRate*usedTime/1000);
+              ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Consume, *Device_Ctrl.JSON__Consume);
+            }
           }
           ESP_LOGV(StepTaskDetailItem->TaskName.c_str(), "蠕動馬達(%d)執行至最大時間，停止其動作", motorIndex);
           endTimeCheckJSON["finish"].set(true);
@@ -579,6 +592,14 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
             int usedTime = millis() - endTimeCheckList[String(motorIndex)]["startTime"].as<int>();
             String itemName = "motor_"+String(motorIndex);
             Device_Ctrl.ItemUsedAdd(itemName, usedTime);
+            //! 若設定檔有消耗紀錄設定，則計算預估消耗量，並紀錄之
+            String consumeTarget = endTimeCheckJSON["consumeTarget"].as<String>();
+            if (consumeTarget) {
+              double consumeRate = endTimeCheckJSON["consumeRate"].as<double>();
+              double consumeRemaining = (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].as<double>();
+              (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].set(consumeRemaining - consumeRate*usedTime/1000);
+              ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Consume, *Device_Ctrl.JSON__Consume);
+            }
           }
           ESP_LOGV(StepTaskDetailItem->TaskName.c_str(), "浮球觸發，關閉蠕動馬達(%d)", motorIndex);
           //? 判斷是否有觸發錯誤

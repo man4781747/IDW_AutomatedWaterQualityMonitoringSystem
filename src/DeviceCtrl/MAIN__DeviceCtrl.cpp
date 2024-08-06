@@ -304,6 +304,7 @@ void C_Device_Ctrl::LoadConfigJsonFiles()
   ExFile_LoadJsonFile(SD, FilePath__SD__WiFiConfig, *JSON__WifiConfig);
   ExFile_LoadJsonFile(SD, FilePath__SD__ItemUseCount, *JSON__ItemUseCount);
   ExFile_LoadJsonFile(SD, FilePath__SD__RO_Result, *JSON__RO_Result);
+  ExFile_LoadJsonFile(SD, FilePath__SD__Consume, *JSON__Consume);
 }
 
 

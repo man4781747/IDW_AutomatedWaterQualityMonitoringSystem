@@ -592,6 +592,60 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
 
 void Set_tool_apis(AsyncWebServer &asyncServer)
 {
+  asyncServer.on("/api/consume", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      String returnString;
+      serializeJson(*Device_Ctrl.JSON__Consume, returnString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+      request->send(response);
+    }
+  );
+  asyncServer.on("/api/consume", HTTP_DELETE,
+    [&](AsyncWebServerRequest *request)
+    { 
+      (*Device_Ctrl.JSON__Consume)["RO"]["alarm"].set(1000);
+      (*Device_Ctrl.JSON__Consume)["RO"]["remaining"].set(20000);
+      (*Device_Ctrl.JSON__Consume)["NO2_R1"]["alarm"].set(30);
+      (*Device_Ctrl.JSON__Consume)["NO2_R1"]["remaining"].set(300);
+      (*Device_Ctrl.JSON__Consume)["NH4_R1"]["alarm"].set(30);
+      (*Device_Ctrl.JSON__Consume)["NH4_R1"]["remaining"].set(300);
+      (*Device_Ctrl.JSON__Consume)["NH4_R2"]["alarm"].set(30);
+      (*Device_Ctrl.JSON__Consume)["NH4_R2"]["remaining"].set(300);
+      
+      String returnString;
+      serializeJson(*Device_Ctrl.JSON__Consume, returnString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+      request->send(response);
+    }
+  );
+  asyncServer.on("/api/consume", HTTP_PATCH,
+    [&](AsyncWebServerRequest *request)
+    { 
+      AsyncWebServerResponse* response;
+      String keyName = request->pathArg(0);
+      if (request->hasArg("name")) {
+        String name = request->getParam("name")->value();
+        if (request->hasArg("alarm")) {
+          int alarm = String(request->getParam("alarm")->value()).toInt();
+          (*Device_Ctrl.JSON__Consume)[name]["alarm"].set(alarm);
+        }
+        if (request->hasArg("remaining")) {
+          int remaining = String(request->getParam("remaining")->value()).toInt();
+          (*Device_Ctrl.JSON__Consume)[name]["remaining"].set(remaining);
+        }
+        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Consume, *Device_Ctrl.JSON__Consume);
+        String returnString;
+        serializeJson(*Device_Ctrl.JSON__Consume, returnString);
+        response = request->beginResponse(200, "application/json", returnString);
+      }
+      else {
+        response = request->beginResponse(500, "application/json", "{\"Result\":\"缺少para: 'name'\"}");
+      }
+      request->send(response);
+    }
+  );
+
   asyncServer.on("/api/RO/Result", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
