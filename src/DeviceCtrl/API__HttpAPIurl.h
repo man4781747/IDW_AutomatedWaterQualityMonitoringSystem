@@ -592,6 +592,14 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
 
 void Set_tool_apis(AsyncWebServer &asyncServer)
 {
+  asyncServer.on("/api/consume/test", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      Device_Ctrl.SendComsumeWaring();
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json","OK");
+      request->send(response);
+    }
+  );
   asyncServer.on("/api/consume", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 

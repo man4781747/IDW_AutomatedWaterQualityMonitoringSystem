@@ -903,6 +903,7 @@ void C_Device_Ctrl::SendLineNotifyMessage(char * content)
     http.addHeader("Connection", "close");
     String payload = "message="+String(content);
     http.POST(payload);
+    http.end();
   }
 }
 
@@ -929,9 +930,10 @@ void smtpCallback(SMTP_Status status){
     //   ESP_MAIL_PRINTF("主旨：%s\n", result.subject.c_str());
     // }
     // Serial.println("----------------\n");
-    Device_Ctrl.smtp.sendingResult.clear();
+    // Device_Ctrl.smtp.sendingResult.clear();
   } else {
-    ESP_MAIL_PRINTF("訊息傳送失敗：%d\n", status.failedCount());
+    // ESP_MAIL_PRINTF("訊息傳送失敗：%d\n", status.failedCount());
+    
   }
 }
 
@@ -948,15 +950,18 @@ int C_Device_Ctrl::SendGmailNotifyMessage(char * MailSubject, char * content)
     String AutherMail = (*JSON__DeviceBaseInfo)["Mail_Notify_Auther"].as<String>();
     if (AutherMail=="null") {
       ESP_LOGE("Mail", "Mail警告訊息功能缺乏");
+      smtp.sendingResult.clear();
       return -4;
     }
     String Key_encode = (*JSON__DeviceBaseInfo)["Mail_Notify_Key"].as<String>();
     if (Key_encode=="null") {
+      smtp.sendingResult.clear();
       return -5;
     }
     String Key = Device_Ctrl.AES_decode(Key_encode);
     String TargetMail = (*JSON__DeviceBaseInfo)["Mail_Notify_Target"].as<String>();
     if (TargetMail=="null") {
+      smtp.sendingResult.clear();
       return -6;
     }
     smtp.debug(1);
@@ -975,6 +980,7 @@ int C_Device_Ctrl::SendGmailNotifyMessage(char * MailSubject, char * content)
 
     if (!smtp.connect(&session)) {
       ESP_LOGE("Mail", "Mail訊息通知無法連上STMP伺服器");
+      smtp.sendingResult.clear();
       return -2;
     }
 
@@ -995,15 +1001,18 @@ int C_Device_Ctrl::SendGmailNotifyMessage(char * MailSubject, char * content)
       }
     }
 
-    message.html.content = content;  // 設定郵件內容（HTML格式訊息
+    // message.html.content = content;  // 設定郵件內容（HTML格式訊息
+    message.text.content = content;
     message.text.charSet = "utf-8";  // 設定訊息文字的編碼
+    message.text.transfer_encoding = "base64"; //! recommend for non-ASCII words in message
     if (!MailClient.sendMail(&smtp, &message)) {
       Serial.println("寄信時出錯了：" + smtp.errorReason());
+      smtp.sendingResult.clear();
       smtp.closeSession();
       return -3;
     }
-    // smtp.sendingResult.clear();
-    // smtp.closeSession();
+    smtp.sendingResult.clear();
+    smtp.closeSession();
     return 1;
   }
   else {
@@ -1033,6 +1042,22 @@ static inline bool _send_async_line_mail_event(line_mail_notify_t ** e){
   return Device_Ctrl._async_queue__LINE_MAIN_Notify_Task && 
     xQueueSend(Device_Ctrl._async_queue__LINE_MAIN_Notify_Task, e, portMAX_DELAY) == pdPASS;
 }
+
+bool C_Device_Ctrl::AddLineNotifyEvent(char * content, int len) {
+  line_mail_notify_t * e = (line_mail_notify_t *)malloc(sizeof(line_mail_notify_t));
+  e->event = line_mail_event_t::LINE;
+  char *contentCharArray = (char*)malloc((len+1) * sizeof(char));
+  strcpy(contentCharArray, content);
+  e->line_event.content = contentCharArray;
+  if (!_send_async_line_mail_event(&e)) {
+    free((void*)(e));
+    free(contentCharArray);
+    return false;
+  }
+  // free((void*)(e));
+  // free(contentCharArray);
+  return true;
+};
 
 bool C_Device_Ctrl::AddLineNotifyEvent(String content) {
   line_mail_notify_t * e = (line_mail_notify_t *)malloc(sizeof(line_mail_notify_t));
@@ -1065,9 +1090,30 @@ bool C_Device_Ctrl::AddGmailNotifyEvent(String MailSubject,String content) {
     free((void*)(e));
     return false;
   }
-  free(titleCharArray);
-  free(contentCharArray);
-  free((void*)(e));
+  // free(titleCharArray);
+  // free(contentCharArray);
+  // free((void*)(e));
+  return true;
+};
+
+bool C_Device_Ctrl::AddGmailNotifyEvent(char * MailSubject, int MailSubject_len, char * content, int content_len) {
+  line_mail_notify_t * e = (line_mail_notify_t *)malloc(sizeof(line_mail_notify_t));
+  e->event = line_mail_event_t::GMAIL;
+  char *titleCharArray = (char*)malloc((MailSubject_len+1) * sizeof(char));
+  strcpy(titleCharArray, MailSubject);
+  e->gmail_event.title = titleCharArray;
+  char *contentCharArray = (char*)malloc((content_len+1) * sizeof(char));
+  strcpy(contentCharArray, content);
+  e->gmail_event.content = contentCharArray;
+  if (!_send_async_line_mail_event(&e)) {
+    free(titleCharArray);
+    free(contentCharArray);
+    free((void*)(e));
+    return false;
+  }
+  // free(titleCharArray);
+  // free(contentCharArray);
+  // free((void*)(e));
   return true;
 };
 
@@ -1126,6 +1172,63 @@ void C_Device_Ctrl::CreateLINE_MAIN_NotifyTask()
   } else {
     ESP_LOGE("", "通知功能駐列空間要求失敗");
   }
+}
+
+DynamicJsonDocument C_Device_Ctrl::CheckComsumeStatus()
+{
+  DynamicJsonDocument ReturnData(1024);
+  for (JsonPair ConsumeData : (*JSON__Consume).as<JsonObject>()) {
+    String TargetName = String(ConsumeData.key().c_str());
+    if (TargetName == "null") {
+      continue;
+    }
+    double alarm = (*JSON__Consume)[TargetName]["alarm"].as<double>();
+    double remaining = (*JSON__Consume)[TargetName]["remaining"].as<double>();
+    ESP_LOGD("", "%s, %.2f, %.2f",
+      TargetName, alarm, remaining
+    );
+    if (remaining < alarm) {
+      ReturnData[TargetName].set((*JSON__Consume)[TargetName]);
+    }
+  }
+  return ReturnData;
+}
+
+void C_Device_Ctrl::SendComsumeWaring()
+{
+  String WarningStr = "";
+  DynamicJsonDocument WarningData = CheckComsumeStatus();
+  for (JsonPair ConsumeData : WarningData.as<JsonObject>()) {
+    String TargetName = String(ConsumeData.key().c_str());
+    if (TargetName == "null") {
+      continue;
+    }
+    double alarm = (*JSON__Consume)[TargetName]["alarm"].as<double>();
+    double remaining = (*JSON__Consume)[TargetName]["remaining"].as<double>();
+    if (TargetName == "RO") {
+      WarningStr += " - 自來水桶剩餘量: "+String(remaining,2)+"ml, 低於設定值: "+String(alarm,2)+" ml\n";
+    }
+    else if (TargetName == "NO2_R1") {
+      WarningStr += " - 亞硝酸鹽R1試劑剩餘量: "+String(remaining,2)+"ml, 低於設定值: "+String(alarm,2)+" ml\n";
+    }
+    else if (TargetName == "NH4_R1") {
+      WarningStr += " - 氨氮R1試劑剩餘量: "+String(remaining,2)+"ml, 低於設定值: "+String(alarm,2)+" ml\n";
+    }
+    else if (TargetName == "NH4_R2") {
+      WarningStr += " - 氨氮R2試劑剩餘量: "+String(remaining,2)+"ml, 低於設定值: "+String(alarm,2)+" ml\n";
+    }
+  }
+  if (WarningStr.length() == 0) {return;}
+  String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 以下耗材可能需要更換\n";
+  sendString += WarningStr;
+  sendString += "請盡速確認列表內耗材是否充足";
+  Serial.println(sendString);
+
+  char *contentCharArray = (char*)malloc((sendString.length()+1) * sizeof(char));
+  sendString.toCharArray(contentCharArray, sendString.length()+1);
+  AddLineNotifyEvent(contentCharArray, sendString.length());
+  AddGmailNotifyEvent((char*)"耗材警告訊息",19 ,contentCharArray, sendString.length());
+  free(contentCharArray);
 }
 
 void C_Device_Ctrl::CreatePipelineFlowScanTask()

@@ -188,12 +188,17 @@ class C_Device_Ctrl
     SMTPSession smtp;
     int SendGmailNotifyMessage(char * MailSubject, char * content);
 
+    bool AddLineNotifyEvent(char * content, int len);
     bool AddLineNotifyEvent(String content);
     bool AddGmailNotifyEvent(String MailSubject,String content);
+    bool AddGmailNotifyEvent(char * MailSubject, int MailSubject_len, char * content, int content_len);
 
     xQueueHandle _async_queue__LINE_MAIN_Notify_Task;  //? 實現同步的警告功能 
     TaskHandle_t TASK__LINE_MAIN_Notify = NULL;
     void CreateLINE_MAIN_NotifyTask();
+
+    DynamicJsonDocument CheckComsumeStatus();
+    void SendComsumeWaring();
 
     //! Websocket相關
     void INIT_AllWsAPI();
