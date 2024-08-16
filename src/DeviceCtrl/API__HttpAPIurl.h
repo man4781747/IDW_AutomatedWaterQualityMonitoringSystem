@@ -858,11 +858,14 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
           int utc = request->getParam("UTC")->value().toInt();
           time += utc*60*60;
         }
-        // Serial.println(time);
         setTime(time);
+        AsyncWebServerResponse* response = request->beginResponse(200, "application/json",GetDatetimeString());
+        request->send(response);
       }
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json",GetDatetimeString());
-      request->send(response);
+      else {
+        AsyncWebServerResponse* response = request->beginResponse(400, "application/json","需要參數: unix");
+        request->send(response);
+      }
     }
   );
 
