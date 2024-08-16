@@ -595,8 +595,12 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
   // );
 }
 
+//! 工具類型API
 void Set_tool_apis(AsyncWebServer &asyncServer)
 {
+  //? 耗材通知功能測試API
+  //? 無參數，GET後直接執行通知流程
+  //! 注意，若儀器當前沒有項目達到發送閥值，則會無反應
   asyncServer.on("/api/consume/test", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -605,6 +609,7 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+  //? 耗材設定值/剩餘量資料獲取API，無參數
   asyncServer.on("/api/consume", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -614,6 +619,8 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+  //? 耗材設定值/剩餘量資料重設API
+  //? 無參數，GET後直接重設各項數值
   asyncServer.on("/api/consume", HTTP_DELETE,
     [&](AsyncWebServerRequest *request)
     { 
@@ -625,13 +632,14 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       (*Device_Ctrl.JSON__Consume)["NH4_R1"]["remaining"].set(300);
       (*Device_Ctrl.JSON__Consume)["NH4_R2"]["alarm"].set(30);
       (*Device_Ctrl.JSON__Consume)["NH4_R2"]["remaining"].set(300);
-      
       String returnString;
       serializeJson(*Device_Ctrl.JSON__Consume, returnString);
       AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
       request->send(response);
     }
   );
+  //? 耗材設定值/剩餘量資料數值變更API
+  //? 所需path參數: (String/必要)name, (double)alarm, (double)remaining
   asyncServer.on("/api/consume", HTTP_PATCH,
     [&](AsyncWebServerRequest *request)
     { 
@@ -640,11 +648,11 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       if (request->hasArg("name")) {
         String name = request->getParam("name")->value();
         if (request->hasArg("alarm")) {
-          int alarm = String(request->getParam("alarm")->value()).toInt();
+          double alarm = String(request->getParam("alarm")->value()).toDouble();
           (*Device_Ctrl.JSON__Consume)[name]["alarm"].set(alarm);
         }
         if (request->hasArg("remaining")) {
-          int remaining = String(request->getParam("remaining")->value()).toInt();
+          double remaining = String(request->getParam("remaining")->value()).toDouble();
           (*Device_Ctrl.JSON__Consume)[name]["remaining"].set(remaining);
         }
         ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Consume, *Device_Ctrl.JSON__Consume);
@@ -658,7 +666,10 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
-
+  //? RO 水最新量測結果修正/獲取，用以修正池水量測值
+  //? 所需path參數: (double)NO2, (double)NH4
+  //? 若有給出參數，則修改儲存之，並回覆修正後數值
+  //? 若無給參數，則直接返回當前數值
   asyncServer.on("/api/RO/Result", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -678,6 +689,9 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+  //? 各部件使用歷程計數歸零API
+  //? 所需path參數: (String/必要)name
+  //? 會清除指定目標歷程數紀錄
   asyncServer.on("/api/device/used", HTTP_DELETE,
     [&](AsyncWebServerRequest *request)
     { 
@@ -701,7 +715,7 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       }
     }
   );
-
+  //? 各部件使用歷程計數獲得，無參數，全返回
   asyncServer.on("/api/device/used", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -711,7 +725,7 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
-
+  //? SD卡相關資訊
   asyncServer.on("/api/SD/info", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -725,6 +739,8 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+  //? LINE 通知功能測試，無參數
+  //? GET 後直接執行 LINE 訊息通知功能
   asyncServer.on("/api/test/line_notify", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -737,7 +753,8 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
-
+  //? GMAIL 通知功能測試，無參數
+  //? GET 後直接執行 GMAIL 訊息通知功能
   asyncServer.on("/api/test/mail_notify", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -750,8 +767,7 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
-
-  //! 獲得當前Websocket所有連線單位的狀態
+  //? 獲得當前Websocket所有連線單位的狀態
   asyncServer.on("/api/wifi/websocket", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -761,7 +777,8 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
-
+  //? 韌體.bin上傳API
+  //? 上傳成功後會重開機
   asyncServer.on("/api/firmware", HTTP_POST, 
     [&](AsyncWebServerRequest *request)
     { 
@@ -797,12 +814,12 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       }
     }
   );
-
+  //? 上傳 web 靜態檔案API
   asyncServer.on("/api/web", HTTP_GET, [](AsyncWebServerRequest *request){
     AsyncWebServerResponse* response = request->beginResponse(200, "text/html", "<html><body><div><div>HTML update:</div><input type='file' id='new-html-input' /><button onclick='uploadNew(`html`)'>upload</button></div><div><div>JS update:</div><input type='file' id='new-js-input' /><button onclick='uploadNew(`js`)'>upload</button></div><div><div>Firmware update:</div><input type='file' id='new-bin-input' /><button onclick='uploadNewBin()'>upload</button></div><script>function uploadNew(type) {const fileInput = document.getElementById('new-' + type + '-input');const file = fileInput.files[0];const reader = new FileReader();reader.onload = function (event) {const fileContent = event.target.result;const fileBlob = new Blob([fileContent], { type: file.type });var formData = new FormData();formData.append('file', fileBlob, file.name);fetch('web?type=' + type, { method: 'POST', body: formData }).then((response) => response.json()).then((data) => {console.log('Response from server:', data);}).catch((error) => {console.error('Error:', error);});};reader.readAsArrayBuffer(file);}function uploadNewBin() {const fileInput = document.getElementById('new-bin-input');const file = fileInput.files[0];const reader = new FileReader();reader.onload = function (event) {const fileContent = event.target.result;const fileBlob = new Blob([fileContent], { type: file.type });var formData = new FormData();formData.append('file', fileBlob, file.name);fetch('firmware' , { method: 'POST', body: formData }).then((response) => response.json()).then((data) => {console.log('Response from server:', data);}).catch((error) => {console.error('Error:', error);});};reader.readAsArrayBuffer(file);}</script></body></html>");
     request->send(response);
   });
-
+  //? 主網頁更新專用 API
   asyncServer.on("/api/web", HTTP_POST, 
     [&](AsyncWebServerRequest *request)
     { 
@@ -845,10 +862,10 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       }
     }
   );
-  
   //! 儀器時間設定API
   //! 2024-08-15 彰化廠區安裝時遇到 WIFI 無對外連線，無法透過網路校正時間的問題
   //! 特此開一項 API 來讓機器有機會校正時間
+  //! 所需path參數: (long/必要)unix, (int)UTC
   asyncServer.on("/api/TimeSet", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
