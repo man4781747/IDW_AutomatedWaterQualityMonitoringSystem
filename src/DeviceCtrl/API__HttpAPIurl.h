@@ -8,11 +8,15 @@
 #include <SD.h>
 #include "StorgeSystemExternalFunction.h"
 #include <Update.h>
+#include <TimeLib.h>
+#include "TimeLibExternalFunction.h"
 
 void Set_deviceConfigs_apis(AsyncWebServer &asyncServer);
 void Set_scheduleConfig_apis(AsyncWebServer &asyncServer);
 void Set_tool_apis(AsyncWebServer &asyncServer);
 void Set_Pipeline_apis(AsyncWebServer &asyncServer);
+void Set_test_apis(AsyncWebServer &asyncServer);
+
 
 uint8_t *newConfigUpdateFileBuffer;
 size_t newConfigUpdateFileBufferLen;
@@ -159,6 +163,7 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
   Set_scheduleConfig_apis(asyncServer);
   Set_tool_apis(asyncServer);
   Set_Pipeline_apis(asyncServer);
+  Set_test_apis(asyncServer);
 }
 
 //! Pipeline檔案相關API
@@ -840,8 +845,57 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       }
     }
   );
-
+  
+  //! 儀器時間設定API
+  //! 2024-08-15 彰化廠區安裝時遇到 WIFI 無對外連線，無法透過網路校正時間的問題
+  //! 特此開一項 API 來讓機器有機會校正時間
+  asyncServer.on("/api/TimeSet", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      if (request->hasArg("unix")) {
+        long time = request->getParam("unix")->value().toInt();
+        if (request->hasArg("UTC")) {
+          int utc = request->getParam("UTC")->value().toInt();
+          time += utc*60*60;
+        }
+        // Serial.println(time);
+        setTime(time);
+      }
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json",GetDatetimeString());
+      request->send(response);
+    }
+  );
 
 }
+
+//! 測試相關API
+void Set_test_apis(AsyncWebServer &asyncServer)
+{
+  asyncServer.on("/api/test/PoolData", HTTP_PATCH,
+    [&](AsyncWebServerRequest *request)
+    { 
+      if (request->hasArg("pl")) {
+        String pool = request->getParam("pl")->value();
+        if (request->hasArg("type")) {
+          String type = request->getParam("type")->value();
+          if (request->hasArg("value")) {
+            double value = request->getParam("value")->value().toDouble();
+            if (request->hasArg("data_time")) {
+              String data_time = request->getParam("data_time")->value();
+              (*Device_Ctrl.JSON__sensorDataSave)[pool]["DataItem"][type]["Value"].set(value);
+              (*Device_Ctrl.JSON__sensorDataSave)[pool]["DataItem"][type]["data_time"].set(data_time);
+            }
+          }
+        }
+      }
+      ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__LastSensorDataSave, *Device_Ctrl.JSON__sensorDataSave);
+      String returnString;
+      serializeJson(*Device_Ctrl.JSON__sensorDataSave, returnString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json",returnString);
+      request->send(response);
+    }
+  );
+}
+
 
 #endif
