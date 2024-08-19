@@ -632,6 +632,7 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       (*Device_Ctrl.JSON__Consume)["NH4_R1"]["remaining"].set(500);
       (*Device_Ctrl.JSON__Consume)["NH4_R2"]["alarm"].set(10);
       (*Device_Ctrl.JSON__Consume)["NH4_R2"]["remaining"].set(500);
+      ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Consume, *Device_Ctrl.JSON__Consume);
       String returnString;
       serializeJson(*Device_Ctrl.JSON__Consume, returnString);
       AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
@@ -666,6 +667,58 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+  //? 維護項目資料獲取API，無參數
+  asyncServer.on("/api/maintain", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      String returnString;
+      serializeJson(*Device_Ctrl.JSON__Maintain, returnString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+      request->send(response);
+    }
+  );
+  //? 維護項目重設API
+  //? 無參數，DELETE後直接重設各項數值
+  asyncServer.on("/api/maintain", HTTP_DELETE,
+    [&](AsyncWebServerRequest *request)
+    { 
+      Device_Ctrl.RebuildMaintainJSON();
+      String returnString;
+      serializeJson(*Device_Ctrl.JSON__Consume, returnString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+      request->send(response);
+    }
+  );
+  //? 維護項目數值變更API
+  //? 所需path參數: (String/必要)name, (String/必要)time
+  asyncServer.on("/api/maintain", HTTP_PATCH,
+    [&](AsyncWebServerRequest *request)
+    { 
+      AsyncWebServerResponse* response;
+      String keyName = request->pathArg(0);
+      if (request->hasArg("name")) {
+        String name = request->getParam("name")->value();
+        if (request->hasArg("time")) {
+          String time = request->getParam("time")->value();
+          (*Device_Ctrl.JSON__Maintain)[name]["time"].set(time);
+          ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Maintain, *Device_Ctrl.JSON__Maintain);
+          String returnString;
+          serializeJson(*Device_Ctrl.JSON__Maintain, returnString);
+          response = request->beginResponse(200, "application/json", returnString);
+          request->send(response);
+        }
+        else {
+          response = request->beginResponse(500, "application/json", "{\"Result\":\"缺少para: 'time'\"}");
+          request->send(response);
+        }
+      }
+      else {
+        response = request->beginResponse(500, "application/json", "{\"Result\":\"缺少para: 'name'\"}");
+        request->send(response);
+      }
+    }
+  );
+
   //? RO 水最新量測結果修正/獲取，用以修正池水量測值
   //? 所需path參數: (double)NO2, (double)NH4
   //? 若有給出參數，則修改儲存之，並回覆修正後數值

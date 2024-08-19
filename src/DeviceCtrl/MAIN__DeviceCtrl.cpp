@@ -305,6 +305,7 @@ void C_Device_Ctrl::LoadConfigJsonFiles()
   ExFile_LoadJsonFile(SD, FilePath__SD__ItemUseCount, *JSON__ItemUseCount);
   ExFile_LoadJsonFile(SD, FilePath__SD__RO_Result, *JSON__RO_Result);
   ExFile_LoadJsonFile(SD, FilePath__SD__Consume, *JSON__Consume);
+  ExFile_LoadJsonFile(SD, FilePath__SD__Maintain, *JSON__Maintain);
 }
 
 
@@ -362,6 +363,14 @@ void C_Device_Ctrl::InsertNewLogToDB(String time, int level, const char* content
   SqlString += String(buffer);
   SqlString += "' );";
   db_exec(DB_Log, SqlString);
+}
+
+//! 維護項目紀錄JSON檔案重設
+void C_Device_Ctrl::RebuildMaintainJSON()
+{
+  (*Device_Ctrl.JSON__Maintain).clear();
+  (*Device_Ctrl.JSON__Maintain)["pH"]["time"].set(GetDatetimeString());
+  ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Maintain, *Device_Ctrl.JSON__Maintain);
 }
 
 /**
@@ -1695,13 +1704,6 @@ void C_Device_Ctrl::WriteSysInfo()
   ESP_LOGD("SYS", "WiFi status: %d", WiFi.status());
   ESP_LOGD("SYS", "WiFi RSSI: %d", WiFi.RSSI());
   ESP_LOGD("SYS", "STA IP: %s", WiFi.localIP().toString().c_str());
-  // ESP_LOGD("SYS", "AP IP: %s", WiFi.broadcastIP().toString());
-  // if (WiFi.isConnected()) {
-
-  // } else {
-
-  // }
-  // logFile.close();
 }                                                                                                  
 
 /**

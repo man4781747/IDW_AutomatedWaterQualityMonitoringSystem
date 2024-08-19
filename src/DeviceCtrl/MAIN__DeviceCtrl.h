@@ -144,7 +144,10 @@ class C_Device_Ctrl
 
     DynamicJsonDocument *JSON__Consume = new DynamicJsonDocument(1024);
     String FilePath__SD__Consume = "/datas/Consume.json";
-
+    DynamicJsonDocument *JSON__Maintain = new DynamicJsonDocument(1024);
+    String FilePath__SD__Maintain = "/datas/Maintain.json";
+    void RebuildMaintainJSON();
+    
     /**
      * @brief Pipeline 列表
      * 格式範例: [{
