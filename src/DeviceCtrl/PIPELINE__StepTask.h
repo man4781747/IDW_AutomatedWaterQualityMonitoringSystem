@@ -566,9 +566,9 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
             //! 若設定檔有消耗紀錄設定，則計算預估消耗量，並紀錄之
             String consumeTarget = endTimeCheckJSON["consumeTarget"].as<String>();
             if (consumeTarget) {
-              double consumeRate = endTimeCheckJSON["consumeRate"].as<double>();
-              double consumeRemaining = (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].as<double>();
-              (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].set(consumeRemaining - consumeRate*usedTime/1000);
+              int consumeNum = endTimeCheckJSON["consumeNum"].as<int>();
+              int consumeRemaining = (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].as<int>();
+              (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].set(consumeRemaining - consumeNum);
               ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Consume, *Device_Ctrl.JSON__Consume);
             }
           }
@@ -595,9 +595,9 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
             //! 若設定檔有消耗紀錄設定，則計算預估消耗量，並紀錄之
             String consumeTarget = endTimeCheckJSON["consumeTarget"].as<String>();
             if (consumeTarget) {
-              double consumeRate = endTimeCheckJSON["consumeRate"].as<double>();
-              double consumeRemaining = (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].as<double>();
-              (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].set(consumeRemaining - consumeRate*usedTime/1000);
+              int consumeNum = endTimeCheckJSON["consumeNum"].as<int>();
+              int consumeRemaining = (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].as<int>();
+              (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].set(consumeRemaining - consumeNum);
               ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Consume, *Device_Ctrl.JSON__Consume);
             }
           }

@@ -624,14 +624,14 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/consume", HTTP_DELETE,
     [&](AsyncWebServerRequest *request)
     { 
-      (*Device_Ctrl.JSON__Consume)["RO"]["alarm"].set(1000);
-      (*Device_Ctrl.JSON__Consume)["RO"]["remaining"].set(20000);
-      (*Device_Ctrl.JSON__Consume)["NO2_R1"]["alarm"].set(30);
-      (*Device_Ctrl.JSON__Consume)["NO2_R1"]["remaining"].set(300);
-      (*Device_Ctrl.JSON__Consume)["NH4_R1"]["alarm"].set(30);
-      (*Device_Ctrl.JSON__Consume)["NH4_R1"]["remaining"].set(300);
-      (*Device_Ctrl.JSON__Consume)["NH4_R2"]["alarm"].set(30);
-      (*Device_Ctrl.JSON__Consume)["NH4_R2"]["remaining"].set(300);
+      (*Device_Ctrl.JSON__Consume)["RO"]["alarm"].set(10);
+      (*Device_Ctrl.JSON__Consume)["RO"]["remaining"].set(300);
+      (*Device_Ctrl.JSON__Consume)["NO2_R1"]["alarm"].set(10);
+      (*Device_Ctrl.JSON__Consume)["NO2_R1"]["remaining"].set(500);
+      (*Device_Ctrl.JSON__Consume)["NH4_R1"]["alarm"].set(10);
+      (*Device_Ctrl.JSON__Consume)["NH4_R1"]["remaining"].set(500);
+      (*Device_Ctrl.JSON__Consume)["NH4_R2"]["alarm"].set(10);
+      (*Device_Ctrl.JSON__Consume)["NH4_R2"]["remaining"].set(500);
       String returnString;
       serializeJson(*Device_Ctrl.JSON__Consume, returnString);
       AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
