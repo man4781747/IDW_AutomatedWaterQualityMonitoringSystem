@@ -393,6 +393,7 @@ void PipelineFlowScan(void* parameter) {
         vTaskDelay(1000/portTICK_PERIOD_MS);
       }
       Device_Ctrl.BroadcastLogToClient(NULL, 3, "所有流程執行完畢");
+      Device_Ctrl.SendComsumeWaring();
     }
   }
 
