@@ -1267,12 +1267,17 @@ void C_Device_Ctrl::CreatePipelineFlowScanTask()
 
 void C_Device_Ctrl::StopNowPipelineAndAllStepTask()
 {
+  //! 關閉所有光度計
   digitalWrite(PIN__EN_BlueSensor, LOW);
   digitalWrite(PIN__EN_GreenSensor, LOW);
+  //! 蠕動馬達斷電
   digitalWrite(PIN__EN_Peristaltic_Motor, LOW);
+  //! 伺服馬達斷電
   digitalWrite(PIN__EN_Servo_Motor, LOW);
+  //! 所有蠕動馬達狀態定為 不轉動
   Device_Ctrl.peristalticMotorsCtrl.SetAllMotorStop();
 
+  //! 關閉所有步進蠕動馬達
   // TODO 目前只有一顆 測試中
   Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_RS485_RX, PIN__Step_Motor_RS485_TX);
   mb.begin(&Serial1);
@@ -1309,6 +1314,7 @@ void C_Device_Ctrl::StopDeviceAllAction()
   Device_Ctrl.peristalticMotorsCtrl.SetAllMotorStop();
   //! 伺服馬達斷電
   digitalWrite(PIN__EN_Servo_Motor, LOW);
+
   //! 關閉所有步進蠕動馬達
   // TODO 目前只有一顆 測試中
   Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_RS485_RX, PIN__Step_Motor_RS485_TX);
@@ -1376,13 +1382,18 @@ bool C_Device_Ctrl::IsDeviceIdle()
 
 void C_Device_Ctrl::StopAllStepTask()
 {
-  ESP_LOGD("StopAllStepTask", "準備停止所有Step");
-  ESP_LOGD("StopAllStepTask", "停止Pipeline流程");
+  ESP_LOGD("StopAllStepTask", "準備停止所有Step，同時停止Pipeline流程");
+  //! 將 Device_Ctrl.StopNowPipeline 改為 true 時
+  //! 在 PIPELINE__PipelineFlowScanTask.h 中會執行 pipeline Task 停止流程
+  //! 等停下後 Device_Ctrl.StopNowPipeline 會被改為 false
   Device_Ctrl.StopNowPipeline = true;
   while (Device_Ctrl.StopNowPipeline) {
     vTaskDelay(10/portTICK_PERIOD_MS);
   }
   ESP_LOGD("StopAllStepTask", "停止所有Step");
+  //? 強制修改所有 Step Task 的狀態為 StepTaskStatus::Close
+  //? 而後在 Step Task 自己的迴圈內會自行判斷，並將狀態更改為 StepTaskStatus::Idle
+  //? 詳細請至 PIPELINE__StepTask.h 觀看
   for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
     StepTaskDetailList[i].TaskStatus = StepTaskStatus::Close;
   }
@@ -1390,6 +1401,7 @@ void C_Device_Ctrl::StopAllStepTask()
   int timeOut = 5000;
   bool allStop = true;
   time_t waitStart = now();
+  //? 所有 Stap Task 變為 StepTaskStatus::Idle 才算結束
   while (allStop) {
     allStop = true;
     for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
@@ -1401,11 +1413,7 @@ void C_Device_Ctrl::StopAllStepTask()
     if (now() - waitStart >= timeOut) {
       ESP_LOGE("嚴重系統性錯誤", "停止所有Step流程Timeout，請聯絡工程師排除此BUG");
       Device_Ctrl.AddGmailNotifyEvent("嚴重系統性錯誤", "停止所有Step流程Timeout，請聯絡工程師排除此BUG");
-      // Device_Ctrl.SendGmailNotifyMessage(
-      //   "嚴重系統性錯誤", "停止所有Step流程Timeout，請聯絡工程師排除此BUG"
-      // );
       Device_Ctrl.AddLineNotifyEvent("[嚴重系統性錯誤]停止所有Step流程Timeout，請聯絡工程師排除此BUG");
-      // Device_Ctrl.SendLineNotifyMessage("[嚴重系統性錯誤]停止所有Step流程Timeout，請聯絡工程師排除此BUG");
       break;
     }
     vTaskDelay(100/portTICK_PERIOD_MS);

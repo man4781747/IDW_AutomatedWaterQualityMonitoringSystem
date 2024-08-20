@@ -14,49 +14,7 @@ void ws_StopAllActionTask(AsyncWebSocket *server, AsyncWebSocketClient *client, 
 {
   ESP_LOGW("","收到來Websocket的儀器停止需求");
   Device_Ctrl.StopDeviceAllAction();
-  // Device_Ctrl.StopDeviceAndINIT();
-  // Device_Ctrl.CleanAllStepTask();
-  // Device_Ctrl.SetLog(
-  //   2,
-  //   "儀器排程被強制停止",
-  //   "儀器排程被強制停止" ,
-  //   server, NULL
-  // );
 }
-
-
-
-// void ws_GetDeiveConfig(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData)
-// {
-//   JsonObject D_baseInfoJSON = D_baseInfo->as<JsonObject>();
-//   D_baseInfoJSON["status"].set("OK");
-//   D_baseInfoJSON["action"]["target"].set("DeiveConfig");
-//   D_baseInfoJSON["action"]["method"].set("Update");
-//   D_baseInfoJSON["parameter"].set(Device_Ctrl.JSON__DeviceBaseInfo->as<JsonObject>());
-//   String returnString;
-//   serializeJsonPretty(D_baseInfoJSON, returnString);
-//   client->binary(returnString);
-// }
-
-// void ws_PatchDeiveConfig(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData)
-// {
-//   JsonObject D_baseInfoJSON = D_baseInfo->as<JsonObject>();
-//   JsonObject D_oldConfig = (*Device_Ctrl.JSON__DeviceBaseInfo).as<JsonObject>();;
-//   JsonObject D_newConfig = D_FormData->as<JsonObject>();
-//   for (JsonPair newConfigItem : D_newConfig) {
-//     if (D_oldConfig[newConfigItem.key()].as<String>() != newConfigItem.value().as<String>()) {
-//       D_oldConfig[newConfigItem.key()].set(newConfigItem.value().as<String>());
-//     }
-//   }
-//   D_baseInfoJSON["status"].set("OK");
-//   D_baseInfoJSON["action"]["target"].set("DeiveConfig");
-//   D_baseInfoJSON["action"]["method"].set("Update");
-//   D_baseInfoJSON["parameter"].set(D_oldConfig);
-//   String returnString;
-//   serializeJsonPretty(D_baseInfoJSON, returnString);
-//   client->binary(returnString);
-// }
-
 
 void ws_GetNowStatus(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData)
 {
@@ -71,41 +29,7 @@ void ws_GetNowStatus(AsyncWebSocket *server, AsyncWebSocketClient *client, Dynam
   client->binary(returnString);
 }
 
-// //!LOG相關API
-
-// void ws_GetLogs(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData)
-// {
-//   JsonObject D_baseInfoJSON = D_baseInfo->as<JsonObject>();
-//   int MaxLogNum = 10;
-//   if ((*D_QueryParameter).containsKey("max")) {
-//     MaxLogNum = (*D_QueryParameter)["max"].as<int>();
-//   }
-//   D_baseInfoJSON["status"].set("OK");
-//   D_baseInfoJSON["action"]["message"].set("OK");
-//   D_baseInfoJSON["action"]["status"].set("OK");
-//   D_baseInfoJSON["action"]["target"].set("LogHistory");
-//   D_baseInfoJSON["action"]["method"].set("Update");
-
-//   JsonArray logsArray = D_baseInfoJSON["parameter"].createNestedArray("logs");
-
-//   JsonArray logSaves = (*Device_Ctrl.JSON__DeviceLogSave).as<JsonArray>();
-
-//   int lastIndex = logSaves.size() - 1;
-//   int startIndex = lastIndex - MaxLogNum;
-//   if (startIndex < 0) {
-//     startIndex = 0;
-//   }
-//   for (int indexChose=startIndex;indexChose<lastIndex;indexChose++) {
-//     logsArray.add(logSaves[indexChose].as<JsonObject>());
-//   }
-
-//   // int logCount = 0;
-//   String returnString;
-//   serializeJsonPretty(D_baseInfoJSON, returnString);
-//   client->binary(returnString);
-// }
-
-// //!Pool結果資料
+//!Pool結果資料
 
 void ws_GetAllPoolData(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData)
 {
@@ -151,175 +75,11 @@ void ws_GetAllPoolData(AsyncWebSocket *server, AsyncWebSocketClient *client, Dyn
 
     parameterList.add(D_poolSensorDataSended);
   }
-
-
-
-
-  // (*D_baseInfo)["parameter"].set(*Device_Ctrl.JSON__sensorDataSave);
   String returnString;
   serializeJsonPretty((*D_baseInfo), returnString);
   client->binary(returnString);
   (*D_baseInfo).clear();
 }
-
-
-// //!蝦池設定相關API
-
-// void ws_PatchPoolInfo(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData)
-// {
-//   String TargetName = D_PathParameter->as<JsonObject>()["name"];
-//   ESP_LOGD("Websocket", "Patch Spectrophotometer Name: %s", TargetName.c_str());
-//   JsonObject D_baseInfoJSON = D_baseInfo->as<JsonObject>();
-//   JsonObject D_pools = (*Device_Ctrl.JSON__DeviceBaseInfo)["pools"].as<JsonObject>();
-//   if (D_pools.containsKey(TargetName)) {
-//     JsonObject D_newConfig = D_FormData->as<JsonObject>();
-//     JsonObject D_oldConfig = D_pools[TargetName];
-//     for (JsonPair newConfigItem : D_newConfig) {
-//       if (D_oldConfig[newConfigItem.key()].as<String>() != newConfigItem.value().as<String>()) {
-//         D_oldConfig[newConfigItem.key()].set(newConfigItem.value().as<String>());
-//       }
-//     }
-
-//     D_baseInfoJSON["parameter"][TargetName].set(D_oldConfig);
-//     D_baseInfoJSON["action"]["status"].set("OK");
-//     D_baseInfoJSON["action"]["message"].set("更新事件組設定完畢");
-//     D_baseInfoJSON["action"]["target"].set("Pool");
-//     D_baseInfoJSON["action"]["method"].set("Update");
-//     String returnString;
-//     serializeJsonPretty(D_baseInfoJSON, returnString);
-//     server->binaryAll(returnString);
-//     Device_Ctrl.SetLog(
-//       5,
-//       "更新事件組設定完畢",
-//       "事件組名稱: " + D_oldConfig["title"].as<String>(),
-//       server, NULL
-//     );
-//     Device_Ctrl.SPIFFS__ReWriteDeviceBaseInfo();
-//   } else {
-//     Device_Ctrl.SetLog(
-//       1,
-//       "更新蝦池設定失敗",
-//       "找不到蝦池設定: " + TargetName,
-//       NULL, client
-//     );
-//   }
-
-// }
-
-// void ws_DeletePoolInfo(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData)
-// {
-//   String TargetName = D_PathParameter->as<JsonObject>()["name"];
-//   ESP_LOGD("Websocket", "Get Peristaltic Motor Name: %s", TargetName.c_str());
-//   JsonObject D_baseInfoJSON = D_baseInfo->as<JsonObject>();
-//   JsonObject D_pools = (*Device_Ctrl.JSON__DeviceBaseInfo)["pools"].as<JsonObject>();
-//   if (D_pools.containsKey(TargetName)) {
-//     D_pools.remove(TargetName);
-//     D_baseInfoJSON["action"]["status"].set("OK");
-//     D_baseInfoJSON["action"]["message"].set("刪除蝦池設定完畢");
-//     D_baseInfoJSON["action"]["method"] = "Delete";
-//     D_baseInfoJSON["action"]["target"] = "Pool";
-//     D_baseInfoJSON["parameter"]["delete_id"] = TargetName;
-//     String returnString;
-//     serializeJsonPretty(D_baseInfoJSON, returnString);
-//     server->binaryAll(returnString);
-//     Device_Ctrl.SetLog(
-//       5,
-//       "刪除蝦池設定完畢",
-//       "蝦池設定ID: " + TargetName,
-//       server, NULL
-//     );
-//     Device_Ctrl.SPIFFS__ReWriteDeviceBaseInfo();
-
-//   } else {
-//     Device_Ctrl.SetLog(
-//       1,
-//       "更新蝦池設定失敗",
-//       "找不到蝦池設定: " + TargetName,
-//       NULL, client
-//     );
-//   }
-// }
-
-// void ws_GetPoolInfo(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData)
-// {
-//   String TargetName = D_PathParameter->as<JsonObject>()["name"];
-//   ESP_LOGD("Websocket", "Get Pools Name: %s", TargetName.c_str());
-//   JsonObject D_baseInfoJSON = D_baseInfo->as<JsonObject>();
-//   JsonObject D_pools = (*Device_Ctrl.JSON__DeviceBaseInfo)["pools"].as<JsonObject>();
-//   if (D_pools.containsKey(TargetName)) {
-//     D_baseInfoJSON["action"]["status"].set("OK");
-//     D_baseInfoJSON["action"]["message"].set("查詢蝦池設定完畢");
-//     D_baseInfoJSON["action"]["target"].set("Pool");
-//     D_baseInfoJSON["action"]["method"].set("Get");
-//     D_baseInfoJSON["parameter"][TargetName].set(D_pools[TargetName]);
-//     String returnString;
-//     serializeJsonPretty(D_baseInfoJSON, returnString);
-//     client->binary(returnString);
-//   } else {
-//     Device_Ctrl.SetLog(
-//       1,
-//       "查詢蝦池設定失敗",
-//       "找不到蝦池設定: " + TargetName,
-//       NULL, client
-//     );
-//   }
-// }
-
-// void ws_GetAllPoolInfo(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData)
-// {
-//   JsonObject D_baseInfoJSON = D_baseInfo->as<JsonObject>();
-//   JsonObject D_pools = (*Device_Ctrl.JSON__DeviceBaseInfo)["pools"].as<JsonObject>();
-//   D_baseInfoJSON["parameter"].set(D_pools);
-
-//   D_baseInfoJSON["action"]["status"].set("OK");
-//   D_baseInfoJSON["action"]["message"].set("查詢所有蝦池設定完畢");
-//   D_baseInfoJSON["action"]["target"].set("Pool");
-//   D_baseInfoJSON["action"]["method"].set("Update");
-//   String returnString;
-//   serializeJsonPretty(D_baseInfoJSON, returnString);
-//   client->binary(returnString);
-// }
-
-// void ws_AddNewPoolInfo(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData)
-// {
-//   JsonObject D_baseInfoJSON = D_baseInfo->as<JsonObject>();
-//   JsonObject D_newConfig = D_FormData->as<JsonObject>();
-//   if (!D_newConfig.containsKey("title")) {
-//     Device_Ctrl.SetLog(
-//       1,
-//       "新增蝦池設定失敗",
-//       "title 參數為必要項目",
-//       NULL, client
-//     );
-//   } else {
-//     char random_name[16];
-//     uint8_t random_bytes[8];
-//     esp_fill_random(random_bytes, sizeof(random_bytes));
-//     for (int i = 0; i < sizeof(random_bytes); i++) {
-//       sprintf(&random_name[i*2], "%02x", random_bytes[i]);
-//     }
-//     JsonObject D_pools = (*Device_Ctrl.JSON__DeviceBaseInfo)["pools"].as<JsonObject>();
-//     D_pools[String(random_name)]["title"].set(D_newConfig["title"].as<String>());
-//     D_pools[String(random_name)]["desp"].set(D_newConfig["desp"].as<String>());
-//     D_baseInfoJSON["action"]["status"].set("OK");
-//     D_baseInfoJSON["action"]["target"].set("Pool");
-//     D_baseInfoJSON["action"]["method"].set("Update");
-//     D_baseInfoJSON["parameter"][String(random_name)].set(D_pools[String(random_name)]);
-//     String returnString;
-//     serializeJsonPretty(D_baseInfoJSON, returnString);
-//     server->binaryAll(returnString);
-//     Device_Ctrl.SetLog(
-//       5,
-//       "新增蝦池設定: "+D_newConfig["title"].as<String>(),
-//       "說明: " + D_newConfig["desp"].as<String>(),
-//       server, NULL
-//     );
-
-//     Device_Ctrl.SPIFFS__ReWriteDeviceBaseInfo();
-//   }
-// }
-
-
 
 void ws_v2_RunPipeline(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData)
 {
@@ -562,75 +322,6 @@ void ws_RunAllPoolPipeline(AsyncWebSocket *server, AsyncWebSocketClient *client,
   else {
     ESP_LOGD("WebSocket API", "執行蝦池數值檢測流程失敗，API需要order參數");
   }
-
-
-
-
-
-
-  // if (xSemaphoreTake(Device_Ctrl.xMutex__pipelineFlowScan, 0) == pdTRUE) {
-  //   if ((*D_QueryParameter).containsKey("order")) {
-  //     String orderString = (*D_QueryParameter)["order"].as<String>();
-  //     if (orderString.length() == 0) {
-  //       ESP_LOGD("WebSocket API", "執行蝦池數值檢測流程失敗，order參數不得為空");
-  //       // Device_Ctrl.SetLog(1, "執行蝦池數值檢測流程失敗", "order參數不得為空", NULL, client, false);
-  //       xSemaphoreGive(Device_Ctrl.xMutex__pipelineFlowScan);
-  //     }
-  //     else {
-  //       //* 分割order文字
-  //       int splitIndex = -1;
-  //       int prevSpliIndex = 0;
-  //       int eventCount = 0;
-  //       splitIndex = orderString.indexOf(',', prevSpliIndex);
-  //       (*Device_Ctrl.JSON__pipelineStack).clear();
-  //       while (splitIndex != -1) {
-  //         String token = orderString.substring(prevSpliIndex, splitIndex);
-  //         String TargetName = token+".json";
-  //         String FullFilePath = "/pipelines/"+TargetName;
-  //         DynamicJsonDocument singlePipelineSetting(10000);
-  //         singlePipelineSetting["FullFilePath"].set(FullFilePath);
-  //         singlePipelineSetting["TargetName"].set(TargetName);
-  //         singlePipelineSetting["stepChose"].set("");
-  //         singlePipelineSetting["eventChose"].set("");
-  //         singlePipelineSetting["eventIndexChose"].set(-1);
-  //         (*Device_Ctrl.JSON__pipelineStack).add(singlePipelineSetting);
-  //         prevSpliIndex = splitIndex +1;
-  //         eventCount++;
-  //         splitIndex = orderString.indexOf(',', prevSpliIndex);
-  //         ESP_LOGD("WebSocket", " - 事件 %d", eventCount);
-  //         ESP_LOGD("WebSocket", "   - 檔案路徑:\t%s", FullFilePath.c_str());
-  //         ESP_LOGD("WebSocket", "   - 目標名稱:\t%s", TargetName.c_str());
-  //       }
-  //       String lastToken = orderString.substring(prevSpliIndex);
-  //       if (lastToken.length() > 0) {
-  //         String TargetName = lastToken+".json";
-  //         String FullFilePath = "/pipelines/"+TargetName;
-  //         DynamicJsonDocument singlePipelineSetting(10000);
-  //         singlePipelineSetting["FullFilePath"].set(FullFilePath);
-  //         singlePipelineSetting["TargetName"].set(TargetName);
-  //         singlePipelineSetting["stepChose"].set("");
-  //         singlePipelineSetting["eventChose"].set("");
-  //         singlePipelineSetting["eventIndexChose"].set(-1);
-  //         (*Device_Ctrl.JSON__pipelineStack).add(singlePipelineSetting);
-  //         ESP_LOGD("WebSocket", " - 事件 %d", eventCount+1);
-  //         ESP_LOGD("WebSocket", "   - 檔案路徑:\t%s", FullFilePath.c_str());
-  //         ESP_LOGD("WebSocket", "   - 目標名稱:\t%s", TargetName.c_str());
-  //       }
-        
-        
-  //       // Device_Ctrl.LOAD__ACTION_V2(Device_Ctrl.JSON__pipelineStack);
-  //     }
-  //   } 
-  //   else {
-  //     ESP_LOGD("WebSocket API", "執行蝦池數值檢測流程失敗，API需要order參數");
-  //     // Device_Ctrl.SetLog(1,"執行蝦池數值檢測流程失敗","API需要order參數",NULL, client, false);
-  //     xSemaphoreGive(Device_Ctrl.xMutex__pipelineFlowScan);
-  //   }
-  // }
-  // else {
-  //   ESP_LOGD("WebSocket API", "儀器忙碌中");
-  //   // Device_Ctrl.SetLog(2,"執行流程設定失敗","儀器忙碌中，請稍後再試",NULL, client, false);  
-  // }
 }
 
 #endif

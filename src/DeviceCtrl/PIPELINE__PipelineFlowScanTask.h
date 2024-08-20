@@ -49,7 +49,6 @@ void PipelineFlowScan(void* parameter) {
       Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "準備執行新流程需求，一共有 %d 個流程", PipelineList.size());
       Device_Ctrl.BroadcastLogToClient(NULL, 3, "準備執行新流程需求，一共有 %d 個流程", PipelineList.size());
 
-
       for (int pipelineIndex = 0;pipelineIndex<PipelineList.size();pipelineIndex++) {
         ESP_LOGI("", "開始執行第 %d 個流程", pipelineIndex+1);
         JsonObject pipelineChose = PipelineList[pipelineIndex].as<JsonObject>();
@@ -241,7 +240,6 @@ void PipelineFlowScan(void* parameter) {
         
         //STEP 5 開始執行流程判斷功能
         ESP_LOGI("", "STEP 5 開始執行流程判斷功能");
-        // Device_Ctrl.TaskUUID = String(uuid.toCharArray());
         JsonObject stepsGroup = (*Device_Ctrl.JSON__pipelineConfig)["steps_group"].as<JsonObject>();
         JsonObject pipelineSet = (*Device_Ctrl.JSON__pipelineConfig)["pipline"].as<JsonObject>();
         //? isAllDone: 用來判斷是否所有流程都運行完畢，如果都完畢，則此TASK也可以關閉
