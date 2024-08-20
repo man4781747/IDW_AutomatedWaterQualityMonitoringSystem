@@ -4,6 +4,13 @@
 #include "TimeLibExternalFunction.h"
 #include "hal/efuse_hal.h"
 
+//TODO
+// #include <ModbusRTU.h>
+// ModbusRTU mb;
+
+
+//TODO
+
 void setup() {
   setCpuFrequencyMhz(240); //? CPU效能全開
   Serial.begin(115200);
@@ -75,9 +82,43 @@ void setup() {
   Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "開機完畢");
   Device_Ctrl.CreateOledQRCodeTask();
   Device_Ctrl.all_INIT_done = true;
+
+  //TODO
+  // Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_RS485_RX, PIN__Step_Motor_RS485_TX);
+  // mb.begin(&Serial1);
+  // mb.setBaudrate(115200);
+  // mb.master();
+  //TODO
+
 }
 
 void loop() {
+  // //TODO
+  // uint16_t buffer[5];
+  // uint16_t wruteData[4] = {1, 2000,0,0};
+  // mb.writeHreg(1,1,wruteData,4);
+  // while(mb.slave()) { // Check if transaction is active
+  //   mb.task();
+  //   delay(10);
+  // }
+  // if (!mb.slave()) {
+  //   while (true) {
+  //     mb.readHreg(1, 1, buffer, 1);
+  //     while(mb.slave()) { // Check if transaction is active
+  //       mb.task();
+  //       delay(10);
+  //     }
+  //     if (buffer[0] != 1) {
+  //       break;
+  //     }
+  //   }
+  // }
+  // //TODO
+
+
   vTaskDelay(10000/portTICK_PERIOD_MS);
   Device_Ctrl.WriteSysInfo();
+
+
+  
 }

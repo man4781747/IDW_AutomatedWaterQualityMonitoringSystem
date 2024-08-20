@@ -21,6 +21,8 @@
 #include <ESP_Mail_Client.h>
 #include "mbedtls/aes.h"
 #include <Update.h>
+#include <ModbusRTU.h>
+ModbusRTU mb;
 
 const long  gmtOffset_sec = 3600*8; // GMT+8
 const int   daylightOffset_sec = 0; // DST+0
@@ -98,12 +100,12 @@ void C_Device_Ctrl::INIT_Pins()
   pinMode(PIN__EN_GreenSensor, OUTPUT);
   digitalWrite(PIN__EN_GreenSensor, LOW);
 
-  pinMode(PIN__Step_Motor_EN, OUTPUT);
-  digitalWrite(PIN__Step_Motor_EN, LOW);
-  pinMode(PIN__Step_Motor_STEP, OUTPUT);
-  digitalWrite(PIN__Step_Motor_STEP, LOW);
-  pinMode(PIN__Step_Motor_DIR, OUTPUT);
-  digitalWrite(PIN__Step_Motor_DIR, LOW);
+  // pinMode(PIN__Step_Motor_EN, OUTPUT);
+  // digitalWrite(PIN__Step_Motor_EN, LOW);
+  // pinMode(PIN__Step_Motor_STEP, OUTPUT);
+  // digitalWrite(PIN__Step_Motor_STEP, LOW);
+  // pinMode(PIN__Step_Motor_DIR, OUTPUT);
+  // digitalWrite(PIN__Step_Motor_DIR, LOW);
 }
 
 /**
@@ -1272,19 +1274,16 @@ void C_Device_Ctrl::StopNowPipelineAndAllStepTask()
   Device_Ctrl.peristalticMotorsCtrl.SetAllMotorStop();
 
   // TODO 目前只有一顆 測試中
-  // digitalWrite(PIN__Step_Motor_EN, LOW);
-  // digitalWrite(PIN__Step_Motor_STEP, LOW);
-  // digitalWrite(PIN__Step_Motor_DIR, LOW);
-
-  Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_STEP, PIN__Step_Motor_DIR);
-  DynamicJsonDocument CommandBuffer(1024*2);
-  CommandBuffer["type"] = "run";
-  CommandBuffer["run"] = 0;
-  CommandBuffer["status"] = 0;
-  Serial1.write("|");
-  serializeJson(CommandBuffer, Serial1);
-  Serial1.write("\n");
-
+  Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_RS485_RX, PIN__Step_Motor_RS485_TX);
+  mb.begin(&Serial1);
+  mb.setBaudrate(115200);
+  mb.master();
+  uint16_t writeData[4] = {1, 0,0,0};
+  mb.writeHreg(1,1,writeData,4);
+  while(mb.slave()) {
+    mb.task();
+    vTaskDelay(10/portTICK_PERIOD_MS);
+  }
   // TODO 目前只有一顆 測試中
 
   Device_Ctrl.StopAllStepTask();
@@ -1312,19 +1311,16 @@ void C_Device_Ctrl::StopDeviceAllAction()
   digitalWrite(PIN__EN_Servo_Motor, LOW);
   //! 關閉所有步進蠕動馬達
   // TODO 目前只有一顆 測試中
-  // digitalWrite(PIN__Step_Motor_EN, LOW);
-  // digitalWrite(PIN__Step_Motor_STEP, LOW);
-  // digitalWrite(PIN__Step_Motor_DIR, LOW);
-
-  Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_STEP, PIN__Step_Motor_DIR);
-  DynamicJsonDocument CommandBuffer(1024*2);
-  CommandBuffer["type"] = "run";
-  CommandBuffer["run"] = 0;
-  CommandBuffer["status"] = 0;
-  Serial1.write("|");
-  serializeJson(CommandBuffer, Serial1);
-  Serial1.write("\n");
-
+  Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_RS485_RX, PIN__Step_Motor_RS485_TX);
+  mb.begin(&Serial1);
+  mb.setBaudrate(115200);
+  mb.master();
+  uint16_t writeData[4] = {1, 0,0,0};
+  mb.writeHreg(1,1,writeData,4);
+  while(mb.slave()) {
+    mb.task();
+    vTaskDelay(10/portTICK_PERIOD_MS);
+  }
   // TODO 目前只有一顆 測試中
 
   ESP_LOGD("StopDeviceAllAction", "已斷開所有設施電源");
