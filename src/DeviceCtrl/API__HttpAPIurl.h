@@ -16,7 +16,7 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer);
 void Set_tool_apis(AsyncWebServer &asyncServer);
 void Set_Pipeline_apis(AsyncWebServer &asyncServer);
 void Set_test_apis(AsyncWebServer &asyncServer);
-
+void Set_DB_apis(AsyncWebServer &asyncServer);
 
 uint8_t *newConfigUpdateFileBuffer;
 size_t newConfigUpdateFileBufferLen;
@@ -36,14 +36,21 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
       request->send(404);
     }
   });
+
+  //? 設定 SD 卡的靜態檔案 API
   asyncServer.serveStatic("/static/SD/",SD,"/");
 
+  //? 控制網頁 API
   asyncServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     Serial.println("API: /");
     AsyncWebServerResponse* response = request->beginResponse(SD, "/web/index.html", "text/html", false);
     request->send(response);
   });
 
+  //? 控制網頁的 js.gz 檔案 API 位置
+  //! 因 .js.gz 大小很大，並且需要指定以 Content-Encoding : gzip 來回應
+  //! 因此目前機台做法為開機/更新網頁時，會將整份檔案資料存在記憶體中，這樣在回應時就不會鎖住 SD 卡
+  //! 回覆就從記憶體直接回覆
   asyncServer.on("^\\/assets\\/index\\.([a-zA-Z0-9_.-]+)\\.(css|js)$", HTTP_GET, [](AsyncWebServerRequest *request){
     AsyncWebServerResponse *response = request->beginChunkedResponse(
       "application/javascript", [](uint8_t *buffer, size_t maxLen,size_t filledLength) -> size_t
@@ -58,124 +65,38 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
     request->send(response);
   });
 
+  //? HI API
   asyncServer.on("/api/hi", HTTP_GET, [](AsyncWebServerRequest *request){
     AsyncWebServerResponse* response = request->beginResponse(200, "text/plain", FIRMWARE_VERSION);
     request->send(response);
   });
 
+  //? 韌體版本 API
   asyncServer.on("/api/version", HTTP_GET, [](AsyncWebServerRequest *request){
     String returnString = String("{\"FIRMWARE_VERSION\":\"")+String(FIRMWARE_VERSION)+"\"}";
     AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
     request->send(response);
   });
 
-
-  asyncServer.on("/api/sensor", HTTP_GET,
-    [&](AsyncWebServerRequest *request)
-    { 
-      DynamicJsonDocument ReturnData(100000);
-      String StartTime = "1900-01-01 00:00:00";
-      String EndTime = "2900-01-01 00:00:00";
-      String PoolList = "'pool-1','pool-2','pool-3','pool-4'";
-      String ValueNameList = "'pH','NO2','NH4'";
-      if (request->hasParam("st")) {
-        StartTime = request->getParam("st")->value();
-      }
-      if (request->hasParam("et")) {
-        EndTime = request->getParam("et")->value();
-      }
-      if (request->hasParam("pl")) {
-        PoolList = request->getParam("pl")->value();
-      }
-      if (request->hasParam("name")) {
-        ValueNameList = request->getParam("name")->value();
-      }
-
-      String SQL_String = "SELECT * FROM sensor WHERE pool in (";
-      SQL_String += PoolList;
-      SQL_String += ") AND value_name in (";
-      SQL_String += ValueNameList;
-      SQL_String += ") AND time BETWEEN '";
-      SQL_String += StartTime;
-      SQL_String += "' AND '";
-      SQL_String += EndTime;
-      SQL_String += "' ORDER BY rowid DESC LIMIT 100";
-      AsyncJsonResponse *response = new AsyncJsonResponse(true, 65525);
-      JsonArray root = response->getRoot();
-      db_exec_http(Device_Ctrl.DB_Main, SQL_String, &root);
-      response->setLength();
-      request->send(response);
-    }
-  );
-
-  asyncServer.on("/api/DB/Rebuild", HTTP_GET,
-    [&](AsyncWebServerRequest *request)
-    { 
-      sqlite3_close(Device_Ctrl.DB_Main);
-      SD.remove("/mainDB.db");
-      int rc = sqlite3_open(Device_Ctrl.FilePath__SD__MainDB.c_str(), &Device_Ctrl.DB_Main);
-      db_exec(Device_Ctrl.DB_Main, "CREATE TABLE sensor ( time TEXT, pool TEXT , value_name TEXT , result REAL );");
-      AsyncWebServerResponse* response = request->beginResponse(200, "OK");
-      request->send(response);
-    }
-  );
-
-  asyncServer.on("/api/logs", HTTP_GET,
-    [&](AsyncWebServerRequest *request)
-    { 
-      String StartTime = "1900-01-01 00:00:00";
-      String EndTime = "2900-01-01 00:00:00";
-      String LevelList = "1,2,3,4,5,6";
-      if (request->hasParam("st")) {
-        StartTime = request->getParam("st")->value();
-      }
-      if (request->hasParam("et")) {
-        EndTime = request->getParam("et")->value();
-      }
-      if (request->hasParam("lv")) {
-        LevelList = request->getParam("lv")->value();
-      }
-      String SQL_String = "SELECT * FROM logs WHERE level in (";
-      SQL_String += LevelList;
-      SQL_String += ") AND time BETWEEN '";
-      SQL_String += StartTime;
-      SQL_String += "' AND '";
-      SQL_String += EndTime;
-      SQL_String += "' ORDER BY rowid DESC LIMIT 100";
-      AsyncJsonResponse *response = new AsyncJsonResponse(true, 100000);
-      JsonArray root = response->getRoot();
-      db_exec_http(Device_Ctrl.DB_Log, SQL_String, &root);
-      response->setLength();
-      request->send(response);
-    }
-  );
-
-  asyncServer.on("/api/logs", HTTP_DELETE,
-    [&](AsyncWebServerRequest *request)
-    { 
-      Device_Ctrl.DropLogsTable();
-      AsyncWebServerResponse* response = request->beginResponse(200, "text/plain", "OK");
-      request->send(response);
-    }
-  );
-
   Set_deviceConfigs_apis(asyncServer);
   Set_scheduleConfig_apis(asyncServer);
   Set_tool_apis(asyncServer);
   Set_Pipeline_apis(asyncServer);
   Set_test_apis(asyncServer);
+  Set_DB_apis(asyncServer);
 }
 
 //! Pipeline檔案相關API
 void Set_Pipeline_apis(AsyncWebServer &asyncServer)
 {
+  //? pipeline 列表 API
   asyncServer.on("/api/piplines", HTTP_GET, [&](AsyncWebServerRequest *request){
     String pipelineFilesList;
     serializeJsonPretty(*Device_Ctrl.JSON__PipelineConfigList, pipelineFilesList);
     AsyncWebServerResponse* response = request->beginResponse(200, "application/json", pipelineFilesList);
     request->send(response);
   });
-
+  //? 單一 pipeline 檔案上傳/更新 API
   asyncServer.on("/api/pipeline/config", HTTP_POST, 
     [&](AsyncWebServerRequest *request)
     { 
@@ -208,7 +129,7 @@ void Set_Pipeline_apis(AsyncWebServer &asyncServer)
       }
     }
   );
-
+  //? 單一 pipeline 檔案讀取 API
   asyncServer.on("^\\/api\\/pipeline\\/([a-zA-Z0-9_.-]+)\\.json$", HTTP_GET,[&](AsyncWebServerRequest *request){ 
     String fileName = request->pathArg(0);
     String fullPath = "/pipelines/"+fileName+".json";
@@ -217,7 +138,6 @@ void Set_Pipeline_apis(AsyncWebServer &asyncServer)
       response = request->beginResponse(500, "application/json", "{\"Result\":\"Can't Find: "+fileName+"\"}");
     }
     else {
-
       File FileChose = SD.open(fullPath, "r");
       String ContentString = FileChose.readString();
       FileChose.close();       
@@ -225,7 +145,7 @@ void Set_Pipeline_apis(AsyncWebServer &asyncServer)
     }
     request->send(response);
   });
-
+  //? 單一 pipeline 檔案刪除 API
   asyncServer.on("^\\/api\\/pipeline\\/([a-zA-Z0-9_.-]+)\\.json$", HTTP_DELETE,[&](AsyncWebServerRequest *request){ 
     String fileName = request->pathArg(0);
     String fullPath = "/pipelines/"+fileName+".json";
@@ -247,6 +167,7 @@ void Set_Pipeline_apis(AsyncWebServer &asyncServer)
 //! 儀器設定檔相關API
 void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
 {
+  //? 儀器基礎設定資料 API，無參數
   asyncServer.on("/api/config/device_base_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -256,6 +177,15 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+  //? 更改儀器基礎設定資料 API
+  //? 所需path參數: 
+  //? (String) device_no : 儀器名稱
+  //? (String) LINE_Notify_id : LINE 權杖 (不加密內容)
+  //? (String) LINE_Notify_switch : LINE 通知功能開關
+  //? (String) Mail_Notify_switch : GMail 通知功能開關
+  //? (String) Mail_Notify_Auther : GMail 通知發信者 mail 地址
+  //? (String) Mail_Notify_Key : GMail 通知發信者 key (不加密內容)
+  //? (String) Mail_Notify_Target : GMail 通知收信者 mail 地址
   asyncServer.on("/api/config/device_base_config", HTTP_PATCH,
     [&](AsyncWebServerRequest *request)
     { 
@@ -298,7 +228,7 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
     }
   );
 
-
+  //TODO 目前已無再使用，考慮刪除
   asyncServer.on("/api/config/device_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -308,7 +238,7 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
-
+  //? 蠕動馬達設定檔案 API
   asyncServer.on("/api/config/peristaltic_motor_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -318,7 +248,7 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
-
+  //? 伺服馬達設定檔案 API
   asyncServer.on("/api/config/pwm_motor_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -328,7 +258,7 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
-
+  //? 蝦池設定檔案 API
   asyncServer.on("/api/config/pool_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -338,7 +268,8 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
-  
+  //? 更改蝦池設定檔案 API
+  //? 所需path參數: (String/必要) content : JSON 格式，直接更新整個蝦池 JSON 檔案
   asyncServer.on("/api/config/pool_config", HTTP_PATCH,
     [&](AsyncWebServerRequest *request)
     { 
@@ -366,7 +297,7 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
     }
   );
 
-
+  //? 光度計設定檔案 API
   asyncServer.on("/api/config/spectrophotometer_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -376,7 +307,12 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
-
+  //? 更改光度計設定檔案 API
+  //? 所需path參數: (int/必要) index : 指定光度計 ID
+  //?               (String) title : 光度計 title
+  //?               (String) desp : 光度計設定說明
+  //?               (double) m : 校正斜率
+  //?               (double) b : 校正截距
   asyncServer.on("/api/config/spectrophotometer_config", HTTP_PATCH,
     [&](AsyncWebServerRequest *request)
     { 
@@ -420,7 +356,12 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
-
+  //? 更改pH計設定檔案 API
+  //? 所需path參數: (int/必要) index : 指定pH計 ID
+  //?               (String) title : pH 設定 title
+  //?               (String) desp : pH 設定說明
+  //?               (double) m : 校正斜率
+  //?               (double) b : 校正截距
   asyncServer.on("/api/config/PHmeter_config", HTTP_PATCH,
     [&](AsyncWebServerRequest *request)
     { 
@@ -488,6 +429,7 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
 //! 排程相關API
 void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
 {
+  //? 當前排程檔案資料 API，無參數
   asyncServer.on("/api/schedule", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -497,8 +439,8 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
-
-
+  //? 更改當前排程檔案資料 API
+  //? 所需path參數: (int/必要)index, (String/必要)name
   asyncServer.on("/api/schedule", HTTP_PATCH,
     [&](AsyncWebServerRequest *request)
     { 
@@ -527,72 +469,6 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
-
-
-
-
-
-
-  // asyncServer.on("^\\/api\\/schedule\\/([a-zA-Z0-9_.-]+)$", HTTP_GET,
-  //   [&](AsyncWebServerRequest *request)
-  //   { 
-  //     AsyncWebServerResponse* response;
-  //     String keyName = request->pathArg(0);
-  //     if ((*Device_Ctrl.JSON__ScheduleConfig).containsKey(keyName)) {
-  //       response = request->beginResponse(200, "application/json", (*Device_Ctrl.JSON__ScheduleConfig)[keyName]);
-  //     } 
-  //     else {
-  //       response = request->beginResponse(500, "application/json", "{\"Result\":\"Can't Find: "+keyName+"\"}");
-  //     }
-  //     request->send(response);
-  //   }
-  // );
-  // //? 接收前端上傳的設定更新
-  // //? FormData強制一定要有 Param: "content", 型態: String, 格式: JSON
-  // asyncServer.on("^\\/api\\/schedule\\/([a-zA-Z0-9_.-]+)$", HTTP_PATCH,
-  //   [&](AsyncWebServerRequest *request)
-  //   { 
-  //     AsyncWebServerResponse* response;
-  //     String keyName = request->pathArg(0);
-  //     if (request->hasArg("content")) {
-  //       String content = request->getParam("content", true)->value();
-  //       DynamicJsonDocument JSON__content(1000);
-  //       DeserializationError error = deserializeJson(JSON__content, content);
-  //       if (error) {
-  //         ESP_LOGE("schedule更新", "JOSN解析失敗,停止更新排程設定檔內容", error.c_str());
-  //         response = request->beginResponse(500, "application/json", "{\"Result\":\"更新失敗,content所需型態: String, 格式: JSON\"}");
-  //       }
-  //       else {
-  //         (*Device_Ctrl.JSON__ScheduleConfig)[keyName].set(JSON__content);
-  //         ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__ScheduleConfig, *Device_Ctrl.JSON__ScheduleConfig);
-  //         // Device_Ctrl.SD__ReWriteScheduleConfig();
-  //         response = request->beginResponse(200, "application/json", (*Device_Ctrl.JSON__ScheduleConfig)[keyName]);
-  //       }
-  //     }
-  //     else {
-  //       response = request->beginResponse(500, "application/json", "{\"Result\":\"缺少para: 'content',型態: String, 格式: JSON\"}");
-  //     }
-  //     request->send(response);
-  //   }
-  // );
-
-  // asyncServer.on("^\\/api\\/schedule\\/([a-zA-Z0-9_.-]+)$", HTTP_DELETE,
-  //   [&](AsyncWebServerRequest *request)
-  //   { 
-  //     AsyncWebServerResponse* response;
-  //     String keyName = request->pathArg(0);
-  //     if ((*Device_Ctrl.JSON__ScheduleConfig).containsKey(keyName)) {
-  //       (*Device_Ctrl.JSON__ScheduleConfig).remove(keyName);
-  //       ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__ScheduleConfig, *Device_Ctrl.JSON__ScheduleConfig);
-  //       // Device_Ctrl.SD__ReWriteScheduleConfig();
-  //       response = request->beginResponse(200, "application/json", "{\"Result\":\"刪除成功\"}");
-  //     } 
-  //     else {
-  //       response = request->beginResponse(500, "application/json", "{\"Result\":\"Can't Find: "+keyName+"\"}");
-  //     }
-  //     request->send(response);
-  //   }
-  // );
 }
 
 //! 工具類型API
@@ -941,9 +817,110 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
 
 }
 
+//! DB 相關 API
+void Set_DB_apis(AsyncWebServer &asyncServer) {
+  //? 感測器資料 SQL Query API
+  //? 所需path參數: 
+  //? (String)st : 開頭時間，default = 1900-01-01 00:00:00
+  //? (String)et : 結束時間，default = 2900-01-01 00:00:00
+  //? (String)pl : 目標 pool list，default = 'pool-1','pool-2','pool-3','pool-4'
+  //? (String)name : 目標 name list，default = 'pH','NO2','NH4'
+  //? 資料最長 56625
+  asyncServer.on("/api/sensor", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      DynamicJsonDocument ReturnData(100000);
+      String StartTime = "1900-01-01 00:00:00";
+      String EndTime = "2900-01-01 00:00:00";
+      String PoolList = "'pool-1','pool-2','pool-3','pool-4'";
+      String ValueNameList = "'pH','NO2','NH4'";
+      if (request->hasParam("st")) {
+        StartTime = request->getParam("st")->value();
+      }
+      if (request->hasParam("et")) {
+        EndTime = request->getParam("et")->value();
+      }
+      if (request->hasParam("pl")) {
+        PoolList = request->getParam("pl")->value();
+      }
+      if (request->hasParam("name")) {
+        ValueNameList = request->getParam("name")->value();
+      }
+      String SQL_String = "SELECT * FROM sensor WHERE pool in (";
+      SQL_String += PoolList;
+      SQL_String += ") AND value_name in (";
+      SQL_String += ValueNameList;
+      SQL_String += ") AND time BETWEEN '";
+      SQL_String += StartTime;
+      SQL_String += "' AND '";
+      SQL_String += EndTime;
+      SQL_String += "' ORDER BY rowid DESC LIMIT 100";
+      AsyncJsonResponse *response = new AsyncJsonResponse(true, 65525);
+      JsonArray root = response->getRoot();
+      db_exec_http(Device_Ctrl.DB_Main, SQL_String, &root);
+      response->setLength();
+      request->send(response);
+    }
+  );
+
+  //? 感測器 DB 重設 API
+  //? 無參數，GET 後直接重設 DB 檔案
+  asyncServer.on("/api/DB/Rebuild", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      sqlite3_close(Device_Ctrl.DB_Main);
+      SD.remove("/mainDB.db");
+      int rc = sqlite3_open(Device_Ctrl.FilePath__SD__MainDB.c_str(), &Device_Ctrl.DB_Main);
+      db_exec(Device_Ctrl.DB_Main, "CREATE TABLE sensor ( time TEXT, pool TEXT , value_name TEXT , result REAL );");
+      AsyncWebServerResponse* response = request->beginResponse(200, "OK");
+      request->send(response);
+    }
+  );
+
+  asyncServer.on("/api/logs", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      String StartTime = "1900-01-01 00:00:00";
+      String EndTime = "2900-01-01 00:00:00";
+      String LevelList = "1,2,3,4,5,6";
+      if (request->hasParam("st")) {
+        StartTime = request->getParam("st")->value();
+      }
+      if (request->hasParam("et")) {
+        EndTime = request->getParam("et")->value();
+      }
+      if (request->hasParam("lv")) {
+        LevelList = request->getParam("lv")->value();
+      }
+      String SQL_String = "SELECT * FROM logs WHERE level in (";
+      SQL_String += LevelList;
+      SQL_String += ") AND time BETWEEN '";
+      SQL_String += StartTime;
+      SQL_String += "' AND '";
+      SQL_String += EndTime;
+      SQL_String += "' ORDER BY rowid DESC LIMIT 100";
+      AsyncJsonResponse *response = new AsyncJsonResponse(true, 100000);
+      JsonArray root = response->getRoot();
+      db_exec_http(Device_Ctrl.DB_Log, SQL_String, &root);
+      response->setLength();
+      request->send(response);
+    }
+  );
+
+  asyncServer.on("/api/logs", HTTP_DELETE,
+    [&](AsyncWebServerRequest *request)
+    { 
+      Device_Ctrl.DropLogsTable();
+      AsyncWebServerResponse* response = request->beginResponse(200, "text/plain", "OK");
+      request->send(response);
+    }
+  );
+}
+
 //! 測試相關API
 void Set_test_apis(AsyncWebServer &asyncServer)
 {
+  //! 純為測試用 API ，可手動修改最新各池量測值
   asyncServer.on("/api/test/PoolData", HTTP_PATCH,
     [&](AsyncWebServerRequest *request)
     { 
