@@ -859,7 +859,6 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
         result.code = ResultCode::KEEP_RUN;
         result.message = "光度計:"+spectrophotometerTitle+" 測量初始光強度時數值過低: "+String(finalValue);
         return result;
-
       }
     }
     else if (value_name.lastIndexOf("test_volt")!=-1) {

@@ -22,7 +22,8 @@
 #include "mbedtls/aes.h"
 #include <Update.h>
 #include <ModbusRTU.h>
-ModbusRTU mb;
+
+ModbusRTU mb_;
 
 const long  gmtOffset_sec = 3600*8; // GMT+8
 const int   daylightOffset_sec = 0; // DST+0
@@ -1065,8 +1066,6 @@ bool C_Device_Ctrl::AddLineNotifyEvent(char * content, int len) {
     free(contentCharArray);
     return false;
   }
-  // free((void*)(e));
-  // free(contentCharArray);
   return true;
 };
 
@@ -1081,8 +1080,6 @@ bool C_Device_Ctrl::AddLineNotifyEvent(String content) {
     free(contentCharArray);
     return false;
   }
-  free((void*)(e));
-  free(contentCharArray);
   return true;
 };
 
@@ -1101,9 +1098,6 @@ bool C_Device_Ctrl::AddGmailNotifyEvent(String MailSubject,String content) {
     free((void*)(e));
     return false;
   }
-  // free(titleCharArray);
-  // free(contentCharArray);
-  // free((void*)(e));
   return true;
 };
 
@@ -1122,9 +1116,6 @@ bool C_Device_Ctrl::AddGmailNotifyEvent(char * MailSubject, int MailSubject_len,
     free((void*)(e));
     return false;
   }
-  // free(titleCharArray);
-  // free(contentCharArray);
-  // free((void*)(e));
   return true;
 };
 
@@ -1280,13 +1271,13 @@ void C_Device_Ctrl::StopNowPipelineAndAllStepTask()
   //! 關閉所有步進蠕動馬達
   // TODO 目前只有一顆 測試中
   Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_RS485_RX, PIN__Step_Motor_RS485_TX);
-  mb.begin(&Serial1);
-  mb.setBaudrate(115200);
-  mb.master();
+  mb_.begin(&Serial1);
+  mb_.setBaudrate(115200);
+  mb_.master();
   uint16_t writeData[4] = {1, 0,0,0};
-  mb.writeHreg(1,1,writeData,4);
-  while(mb.slave()) {
-    mb.task();
+  mb_.writeHreg(1,1,writeData,4);
+  while(mb_.slave()) {
+    mb_.task();
     vTaskDelay(10/portTICK_PERIOD_MS);
   }
   // TODO 目前只有一顆 測試中
@@ -1318,13 +1309,13 @@ void C_Device_Ctrl::StopDeviceAllAction()
   //! 關閉所有步進蠕動馬達
   // TODO 目前只有一顆 測試中
   Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_RS485_RX, PIN__Step_Motor_RS485_TX);
-  mb.begin(&Serial1);
-  mb.setBaudrate(115200);
-  mb.master();
+  mb_.begin(&Serial1);
+  mb_.setBaudrate(115200);
+  mb_.master();
   uint16_t writeData[4] = {1, 0,0,0};
-  mb.writeHreg(1,1,writeData,4);
-  while(mb.slave()) {
-    mb.task();
+  mb_.writeHreg(1,1,writeData,4);
+  while(mb_.slave()) {
+    mb_.task();
     vTaskDelay(10/portTICK_PERIOD_MS);
   }
   // TODO 目前只有一顆 測試中
