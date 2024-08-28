@@ -26,7 +26,11 @@ void ws_GetNowStatus(AsyncWebSocket *server, AsyncWebSocketClient *client, Dynam
   D_baseInfoJSON["parameter"]["message"].set("OK");
   String returnString;
   serializeJsonPretty(D_baseInfoJSON, returnString);
-  client->binary(returnString);
+  if (String(server->url()) == "/ws") {
+    client->binary(returnString);
+  } else {
+    server->binaryAll(returnString);
+  }
 }
 
 //!Pool結果資料
@@ -77,8 +81,12 @@ void ws_GetAllPoolData(AsyncWebSocket *server, AsyncWebSocketClient *client, Dyn
   }
   String returnString;
   serializeJsonPretty((*D_baseInfo), returnString);
-  client->binary(returnString);
   (*D_baseInfo).clear();
+  if (String(server->url()) == "/ws") {
+    client->binary(returnString);
+  } else {
+    server->binaryAll(returnString);
+  }
 }
 
 void ws_v2_RunPipeline(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData)
@@ -180,17 +188,9 @@ void ws_v2_RunPwmMotor(AsyncWebSocket *server, AsyncWebSocketClient *client, Dyn
 
     (*Device_Ctrl.JSON__pipelineStack).clear();
     (*Device_Ctrl.JSON__pipelineStack).add(singlePipelineSetting);
-    
-    // Device_Ctrl.LOAD__ACTION_V2(Device_Ctrl.JSON__pipelineStack);
   }
   else {
     ESP_LOGI("", "儀器忙碌中，請稍後再試");
-    // Device_Ctrl.SetLog(
-    //   1,
-    //   "儀器忙碌中，請稍後再試",
-    //   "",
-    //   NULL, client, false
-    // );
   }
 }
 
@@ -248,17 +248,9 @@ void ws_v2_RunPeristalticMotor(AsyncWebSocket *server, AsyncWebSocketClient *cli
     singlePipelineSetting["eventIndexChose"].set(-1);
     (*Device_Ctrl.JSON__pipelineStack).clear();
     (*Device_Ctrl.JSON__pipelineStack).add(singlePipelineSetting);
-    
-    // Device_Ctrl.LOAD__ACTION_V2(Device_Ctrl.JSON__pipelineStack);
   }
   else {
     ESP_LOGI("", "儀器忙碌中，請稍後再試");
-    // Device_Ctrl.SetLog(
-    //   1,
-    //   "儀器忙碌中，請稍後再試",
-    //   "",
-    //   NULL, client, false
-    // );
   }
 }
 

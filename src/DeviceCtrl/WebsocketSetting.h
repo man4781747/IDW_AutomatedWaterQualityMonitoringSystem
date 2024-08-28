@@ -34,7 +34,14 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
     D_baseInfo["action"]["status"].set("OK");
     String returnString;
     serializeJsonPretty(D_baseInfo, returnString);
-    client->binary(returnString);
+    //? 2024/8/28 NodeRed端新需求
+    //? 儀器開一條ws專線
+    //? 所有 /ws/NodeRed 線上的資訊都會廣播給所有該線上的所有人得知
+    if (String(server->url()) == "/ws") {
+      client->binary(returnString);
+    } else {
+      server->binaryAll(returnString);
+    }
   } else if (type == WS_EVT_DISCONNECT) {
     Serial.println("WebSocket client disconnected");
   } else if (type == WS_EVT_DATA) {
@@ -77,7 +84,14 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
       D_errorbaseInfo["parameter"]["message"] = "API帶有的Data解析錯誤，參數格式錯誤?";
       String ErrorMessage;
       serializeJsonPretty(D_errorbaseInfo, ErrorMessage);
-      client->binary(ErrorMessage);
+      //? 2024/8/28 NodeRed端新需求
+      //? 儀器開一條ws專線
+      //? 所有 /ws/NodeRed 線上的資訊都會廣播給所有該線上的所有人得知
+      if (String(server->url()) == "/ws") {
+        client->binary(ErrorMessage);
+      } else {
+        server->binaryAll(ErrorMessage);
+      }
       D_errorbaseInfo.clear();
     }
     else {
@@ -112,7 +126,14 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
             D_baseInfo["parameter"]["message"] = "Not allow: "+String(METHOD_std.c_str());
             String returnString;
             serializeJsonPretty(D_baseInfo, returnString);
-            client->binary(returnString);
+            //? 2024/8/28 NodeRed端新需求
+            //? 儀器開一條ws專線
+            //? 所有 /ws/NodeRed 線上的資訊都會廣播給所有該線上的所有人得知
+            if (String(server->url()) == "/ws") {
+              client->binary(returnString);
+            } else {
+              server->binaryAll(returnString);
+            }
           }
           break;
         }
@@ -124,7 +145,15 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
         D_baseInfo["action"]["message"] = "找不到API: "+String(Message_CMD_std.c_str());
         String returnString;
         serializeJsonPretty(D_baseInfo, returnString);
-        client->binary(returnString);
+
+        //? 2024/8/28 NodeRed端新需求
+        //? 儀器開一條ws專線
+        //? 所有 /ws/NodeRed 線上的資訊都會廣播給所有該線上的所有人得知
+        if (String(server->url()) == "/ws") {
+          client->binary(returnString);
+        } else {
+          server->binaryAll(returnString);
+        }
       }
       D_baseInfo.clear();
     }

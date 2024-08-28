@@ -34,6 +34,7 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", gmtOffset_sec, daylightOffset_sec);
 AsyncWebServer asyncServer(80);
 // websocket service 控制物件
 AsyncWebSocket ws("/ws");
+AsyncWebSocket ws_nodered("/ws/NodeRed");
 
 // led 螢幕控制物件
 Adafruit_SH1106 display(PIN__SDA_1, PIN__SCL_1);
@@ -548,6 +549,8 @@ void C_Device_Ctrl::INITWebServer()
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "*");
   ws.onEvent(onWebSocketEvent);
   asyncServer.addHandler(&ws);
+  ws_nodered.onEvent(onWebSocketEvent);
+  asyncServer.addHandler(&ws_nodered);
   Set_Http_apis(asyncServer);
   INIT_AllWsAPI();
   asyncServer.begin();
@@ -731,21 +734,21 @@ void C_Device_Ctrl::BroadcastLogToClient(AsyncWebSocketClient *client, int Level
       }
     }
   }
-  // String NowPiplineName = (*Device_Ctrl.JSON__pipelineConfig)["title"].as<String>();
-  // Serial.println(NowPiplineName);
-  // Serial.println(NowPiplineName==nullptr);
-  // Serial.println(NowPiplineName==NULL);
-  // Serial.println(NowPiplineName=="null");
-  // NowPiplineName = NowPiplineName==NULL?"Busy":NowPiplineName;
-  // logItem["status"] = IsDeviceIdle()?"Idle":NowPiplineName;
   String returnString;
   serializeJson(logItem, returnString);
   logItem.clear();
   if (client != NULL) {
-    client->binary(returnString);
-  }
-  else {
+    //! 若有指定 client 回傳
+    //! 需檢查此 client 是否在 NodeRed 專線
+    //! 若為專線，則要廣撥給專線所有人得知
+    if ( String(client->server()->url()) == "/ws") {
+      client->binary(returnString);
+    } else {
+      client->server()->binaryAll(returnString);
+    }
+  } else {
     ws.binaryAll(returnString);
+    ws_nodered.binaryAll(returnString);
   }
 }
 
