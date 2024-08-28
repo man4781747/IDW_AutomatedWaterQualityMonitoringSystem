@@ -1,4 +1,5 @@
 import subprocess
+import datetime
 
 revision = (
     subprocess.check_output(["git", "log", "-1", "--pretty=format:'%h'"])
@@ -6,4 +7,10 @@ revision = (
     .strip()
     .decode("utf-8")
 )
-print("'-DFIRMWARE_VERSION=\"%s\"'" % revision)
+
+print(
+    "'-DFIRMWARE_VERSION=\"{}-{}\"'".format(
+        datetime.datetime.now().strftime("%Y%m%d"),
+        revision
+    )
+)
