@@ -7,6 +7,8 @@
 #include <unordered_map>
 #include "MAIN__DeviceCtrl.h"
 
+String FolderPath__SD__Debug__WebSocket = "/debug/websocket/";
+
 DynamicJsonDocument urlParamsToJSON(const std::string& urlParams) {
   std::stringstream ss(urlParams);
   std::string item;
@@ -45,7 +47,17 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
     } else {
       client->binary(returnString);
     }
+    String debigFileFullPath = FolderPath__SD__Debug__WebSocket + GetDateString("") + ".log";
+    ExFile_CreateFile(SD, debigFileFullPath);
+    File DebugFile = SD.open(debigFileFullPath, FILE_APPEND);
+    DebugFile.printf("[%s][WS_EVT_CONNECT][%s] ip: %s, id: %d\n", GetDatetimeString().c_str(), server->url(), client->remoteIP().toString().c_str(), client->id());
+    DebugFile.close();
   } else if (type == WS_EVT_DISCONNECT) {
+    String debigFileFullPath = FolderPath__SD__Debug__WebSocket + GetDateString("") + ".log";
+    ExFile_CreateFile(SD, debigFileFullPath);
+    File DebugFile = SD.open(debigFileFullPath, FILE_APPEND);
+    DebugFile.printf("[%s][WS_EVT_DISCONNECT][%s] ip: %s, id: %d\n", GetDatetimeString().c_str(), server->url(), client->remoteIP().toString().c_str(), client->id());
+    DebugFile.close();
     Serial.println("WebSocket client disconnected");
   } else if (type == WS_EVT_DATA) {
     vTaskDelay(10/portTICK_PERIOD_MS);
@@ -172,6 +184,8 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
       }
       D_baseInfo.clear();
     }
+  } else if(type == WS_EVT_ERROR){
+    ESP_LOGE("WebSocket Error", "error(%u): %s", *((uint16_t*)arg), (char*)data);
   }
 }
 #endif
