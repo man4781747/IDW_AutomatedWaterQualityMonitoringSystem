@@ -34,13 +34,16 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
     D_baseInfo["action"]["status"].set("OK");
     String returnString;
     serializeJsonPretty(D_baseInfo, returnString);
-    //? 2024/8/28 NodeRed端新需求
-    //? 儀器開一條ws專線
-    //? 所有 /ws/NodeRed 線上的資訊都會廣播給所有該線上的所有人得知
-    if (String(server->url()) == "/ws") {
-      client->binary(returnString);
+    //? 2024-08-28 NodeRed端需求
+    //? 希望開一個群組，群組收到訊息時，所有的回傳訊息是傳給原始訊號端以外的所有人
+    if (String(server->url()) == "/ws/NodeRed") {
+      for(const auto& c: server->getClients()){
+        if(c->status() == WS_CONNECTED & c->id() != client->id()) {
+          c-> binary(returnString);
+        }
+      }
     } else {
-      server->binaryAll(returnString);
+      client->binary(returnString);
     }
   } else if (type == WS_EVT_DISCONNECT) {
     Serial.println("WebSocket client disconnected");
@@ -84,15 +87,20 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
       D_errorbaseInfo["parameter"]["message"] = "API帶有的Data解析錯誤，參數格式錯誤?";
       String ErrorMessage;
       serializeJsonPretty(D_errorbaseInfo, ErrorMessage);
-      //? 2024/8/28 NodeRed端新需求
-      //? 儀器開一條ws專線
-      //? 所有 /ws/NodeRed 線上的資訊都會廣播給所有該線上的所有人得知
-      if (String(server->url()) == "/ws") {
-        client->binary(ErrorMessage);
-      } else {
-        server->binaryAll(ErrorMessage);
-      }
       D_errorbaseInfo.clear();
+
+      //? 2024-08-28 NodeRed端需求
+      //? 希望開一個群組，群組收到訊息時，所有的回傳訊息是傳給原始訊號端以外的所有人
+      if (String(server->url()) == "/ws/NodeRed") {
+        for(const auto& c: server->getClients()){
+          if(c->status() == WS_CONNECTED & c->id() != client->id()) {
+            c-> binary(ErrorMessage);
+          }
+        }
+      } else {
+        client->binary(ErrorMessage);
+      }
+      
     }
     else {
       D_QueryParameter.remove("data");
@@ -126,13 +134,17 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
             D_baseInfo["parameter"]["message"] = "Not allow: "+String(METHOD_std.c_str());
             String returnString;
             serializeJsonPretty(D_baseInfo, returnString);
-            //? 2024/8/28 NodeRed端新需求
-            //? 儀器開一條ws專線
-            //? 所有 /ws/NodeRed 線上的資訊都會廣播給所有該線上的所有人得知
-            if (String(server->url()) == "/ws") {
-              client->binary(returnString);
+
+            //? 2024-08-28 NodeRed端需求
+            //? 希望開一個群組，群組收到訊息時，所有的回傳訊息是傳給原始訊號端以外的所有人
+            if (String(server->url()) == "/ws/NodeRed") {
+              for(const auto& c: server->getClients()){
+                if(c->status() == WS_CONNECTED & c->id() != client->id()) {
+                  c-> binary(returnString);
+                }
+              }
             } else {
-              server->binaryAll(returnString);
+              client->binary(returnString);
             }
           }
           break;
@@ -146,13 +158,16 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
         String returnString;
         serializeJsonPretty(D_baseInfo, returnString);
 
-        //? 2024/8/28 NodeRed端新需求
-        //? 儀器開一條ws專線
-        //? 所有 /ws/NodeRed 線上的資訊都會廣播給所有該線上的所有人得知
-        if (String(server->url()) == "/ws") {
-          client->binary(returnString);
+        //? 2024-08-28 NodeRed端需求
+        //? 希望開一個群組，群組收到訊息時，所有的回傳訊息是傳給原始訊號端以外的所有人
+        if (String(server->url()) == "/ws/NodeRed") {
+          for(const auto& c: server->getClients()){
+            if(c->status() == WS_CONNECTED & c->id() != client->id()) {
+              c-> binary(returnString);
+            }
+          }
         } else {
-          server->binaryAll(returnString);
+          client->binary(returnString);
         }
       }
       D_baseInfo.clear();

@@ -26,10 +26,17 @@ void ws_GetNowStatus(AsyncWebSocket *server, AsyncWebSocketClient *client, Dynam
   D_baseInfoJSON["parameter"]["message"].set("OK");
   String returnString;
   serializeJsonPretty(D_baseInfoJSON, returnString);
-  if (String(server->url()) == "/ws") {
-    client->binary(returnString);
+
+  //? 2024-08-28 NodeRed端需求
+  //? 希望開一個群組，群組收到訊息時，所有的回傳訊息是傳給原始訊號端以外的所有人
+  if (String(server->url()) == "/ws/NodeRed") {
+    for(const auto& c: server->getClients()){
+      if(c->status() == WS_CONNECTED & c->id() != client->id()) {
+        c-> binary(returnString);
+      }
+    }
   } else {
-    server->binaryAll(returnString);
+    client->binary(returnString);
   }
 }
 
@@ -82,10 +89,16 @@ void ws_GetAllPoolData(AsyncWebSocket *server, AsyncWebSocketClient *client, Dyn
   String returnString;
   serializeJsonPretty((*D_baseInfo), returnString);
   (*D_baseInfo).clear();
-  if (String(server->url()) == "/ws") {
-    client->binary(returnString);
+  //? 2024-08-28 NodeRed端需求
+  //? 希望開一個群組，群組收到訊息時，所有的回傳訊息是傳給原始訊號端以外的所有人
+  if (String(server->url()) == "/ws/NodeRed") {
+    for(const auto& c: server->getClients()){
+      if(c->status() == WS_CONNECTED & c->id() != client->id()) {
+        c-> binary(returnString);
+      }
+    }
   } else {
-    server->binaryAll(returnString);
+    client->binary(returnString);
   }
 }
 

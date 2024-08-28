@@ -738,13 +738,19 @@ void C_Device_Ctrl::BroadcastLogToClient(AsyncWebSocketClient *client, int Level
   serializeJson(logItem, returnString);
   logItem.clear();
   if (client != NULL) {
-    //! 若有指定 client 回傳
-    //! 需檢查此 client 是否在 NodeRed 專線
+    //! 若有指定 client 回傳需檢查此 client 是否在 NodeRed 專線
     //! 若為專線，則要廣撥給專線所有人得知
-    if ( String(client->server()->url()) == "/ws") {
-      client->binary(returnString);
+    //? 2024-08-28 NodeRed端需求
+    //? 希望開一個群組，群組收到訊息時，所有的回傳訊息是傳給原始訊號端以外的所有人
+    if (String(client->server()->url()) == "/ws/NodeRed") {
+      for(const auto& c: client->server()->getClients()){
+        if(c->status() == WS_CONNECTED & c->id() != client->id()) {
+          c-> binary(returnString);
+        }
+      }
     } else {
-      client->server()->binaryAll(returnString);
+      //? 如果不是專線，則誰提需求就回傳給誰
+      client->binary(returnString);
     }
   } else {
     ws.binaryAll(returnString);
