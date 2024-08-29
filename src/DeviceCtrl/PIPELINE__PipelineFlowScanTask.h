@@ -354,23 +354,6 @@ void PipelineFlowScan(void* parameter) {
               }
             } 
             else if (stepsGroupResult == "RUNNING") {isAllDone = false;}
-            // else if (stepsGroupResult == "STOP_THIS_PIPELINE") {
-            //   ESP_LOGI("", "發現有流程觸發了 STOP_THIS_PIPELINE");
-            //   ESP_LOGI("", " - 流程名稱:\t%s (%s)", stepsGroupTitle.c_str(), stepsGroupName.c_str());
-            //   ESP_LOGI("", "準備停止當前正在執行的各項Task");
-            //   for (const auto& pipelineTaskHandle : Device_Ctrl.pipelineTaskHandleMap) {
-            //     String stepName = pipelineTaskHandle.first;
-            //     ESP_LOGI("", "停止流程: %s (%s)", (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][stepName]["title"].as<String>().c_str(), stepName.c_str());
-            //     TaskHandle_t taskChose = pipelineTaskHandle.second;
-            //     vTaskSuspend(taskChose);
-            //     vTaskDelete(taskChose);
-            //     Device_Ctrl.pipelineTaskHandleMap.erase(stepName);
-            //   }
-            //   Device_Ctrl.peristalticMotorsCtrl.SetAllMotorStop();
-            //   Device_Ctrl.MULTI_LTR_329ALS_01_Ctrler.closeAllSensor();
-            //   isAllDone = true;
-            //   break;
-            // }
           };
           vTaskDelay(100/portTICK_PERIOD_MS);
         }
@@ -388,6 +371,10 @@ void PipelineFlowScan(void* parameter) {
       xSemaphoreGive(Device_Ctrl.xMutex__pipelineFlowScan);
       while (!Device_Ctrl.IsDeviceIdle())
       {
+        //! 2024-8-29 發現停止流程運行時，StopNowPipeline 有再被其他流程轉為 ture 而使 IsDeviceIdle() 永遠被卡成 true 的情況
+        //! 因此在此迴圈再次將 StopNowPipeline、StopAllPipeline 都設定為 false
+        Device_Ctrl.StopNowPipeline = false;
+        Device_Ctrl.StopAllPipeline = false;
         vTaskDelay(1000/portTICK_PERIOD_MS);
       }
       Device_Ctrl.BroadcastLogToClient(NULL, 3, "所有流程執行完畢");

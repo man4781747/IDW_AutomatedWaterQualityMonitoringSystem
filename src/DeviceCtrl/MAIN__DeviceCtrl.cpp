@@ -1430,7 +1430,7 @@ void C_Device_Ctrl::CreateStepTasks()
       StepTask, 
       TaskSettingMap[TaskName_cSting].TaskName, 
       TaskSettingMap[TaskName_cSting].stack_depth, 
-      (void*)(&StepTaskDetailList[i]), 
+      (void*)(&StepTaskDetailList[i]),  //! 將指針傳入 Task 中
       (UBaseType_t)TaskSettingMap[TaskName_cSting].task_priority, 
       TaskSettingMap[TaskName_cSting].task_handle,
       1

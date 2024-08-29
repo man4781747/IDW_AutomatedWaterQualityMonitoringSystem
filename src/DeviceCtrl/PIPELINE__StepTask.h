@@ -37,8 +37,9 @@ StepResult Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetail
 StepResult Do_StepMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
 
 void StepTask(void* parameter) {
-  // ESP_LOGD("","開始執行Step執行Task");
-  // StepTaskDetail StepTaskDetailItem = *(StepTaskDetail*)parameter;
+  //! StepTaskDetailItem 指針來源於 Device_Ctrl.StepTaskDetailList[i]
+  //! 其中 i 代表不同 task index
+  //! 這些 StepTask 目前指定在 CPU 1 中執行
   StepTaskDetail* StepTaskDetailItem = (StepTaskDetail*)parameter;
   ESP_LOGD(StepTaskDetailItem->TaskName.c_str(),"開始執行Step執行Task");
   bool EmergencyStop = false;
@@ -46,11 +47,14 @@ void StepTask(void* parameter) {
   bool OnlyPipelineStop = false;
   for (;;) {
     if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
+      //? 此處代表Task外部將 Device_Ctrl.StepTaskDetailList[i].TaskStatus 強制設定為 Close
+      //? 目的為停止 Task 運作
       StopStep(StepTaskDetailItem);
       continue;
     }
-    if (StepTaskDetailItem->StepName == NULL) {
-      vTaskDelay(2000/portTICK_PERIOD_MS);
+    if (StepTaskDetailItem->StepName == NULL | StepTaskDetailItem->StepName == "") {
+      //? Step 被啟動執行的條件是首先會需要一個 StepName
+      vTaskDelay(1000/portTICK_PERIOD_MS);
       continue;
     }
     String pipelineName = StepTaskDetailItem->PipelineName;
@@ -88,11 +92,8 @@ void StepTask(void* parameter) {
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
             sendString += "\n後續處理方法: 整機停止\n";
-
             Device_Ctrl.AddLineNotifyEvent(sendString);
-            // Device_Ctrl.SendLineNotifyMessage(FailMessage);
             Device_Ctrl.AddGmailNotifyEvent("機台錯誤訊息",sendString);
-            // Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",FailMessage);
             isStepFail = true;
             EmergencyStop = true;
             break;
@@ -237,27 +238,6 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
     result.message = "";
     return result;
   }
-  
-  // for (int ReTry=0;ReTry<4;ReTry++) {
-  //   for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
-  //     int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
-  //     ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"伺服馬達(LX-20S) %d 轉至 %d 度(%d)", 
-  //       servoMotorItem["index"].as<int>(), 
-  //       servoMotorItem["status"].as<int>(), targetAngValue
-  //     );
-  //     LX_20S_SerialServoMove(Serial2, servoMotorItem["index"].as<int>(),targetAngValue,500);
-  //     if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
-  //       ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
-  //       digitalWrite(PIN__EN_Servo_Motor, LOW);
-  //       xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
-  //       result.code = 0;
-  //       result.message = "";
-  //       return result;
-  //     }
-  //     vTaskDelay(10/portTICK_PERIOD_MS);
-  //   }
-  //   vTaskDelay(700/portTICK_PERIOD_MS);
-  // }
 
   String anyFail;
   DynamicJsonDocument ServoStatusSave(3000);
