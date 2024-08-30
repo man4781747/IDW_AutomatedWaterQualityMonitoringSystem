@@ -1,3 +1,10 @@
+// TODO
+/**
+ * 1. 當前運行流程的視覺化&操作化
+ * 2. 運行紀錄歸類於單次運行
+ */
+// TODO
+
 #ifndef DEVICE_CTRL_H
 #define DEVICE_CTRL_H
 
@@ -102,7 +109,6 @@ class C_Device_Ctrl
     bool all_INIT_done = false;
     bool CheckUpdate();
 
-
     //! Sqlite3相關操作
     int INIT_SqliteDB();
     int DropLogsTable();
@@ -110,7 +116,6 @@ class C_Device_Ctrl
     String FilePath__SD__MainDB = "/sd/mainDB.db";
     sqlite3 *DB_Log;
     String FilePath__SD__LogDB = "/sd/logDB.db";
-
 
     void InsertNewDataToDB(String time, String pool, String ValueName, double result);
     void InsertNewLogToDB(String time, int level, const char* content, ...);
@@ -147,6 +152,8 @@ class C_Device_Ctrl
     DynamicJsonDocument *JSON__Maintain = new DynamicJsonDocument(1024);
     String FilePath__SD__Maintain = "/datas/Maintain.json";
     void RebuildMaintainJSON();
+
+
     
     /**
      * @brief Pipeline 列表
@@ -231,6 +238,9 @@ class C_Device_Ctrl
     TaskHandle_t TASK__pipelineFlowScan = NULL;
     //? xMutex__pipelineFlowScan: 要不到時代表忙碌中
     SemaphoreHandle_t xMutex__pipelineFlowScan = NULL;
+    //? pipeline 運行詳細 log 的儲存檔案完整路徑
+    String Pipeline_LogFileName;
+    void WritePipelineLogFile(String FileFullPath, const char* content, ...);
 
     
     TaskHandle_t TASKLIST__StepTask[MAX_STEP_TASK_NUM];

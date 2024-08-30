@@ -636,6 +636,7 @@ StepResult Do_StepMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDeta
   ESP_LOGI("TSET", "步進蠕動馬達測試");
   //TODO 目前只有一顆 測試用
   StepResult result;
+  Serial1.end();
   Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_RS485_RX, PIN__Step_Motor_RS485_TX);
   mb.begin(&Serial1);
   mb.setBaudrate(115200);

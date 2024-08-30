@@ -162,6 +162,12 @@ void Set_Pipeline_apis(AsyncWebServer &asyncServer)
     request->send(response);
   });
 
+  asyncServer.on("/api/running", HTTP_GET, [&](AsyncWebServerRequest *request){
+    String pipelineFilesList;
+    serializeJsonPretty(*Device_Ctrl.JSON__pipelineConfig, pipelineFilesList);
+    AsyncWebServerResponse* response = request->beginResponse(200, "application/json", pipelineFilesList);
+    request->send(response);
+  });
 }
 
 //! 儀器設定檔相關API
