@@ -665,16 +665,27 @@ StepResult Do_StepMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDeta
       mb.task();
       vTaskDelay(10/portTICK_PERIOD_MS);
     }
-    uint16_t buffer[5] = {100};
+    Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "已發出步進馬達需求");
+    uint16_t buffer[5];
+    buffer[0] = 100;
+    int test = 0;
     while (true) {
+      Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "準備確認剩餘數量");
       mb.readHreg(1, 2, buffer, 1);
       while(mb.slave()) {
         mb.task();
-        vTaskDelay(10/portTICK_PERIOD_MS);
+        vTaskDelay(100/portTICK_PERIOD_MS);
       }
+      Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "剩餘數量: %d", buffer[0]);
       if (buffer[0] == 0) {
         break;
       }
+
+      // if (test > 10) {
+      //   break;
+      // }
+      // test ++;
+
       buffer[0] = 100;
       if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
         ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"步進蠕動馬達收到緊急中斷要求，準備緊急終止儀器");
@@ -682,10 +693,9 @@ StepResult Do_StepMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDeta
         mb.writeHreg(targetID,1,writeData,4);
         return result;
       }
-      vTaskDelay(500/portTICK_PERIOD_MS);
+      vTaskDelay(1000/portTICK_PERIOD_MS);
     }
   }
-
   return result;
   //TODO 目前只有一顆 測試用
 }
