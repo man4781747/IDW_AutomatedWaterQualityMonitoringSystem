@@ -24,7 +24,9 @@ bool RunNewPipeline(const DynamicJsonDocument &newPipelineStackList) //? 執行
 
 void PipelineFlowScan(void* parameter) {
   ESP_LOGD("","開始執行流程管理Task");
-
+  // TODO
+  bool RestartAfterAllDone = false;
+  // TODO
   for (;;) {
     if ((*Device_Ctrl.JSON__pipelineStack).as<JsonArray>().size() == 0 ) {
       // 目前沒有待執行的Pipeline
@@ -252,6 +254,13 @@ void PipelineFlowScan(void* parameter) {
         Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "準備執行第 %d 個Pipeline: %s", pipelineIndex+1, PipelineName.c_str());
         Device_Ctrl.BroadcastLogToClient(NULL, 3, "準備執行第 %d 個Pipeline: %s", pipelineIndex+1, PipelineName.c_str());
 
+        // TODO
+        String Debug_Tool = (*Device_Ctrl.JSON__pipelineConfig)["debug"].as<String>();
+        if (Debug_Tool=="restart") {
+          RestartAfterAllDone = true;
+        }
+        // TODO
+
         while(isAllDone == false) {
           if (Device_Ctrl.StopNowPipeline) {
             Device_Ctrl.StopNowPipeline = false;
@@ -383,6 +392,11 @@ void PipelineFlowScan(void* parameter) {
       }
       Device_Ctrl.BroadcastLogToClient(NULL, 3, "所有流程執行完畢");
       Device_Ctrl.SendComsumeWaring();
+      // TODO
+      if (RestartAfterAllDone) {
+        ESP.restart();
+      }
+      // TODO
     }
   }
 
