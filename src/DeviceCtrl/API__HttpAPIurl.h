@@ -869,6 +869,22 @@ void Set_DB_apis(AsyncWebServer &asyncServer) {
     }
   );
 
+  asyncServer.on("/api/sensor", HTTP_POST,
+    [&](AsyncWebServerRequest *request)
+    { 
+      String Datatime = request->getParam("tm")->value();
+      String pool = request->getParam("pl")->value();
+      String type = request->getParam("tp")->value();
+      double value = request->getParam("value")->value().toDouble();
+      Device_Ctrl.InsertNewDataToDB(
+        Datatime, pool, type, value
+      );
+
+      AsyncWebServerResponse* response = request->beginResponse(200, "OK");
+      request->send(response);;
+    }
+  );
+
   //? 感測器 DB 重設 API
   //? 無參數，GET 後直接重設 DB 檔案
   asyncServer.on("/api/DB/Rebuild", HTTP_GET,
@@ -913,7 +929,7 @@ void Set_DB_apis(AsyncWebServer &asyncServer) {
     }
   );
 
-  asyncServer.on("/api/logs", HTTP_DELETE,
+  asyncServer.on("/api/logs/Rebuild", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
       Device_Ctrl.DropLogsTable();
@@ -945,6 +961,15 @@ void Set_test_apis(AsyncWebServer &asyncServer)
         }
       }
       ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__LastSensorDataSave, *Device_Ctrl.JSON__sensorDataSave);
+      String returnString;
+      serializeJson(*Device_Ctrl.JSON__sensorDataSave, returnString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json",returnString);
+      request->send(response);
+    }
+  );
+  asyncServer.on("/api/test/PoolData", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
       String returnString;
       serializeJson(*Device_Ctrl.JSON__sensorDataSave, returnString);
       AsyncWebServerResponse* response = request->beginResponse(200, "application/json",returnString);
