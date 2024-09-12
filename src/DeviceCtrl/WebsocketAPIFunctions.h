@@ -62,28 +62,32 @@ void ws_GetAllPoolData(AsyncWebSocket *server, AsyncWebSocketClient *client, Dyn
     if (S_PoolID == "test" | S_PoolID == "RO") {
       continue;
     }
-    // serializeJsonPretty((*Device_Ctrl.JSON__PoolConfig), Serial);
+    int IsUsed = true;
     for (JsonVariant value : (*Device_Ctrl.JSON__PoolConfig).as<JsonArray>()) {
       JsonObject PoolConfigItem = value.as<JsonObject>();
-      // serializeJsonPretty(PoolConfigItem, Serial);
       if (PoolConfigItem["id"].as<String>() == S_PoolID) {
+        //? 檢查 pool id 是否有指定，如果有則給出的資料 id 會改使用這個指定的名稱
         if (PoolConfigItem["external_mapping"].as<String>() != "") {
           S_PoolID = PoolConfigItem["external_mapping"].as<String>();
         }
+        IsUsed = PoolConfigItem["Used"].as<int>();
         break;
       }
     }
-    // Serial.println(S_PoolID);
+    //? 如果該池設定上為 NodeRed不上傳資料，則跳過該池
+    if (IsUsed == false) {
+      continue;
+    }
     D_poolSensorDataSended["PoolID"] = S_PoolID;
     D_poolSensorDataSended["PoolName"] = D_poolsSensorData["PoolName"].as<String>();
     D_poolSensorDataSended["PoolDescription"] = D_poolsSensorData["PoolDescription"].as<String>();
+    // D_poolSensorDataSended["Used"] = false;
     JsonArray DataItemList = D_poolSensorDataSended.createNestedArray("DataItem");
     for (JsonPair JsonPair_SensorData : D_poolsSensorData["DataItem"].as<JsonObject>()) {
       JsonObject D_SensorData = JsonPair_SensorData.value();
       D_SensorData["ItemName"] = String(JsonPair_SensorData.key().c_str());
       DataItemList.add(D_SensorData);
     }
-
     parameterList.add(D_poolSensorDataSended);
   }
   String returnString;
@@ -101,6 +105,47 @@ void ws_GetAllPoolData(AsyncWebSocket *server, AsyncWebSocketClient *client, Dyn
     client->binary(returnString);
   }
 }
+
+//! 2024/9/12 因 NodeRed 端需求，將原始 ws_GetAllPoolData() 的 API 給 NodeRed 專用
+//! 本身操作網頁的 API 獨立出一個 Function 來使用
+void ws_GetAllPoolData_ForWeb(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData)
+{
+  JsonObject D_baseInfoJSON = D_baseInfo->as<JsonObject>();
+  (*D_baseInfo)["status"].set("OK");
+  (*D_baseInfo)["cmd"].set("poolData");
+  (*D_baseInfo)["action"]["target"].set("PoolData");
+  (*D_baseInfo)["action"]["method"].set("Update");
+  (*D_baseInfo)["action"]["message"].set("OK");
+  (*D_baseInfo)["action"]["status"].set("OK");
+  if (!(*D_baseInfo)["action"].containsKey("message")) {
+    (*D_baseInfo)["action"]["message"].set("獲得各蝦池最新感測器資料");
+  }
+  JsonArray parameterList = (*D_baseInfo).createNestedArray("parameter");
+  for (JsonPair JsonPair_poolsSensorData : (*Device_Ctrl.JSON__sensorDataSave).as<JsonObject>()) {
+    DynamicJsonDocument D_poolSensorDataSended(5000);
+    JsonObject D_poolsSensorData = JsonPair_poolsSensorData.value();
+    String S_PoolID = String(JsonPair_poolsSensorData.key().c_str());
+    if (S_PoolID == "test") {
+      continue;
+    }
+    D_poolSensorDataSended["PoolID"] = S_PoolID;
+    D_poolSensorDataSended["PoolName"] = D_poolsSensorData["PoolName"].as<String>();
+    D_poolSensorDataSended["PoolDescription"] = D_poolsSensorData["PoolDescription"].as<String>();
+    JsonArray DataItemList = D_poolSensorDataSended.createNestedArray("DataItem");
+    for (JsonPair JsonPair_SensorData : D_poolsSensorData["DataItem"].as<JsonObject>()) {
+      JsonObject D_SensorData = JsonPair_SensorData.value();
+      D_SensorData["ItemName"] = String(JsonPair_SensorData.key().c_str());
+      DataItemList.add(D_SensorData);
+    }
+
+    parameterList.add(D_poolSensorDataSended);
+  }
+  String returnString;
+  serializeJsonPretty((*D_baseInfo), returnString);
+  (*D_baseInfo).clear();
+  client->binary(returnString);
+}
+
 
 void ws_v2_RunPipeline(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData)
 {

@@ -528,6 +528,7 @@ void C_Device_Ctrl::INIT_AllWsAPI()
   // //!Sensor結果資料
 
   AddWebsocketAPI("/api/PoolData", "GET", &ws_GetAllPoolData);
+  AddWebsocketAPI("/api/PoolDataForWeb", "GET", &ws_GetAllPoolData_ForWeb);
 
 
   // //? [GET]/api/Pipeline/pool_all_data_get/RUN 這支API比較特別，目前是寫死的
