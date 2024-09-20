@@ -812,7 +812,11 @@ void WifiManager(void* parameter)
         lastConnectTime = now(); //! 更新最後一次連線的狀態
       } else {
         if (now() - lastConnectTime > CONNECT_TIMEOUT) {
-
+          WiFi.disconnect(); // 先斷開所有連接
+          WiFi.begin(
+            (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Name"].as<String>().c_str(),
+            (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Password"].as<String>().c_str()
+          );
         }
       }
     }
