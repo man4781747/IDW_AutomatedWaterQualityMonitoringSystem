@@ -22,6 +22,7 @@
 #include "mbedtls/aes.h"
 #include <Update.h>
 #include <ModbusRTU.h>
+#include <ESP32Ping.h>
 
 ModbusRTU mb_;
 
@@ -1721,6 +1722,28 @@ void C_Device_Ctrl::WriteSysInfo()
   ESP_LOGD("SYS", "WiFi status: %d", WiFi.status());
   ESP_LOGD("SYS", "WiFi RSSI: %d", WiFi.RSSI());
   ESP_LOGD("SYS", "STA IP: %s", WiFi.localIP().toString().c_str());
+
+  IPAddress LocalWiFi (192, 168, 1, 1); 
+  bool LocalWiFiResult = Ping.ping(LocalWiFi);
+  ESP_LOGD("SYS", "WiFi基地台 Ping 測試: %s", LocalWiFiResult?"成功":"失敗");
+  if (LocalWiFiResult == false) {
+    //? 若 ping 不到 WiFi 分享器並且機器閒置，且當前時間不介於 55 分 ~ 59 分時，將儀器重開
+    if (IsDeviceIdle() == true & minute() < 55 ) {
+      InsertNewLogToDB(
+        GetDatetimeString(), 1, "偵測到與WiFi基地台連線異常，準備重開機"
+      );
+      ESP.restart();
+    }
+  }
+
+  IPAddress GlobalNet (8, 8, 8, 8); 
+  bool GlobalNetResult = Ping.ping(GlobalNet);
+  ESP_LOGD("SYS", "網際網路 Ping 測試: %s", GlobalNetResult?"成功":"失敗");
+  if (GlobalNetResult == false) {
+    InsertNewLogToDB(
+      GetDatetimeString(), 1, "偵測到與網際網路連線異常"
+    );
+  }
 }                                                                                                  
 
 /**

@@ -116,7 +116,7 @@ void loop() {
   // //TODO
 
 
-  vTaskDelay(10000/portTICK_PERIOD_MS);
+  vTaskDelay(60000/portTICK_PERIOD_MS);
   Device_Ctrl.WriteSysInfo();
 
 
