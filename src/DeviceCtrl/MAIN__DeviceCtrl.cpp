@@ -798,7 +798,8 @@ void WifiManager(void* parameter)
   ESP_LOGI("", "AP 熱點 IP address: %s, macAddress: %s", WiFi.softAPIP().toString().c_str(), WiFi.softAPmacAddress().c_str());
 
   //? 而後嘗試與基地台連接
-
+  int reconnectRetryCount = 0;
+  int MAX_RECONNECT_RETRY = 3;
   WiFi.begin(
     (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Name"].as<String>().c_str(),
     (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Password"].as<String>().c_str()
@@ -806,38 +807,48 @@ void WifiManager(void* parameter)
   WiFi.setAutoReconnect(true);
   WiFi.setAutoConnect(true);
   for (;;) {
-    //! 以下為 WiFi STA 模式下的行為
-    if (WiFi.getMode() == wifi_mode_t::WIFI_MODE_STA) {
-      if (WiFi.status() == wl_status_t::WL_CONNECTED) {
-        lastConnectTime = now(); //! 更新最後一次連線的狀態
-      } else {
-        if (now() - lastConnectTime > CONNECT_TIMEOUT) {
-          WiFi.disconnect(); // 先斷開所有連接
+    vTaskDelay(60*1000/portTICK_PERIOD_MS);
+    //! 每一分鐘 Ping WiFi 基地台
+    //! 若 Ping 不到，則斷開 WiFi 並重新建立連線
+    IPAddress LocalWiFi (192, 168, 1, 1); 
+    bool LocalWiFiResult = Ping.ping(LocalWiFi);
+    ESP_LOGD("SYS", "WiFi基地台 Ping 測試: %s", LocalWiFiResult?"成功":"失敗");
+    if (LocalWiFiResult == false) {
+      int ifCheck = (*Device_Ctrl.JSON__WifiConfig)["Remote"]["check"].as<int>();
+      if (ifCheck == 1) {
+        reconnectRetryCount++;
+        //? 若 ping 不到 WiFi 分享器並且機器閒置，且當前時間不介於 55 分 ~ 59 分時，將儀器重開
+        if (Device_Ctrl.IsDeviceIdle() == true & minute() < 55 & reconnectRetryCount > MAX_RECONNECT_RETRY) {
+          Device_Ctrl.InsertNewLogToDB(
+            GetDatetimeString(), 1, "偵測到與WiFi基地台連線異常，準備重開機"
+          );
+          ESP.restart();
+        }
+        else {
+          Device_Ctrl.InsertNewLogToDB(
+            GetDatetimeString(), 1, "偵測到與WiFi基地台連線異常，準備嘗試重連"
+          );
+          WiFi.disconnect();
+          IPAddress AP_IP;
+          AP_IP.fromString((*Device_Ctrl.JSON__WifiConfig)["AP"]["AP_IP"].as<String>());
+          IPAddress AP_gateway;
+          AP_gateway.fromString((*Device_Ctrl.JSON__WifiConfig)["AP"]["AP_gateway"].as<String>());
+          IPAddress AP_subnet_mask;
+          AP_subnet_mask.fromString((*Device_Ctrl.JSON__WifiConfig)["AP"]["AP_subnet_mask"].as<String>());
+          WiFi.softAPConfig(AP_IP,AP_gateway,AP_subnet_mask);
+          WiFi.softAP((*Device_Ctrl.JSON__WifiConfig)["AP"]["AP_Name"].as<String>());
           WiFi.begin(
             (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Name"].as<String>().c_str(),
             (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Password"].as<String>().c_str()
           );
+          WiFi.setAutoReconnect(true);
+          WiFi.setAutoConnect(true);
         }
       }
     }
-
-
-    // if (WiFi.status() == wl_status_t::WL_CONNECTED) {
-    //   lastConnectTime = now();
-    //   ESP_LOGI("WIFI", "RSSI: %d, SSID: %s, BSSID: %s", 
-    //     WiFi.RSSI(), WiFi.SSID().c_str(), WiFi.BSSIDstr().c_str()
-    //   );
-    // }
-    // else {
-    //   if (now()-lastConnectTime > 60*10 & Device_Ctrl.IsDeviceIdle()) {
-    //     ESP.restart();
-    //   }
-    //   Device_Ctrl.InsertNewLogToDB(
-    //     GetDatetimeString(),1, "發現WiFi連線失敗，累積失敗 %d 秒，Fail Code: %d", 
-    //     now()-lastConnectTime, WiFi.status()
-    //   );
-    // }
-    vTaskDelay(60*1000/portTICK_PERIOD_MS);
+    else {
+      reconnectRetryCount = 0;
+    }
   }
 }
 

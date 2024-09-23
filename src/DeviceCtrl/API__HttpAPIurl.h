@@ -430,6 +430,22 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       Device_Ctrl.ConnectWiFi();
     }
   );
+
+  asyncServer.on("/api/config/wifi_check", HTTP_GET,
+  [&](AsyncWebServerRequest *request)
+    { 
+      if (request->hasParam("open")) {
+        (*Device_Ctrl.JSON__WifiConfig)["Remote"]["check"].set(1);
+      }
+      if (request->hasParam("close")) {
+        (*Device_Ctrl.JSON__WifiConfig)["Remote"]["check"].set(0);
+      }
+      ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__WiFiConfig, (*Device_Ctrl.JSON__WifiConfig));
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "OK");
+      request->send(response);
+      
+    }
+  );
 }
 
 //! 排程相關API
@@ -929,7 +945,7 @@ void Set_DB_apis(AsyncWebServer &asyncServer) {
     }
   );
 
-  asyncServer.on("/api/logs/Rebuild", HTTP_GET,
+  asyncServer.on("/api/logs", HTTP_DELETE,
     [&](AsyncWebServerRequest *request)
     { 
       Device_Ctrl.DropLogsTable();
