@@ -68,7 +68,7 @@ void StepTask(void* parameter) {
     JsonObject parentList = (*Device_Ctrl.JSON__pipelineConfig)["pipline"][stepsGroupNameString]["parentList"].as<JsonObject>();
 
 
-    ESP_LOGD(StepTaskDetailItem->TaskName.c_str(),"(%s) 收到運作要求，目標Step名稱: %s，Title: %s", stepsGroupNameString.c_str(), ThisStepGroupTitle.c_str());
+    ESP_LOGD(StepTaskDetailItem->TaskName.c_str(),"收到運作要求，目標Step名稱: %s，Title: %s", stepsGroupNameString.c_str(), ThisStepGroupTitle.c_str());
     Device_Ctrl.WritePipelineLogFile(
       Device_Ctrl.Pipeline_LogFileName, 
       "(%s) Received operation request, target Step name: %s, Title: %s", 
