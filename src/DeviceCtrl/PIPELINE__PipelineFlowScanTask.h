@@ -412,6 +412,7 @@ int_fast16_t TryToRunStep(String StepName, String PipelineName)
       Device_Ctrl.StepTaskDetailList[i].StepName = StepName;
       Device_Ctrl.StepTaskDetailList[i].PipelineName = PipelineName;
       (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][StepName]["RESULT"] = "RUNNING";
+      Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "準備觸發執行Task: %s", StepName.c_str());
       return 1;
     }
   }

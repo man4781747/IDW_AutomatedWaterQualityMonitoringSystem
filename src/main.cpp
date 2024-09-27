@@ -67,7 +67,6 @@ void setup() {
   Device_Ctrl.preLoadWebJSFile();
   Device_Ctrl.AddNewOledLog("CreateWifiManager");
   Device_Ctrl.CreateWifiManagerTask();
-  Device_Ctrl.AddNewOledLog("CreateWifiManager");
   Device_Ctrl.AddNewOledLog("INITWebServer");
   Device_Ctrl.INITWebServer();
   Device_Ctrl.AddNewOledLog("CreateOTAService");

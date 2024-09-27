@@ -560,7 +560,8 @@ void C_Device_Ctrl::INITWebServer()
 
 void C_Device_Ctrl::preLoadWebJSFile()
 {
-  File JSFile = SD.open("/assets/index.js.gz", "r");
+  ESP_LOGD("網頁檔案初始化", "準備執行js預讀取步驟");
+  File JSFile = SD.open("/assets/index.js.gz", "r"); 
   webJS_BufferLen = JSFile.size();
   if (webJS_BufferLen == 0) {
     ESP_LOGD("網頁檔案初始化", "無法讀取SD中的網頁檔案");

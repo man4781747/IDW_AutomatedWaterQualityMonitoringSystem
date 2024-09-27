@@ -42,6 +42,7 @@ void StepTask(void* parameter) {
   //! 這些 StepTask 目前指定在 CPU 1 中執行
   StepTaskDetail* StepTaskDetailItem = (StepTaskDetail*)parameter;
   ESP_LOGD(StepTaskDetailItem->TaskName.c_str(),"開始執行Step執行Task");
+  Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "開始執行Step執行Task: %s", StepTaskDetailItem->TaskName.c_str());
   bool EmergencyStop = false;
   bool OnlyStepStop = false;
   bool OnlyPipelineStop = false;
@@ -218,6 +219,7 @@ void StepTask(void* parameter) {
 //! 清空必要項目，使Task回歸Idle狀態
 void StopStep(StepTaskDetail* StepTaskDetailItem) {
   ESP_LOGD("","Step Task: %s 執行流程完畢", StepTaskDetailItem->TaskName.c_str());
+  Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "Step Task: %s 執行流程完畢", StepTaskDetailItem->TaskName.c_str());
   StepTaskDetailItem->StepName = "";
   StepTaskDetailItem->TaskStatus = StepTaskStatus::Idle;
 }
@@ -783,7 +785,8 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
 
     INA226 ina226(Device_Ctrl._Wire);
     ina226.begin(sensorAddr);
-    // Device_Ctrl.ScanI2C();
+    Device_Ctrl.ScanI2C();
+    Serial.println(sensorAddr);
     ina226.configure(
       INA226_AVERAGES_4, // 采样平均
       INA226_BUS_CONV_TIME_140US, //采样时间
