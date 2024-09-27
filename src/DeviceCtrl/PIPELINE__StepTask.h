@@ -42,7 +42,6 @@ void StepTask(void* parameter) {
   //! 這些 StepTask 目前指定在 CPU 1 中執行
   StepTaskDetail* StepTaskDetailItem = (StepTaskDetail*)parameter;
   ESP_LOGD(StepTaskDetailItem->TaskName.c_str(),"開始執行Step執行Task");
-  Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "Start executing Step and executing Task: %s", StepTaskDetailItem->TaskName.c_str());
   bool EmergencyStop = false;
   bool OnlyStepStop = false;
   bool OnlyPipelineStop = false;
@@ -69,7 +68,15 @@ void StepTask(void* parameter) {
     JsonObject parentList = (*Device_Ctrl.JSON__pipelineConfig)["pipline"][stepsGroupNameString]["parentList"].as<JsonObject>();
 
 
-    ESP_LOGD(StepTaskDetailItem->TaskName.c_str(),"收到運作要求，目標Step名稱: %s，Title: %s", stepsGroupNameString.c_str(), ThisStepGroupTitle.c_str());
+    ESP_LOGD(StepTaskDetailItem->TaskName.c_str(),"(%s) 收到運作要求，目標Step名稱: %s，Title: %s", stepsGroupNameString.c_str(), ThisStepGroupTitle.c_str());
+    Device_Ctrl.WritePipelineLogFile(
+      Device_Ctrl.Pipeline_LogFileName, 
+      "(%s) Received operation request, target Step name: %s, Title: %s", 
+      StepTaskDetailItem->TaskName.c_str(),
+      StepTaskDetailItem->StepName.c_str(),
+      ThisStepGroupTitle.c_str()
+    );
+
     // Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 0, "收到運作要求，目標Step名稱: %s，Title: %s", stepsGroupNameString.c_str(), ThisStepGroupTitle.c_str());
     // Device_Ctrl.BroadcastLogToClient(NULL, 0, "收到運作要求，目標Step名稱: %s，Title: %s", stepsGroupNameString.c_str(), ThisStepGroupTitle.c_str());
 
@@ -81,6 +88,14 @@ void StepTask(void* parameter) {
       ESP_LOGI(StepTaskDetailItem->TaskName.c_str(), "執行: %s - %s", ThisStepGroupTitle.c_str(), thisEventTitle.c_str());
       // Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "執行: %s - %s", ThisStepGroupTitle.c_str(), thisEventTitle.c_str());
       Device_Ctrl.BroadcastLogToClient(NULL, 3, "執行: %s - %s", ThisStepGroupTitle.c_str(), thisEventTitle.c_str());
+      Device_Ctrl.WritePipelineLogFile(
+        Device_Ctrl.Pipeline_LogFileName, 
+        "(%s) Run: %s - %s", 
+        StepTaskDetailItem->TaskName.c_str(),
+        ThisStepGroupTitle.c_str(),
+        thisEventTitle.c_str()
+      );
+
       //? event細節執行內容
       JsonArray eventList = (*Device_Ctrl.JSON__pipelineConfig)["events"][eventChose]["event"].as<JsonArray>();
       //? 一個一個event item依序執行
@@ -219,7 +234,7 @@ void StepTask(void* parameter) {
 //! 清空必要項目，使Task回歸Idle狀態
 void StopStep(StepTaskDetail* StepTaskDetailItem) {
   ESP_LOGD("","Step Task: %s 執行流程完畢", StepTaskDetailItem->TaskName.c_str());
-  Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "Step Task: %s The execution process is completed", StepTaskDetailItem->TaskName.c_str());
+  Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "(%s) Step Task: %s The execution process is completed", StepTaskDetailItem->TaskName.c_str(), StepTaskDetailItem->StepName.c_str());
   StepTaskDetailItem->StepName = "";
   StepTaskDetailItem->TaskStatus = StepTaskStatus::Idle;
 }

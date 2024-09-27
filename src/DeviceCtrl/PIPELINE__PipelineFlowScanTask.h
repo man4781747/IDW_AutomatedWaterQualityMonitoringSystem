@@ -89,6 +89,7 @@ void PipelineFlowScan(void* parameter) {
         //STEP 3 檢查檔案是否可以被解析成JSON格式
         ESP_LOGI("", "STEP 3 檢查檔案是否可以被解析成JSON格式");
         (*Device_Ctrl.JSON__pipelineConfig).clear();
+        Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "STEP 3 Check whether the file can be parsed into JSON format");
         DeserializationError error = deserializeJson(*Device_Ctrl.JSON__pipelineConfig, pipelineConfigFile,  DeserializationOption::NestingLimit(20));
         pipelineConfigFile.close();
         if (error) {
@@ -104,6 +105,7 @@ void PipelineFlowScan(void* parameter) {
         }
         //STEP 4 整理設定檔內容，以利後續使用
         ESP_LOGI("", "STEP 4 整理設定檔內容，以利後續使用");
+        Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "STEP 4 Organize the configuration file contents for subsequent use");
         /**
         //* 範例
         //* [["NO3WashValueTest",["NO3ValueTest","NO3TestWarning"]],["NO3ValueTest",["NH4WashValueTest"]],["NH4WashValueTest",["NH4Test","NH4TestWarning"]]]
@@ -245,6 +247,7 @@ void PipelineFlowScan(void* parameter) {
         
         //STEP 5 開始執行流程判斷功能
         ESP_LOGI("", "STEP 5 開始執行流程判斷功能");
+        Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "STEP 5 Start executing the process judgment function");
         JsonObject stepsGroup = (*Device_Ctrl.JSON__pipelineConfig)["steps_group"].as<JsonObject>();
         JsonObject pipelineSet = (*Device_Ctrl.JSON__pipelineConfig)["pipline"].as<JsonObject>();
         //? isAllDone: 用來判斷是否所有流程都運行完畢，如果都完畢，則此TASK也可以關閉
