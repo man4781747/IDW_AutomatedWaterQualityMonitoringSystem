@@ -380,6 +380,7 @@ void PipelineFlowScan(void* parameter) {
         Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "第 %d 個Pipeline: %s 執行完畢", pipelineIndex+1, PipelineName.c_str());
         Device_Ctrl.BroadcastLogToClient(NULL, 3, "第 %d 個Pipeline: %s 執行完畢", pipelineIndex+1, PipelineName.c_str());
       }
+      Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "After all processes are executed, the process queue is cleared.");
       ESP_LOGD("","所有流程執行完畢，清空流程列隊");
       Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "所有流程執行完畢，清空流程列隊");
       (*Device_Ctrl.JSON__pipelineStack).clear();
