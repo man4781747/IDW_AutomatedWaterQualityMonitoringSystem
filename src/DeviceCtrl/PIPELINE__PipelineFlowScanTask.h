@@ -52,18 +52,18 @@ void PipelineFlowScan(void* parameter) {
       ESP_LOGD("","一共有 %d 個流程會依序執行", PipelineList.size());
       Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "準備執行新流程需求，一共有 %d 個流程: %s", PipelineList.size(), Device_Ctrl.Pipeline_LogFileName.c_str());
       Device_Ctrl.BroadcastLogToClient(NULL, 3, "準備執行新流程需求，一共有 %d 個流程", PipelineList.size());
-      Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "準備執行新流程需求，一共有 %d 個流程", PipelineList.size());
+      Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "Prepare to execute new process requirements, there are %d processes in total", PipelineList.size());
       for (int pipelineIndex = 0;pipelineIndex<PipelineList.size();pipelineIndex++) {
         ESP_LOGI("", "開始執行第 %d 個流程", pipelineIndex+1);
-        Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "開始執行第 %d 個流程", pipelineIndex+1);
+        Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "Start executing the %dth process", pipelineIndex+1);
         JsonObject pipelineChose = PipelineList[pipelineIndex].as<JsonObject>();
         String pipelineConfigFileFullPath = pipelineChose["FullFilePath"].as<String>();
         //STEP 1 檢查檔案是否存在
         ESP_LOGI("", "STEP 1 檢查檔案是否存在: %s", pipelineConfigFileFullPath.c_str());
-        Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "STEP 1 檢查檔案是否存在: %s", pipelineConfigFileFullPath.c_str());
+        Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "STEP 1 Check if the file exists: %s", pipelineConfigFileFullPath.c_str());
         if (!SD.exists(pipelineConfigFileFullPath)) {
           ESP_LOGE("", "檔案: %s 不存在,跳至下一流程", pipelineConfigFileFullPath.c_str());
-          Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "檔案: %s 不存在,跳至下一流程", pipelineConfigFileFullPath.c_str());
+          Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "File: %s does not exist, skip to the next process", pipelineConfigFileFullPath.c_str());
           String FailMessage = "執行流程時發現未知的檔案名稱: "+pipelineConfigFileFullPath+"\n";
           FailMessage += "請檢查相關設定檔案是否正確";
           Device_Ctrl.AddLineNotifyEvent(FailMessage);
@@ -72,11 +72,11 @@ void PipelineFlowScan(void* parameter) {
         }
         //STEP 2 檢查檔案是否可以被讀取
         ESP_LOGI("", "STEP 2 檢查檔案是否可以被讀取");
-        Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "STEP 2 檢查檔案是否可以被讀取");
+        Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "STEP 2 Check if the file can be read");
         File pipelineConfigFile = SD.open(pipelineConfigFileFullPath);
         if (!pipelineConfigFile) {
           ESP_LOGE("", "無法打開檔案: %s ,跳至下一流程", pipelineConfigFileFullPath.c_str());
-          Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "無法打開檔案: %s ,跳至下一流程", pipelineConfigFileFullPath.c_str());
+          Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "Unable to open file: %s, skip to next process", pipelineConfigFileFullPath.c_str());
           String FailMessage = "執行流程時發現無法打開的檔案: "+pipelineConfigFileFullPath+"\n";
           FailMessage += "請檢查相關設定檔案是否正確";
           Device_Ctrl.AddLineNotifyEvent(FailMessage);
@@ -412,7 +412,7 @@ int_fast16_t TryToRunStep(String StepName, String PipelineName)
       Device_Ctrl.StepTaskDetailList[i].StepName = StepName;
       Device_Ctrl.StepTaskDetailList[i].PipelineName = PipelineName;
       (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][StepName]["RESULT"] = "RUNNING";
-      Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "準備觸發執行Task: %s", StepName.c_str());
+      Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "Prepare to trigger execution of Task: %s", StepName.c_str());
       return 1;
     }
   }
