@@ -179,6 +179,7 @@ class C_Device_Ctrl
     uint8_t *webJS_Buffer;
     size_t webJS_BufferLen;
     void CreateOTAService();
+    bool CheckUpdateFile = false;
     TaskHandle_t TASK__OTAService = NULL;
     void UpdateDeviceTimerByNTP();
     void BroadcastLogToClient(

@@ -336,7 +336,7 @@ void C_Device_Ctrl::InsertNewDataToDB(String time, String pool, String ValueName
   db_exec(DB_Main, SqlString);
 
 
-  String FileSavePath = "/datas/"+GetDateString("-")+".csv";
+  String FileSavePath = String("/datas/")+String(GetDateString("-"))+String(".csv");
   ExFile_CreateFile(SD, FileSavePath);
   File SaveFile = SD.open(FileSavePath, FILE_APPEND);
   SaveFile.printf(
@@ -619,6 +619,7 @@ DynamicJsonDocument C_Device_Ctrl::GetBaseWSReturnData(String MessageString)
 }
 
 void OTAServiceTask(void* parameter) {
+  int UpdateStatus = 0;
   ESP_LOGI("OTAService", "準備建立OTA服務");
   ArduinoOTA.setPort(3232);
   ArduinoOTA.onStart([]() {
@@ -668,7 +669,51 @@ void OTAServiceTask(void* parameter) {
   });
   ArduinoOTA.begin();
   for(;;){
+    //! ArduinoOTA 服務檢查
     ArduinoOTA.handle();
+    //! File OTA 檢查
+    if (Device_Ctrl.CheckUpdateFile == true) {
+      Device_Ctrl.CheckUpdateFile = false;
+      if (SD.exists("/firmware/firmware.bin")) {
+        File firmware =  SD.open("/firmware/firmware.bin");
+        if (firmware) {
+          Device_Ctrl.BroadcastLogToClient(NULL, 3,"準備更新儀器");
+          ESP_LOGI("","找到新的韌體檔案，嘗試更新");
+          Device_Ctrl.AddNewOledLog("Update Firmware");
+          Device_Ctrl.AddNewOledLog("Update: 0%");
+          UpdateStatus = 0;
+          Update.onProgress([&](unsigned int progress, unsigned int total) {
+            Serial.printf("OTA progress: %u%%\r", (progress / (total / 100)));
+            Device_Ctrl.ChangeLastOledLog("Update: %u%%\r", (progress / (total / 100)));
+            int NowStatus = (int)(progress / (total / 100))/10*10;
+            if (UpdateStatus != NowStatus) {
+              UpdateStatus = NowStatus;
+              Device_Ctrl.BroadcastLogToClient(NULL, 3, "韌體更新中: %d %%",UpdateStatus);
+            };
+          });
+          Update.begin(firmware.size(), U_FLASH);
+          Update.writeStream(firmware);
+          if (Update.end()){
+            firmware.close();
+            SD.remove("/firmware/firmware.bin");
+            Device_Ctrl.BroadcastLogToClient(NULL, 3,"韌體更新成功，2秒後重啟");
+            Serial.println(F("Update finished!"));
+            Device_Ctrl.AddNewOledLog("Update finished!");
+            Device_Ctrl.AddNewOledLog("ReStart in 2s");
+            vTaskDelay(2000/portTICK_PERIOD_MS);
+            ESP.restart();
+
+          } else {
+            firmware.close();
+            SD.remove("/firmware/firmware.bin");
+            Device_Ctrl.BroadcastLogToClient(NULL, 1,"韌體更新失敗");
+            Device_Ctrl.AddNewOledLog("Update error!: %d", Update.getError());
+            Serial.println(F("Update error!"));
+            Serial.println(Update.getError());
+          }
+        }
+      }
+    }
     vTaskDelay(1000/portTICK_PERIOD_MS);
   }
 }
@@ -1739,7 +1784,7 @@ void C_Device_Ctrl::WriteSysInfo()
   ESP_LOGD("SYS", "WiFi RSSI: %d", WiFi.RSSI());
   ESP_LOGD("SYS", "STA IP: %s", WiFi.localIP().toString().c_str());
 
-  IPAddress LocalWiFi (192, 168, 1, 1); 
+  IPAddress LocalWiFi (192,168,1,1); 
   bool LocalWiFiResult = Ping.ping(LocalWiFi);
   ESP_LOGD("SYS", "WiFi基地台 Ping 測試: %s", LocalWiFiResult?"成功":"失敗");
   if (LocalWiFiResult == false) {
@@ -1752,14 +1797,34 @@ void C_Device_Ctrl::WriteSysInfo()
     }
   }
 
-  IPAddress GlobalNet (8, 8, 8, 8); 
-  bool GlobalNetResult = Ping.ping(GlobalNet);
-  ESP_LOGD("SYS", "網際網路 Ping 測試: %s", GlobalNetResult?"成功":"失敗");
-  if (GlobalNetResult == false) {
-    InsertNewLogToDB(
-      GetDatetimeString(), 1, "偵測到與網際網路連線異常"
-    );
-  }
+
+
+  // int IsCheckOpen = (*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"]["check"].as<int>();
+  // Serial.println(IsCheckOpen);
+  // if (IsCheckOpen == 1) {
+  //   IPAddress LocalWiFi; 
+  //   LocalWiFi.fromString((*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"]["check_IP"].as<String>());
+  //   bool LocalWiFiResult = Ping.ping(LocalWiFi);
+  //   ESP_LOGD("SYS", "WiFi基地台 Ping 測試: %s", LocalWiFiResult?"成功":"失敗");
+  //   if (LocalWiFiResult == false) {
+  //     //? 若 ping 不到 WiFi 分享器並且機器閒置，且當前時間不介於 55 分 ~ 59 分時，將儀器重開
+  //     if (IsDeviceIdle() == true & minute() < 55 ) {
+  //       InsertNewLogToDB(
+  //         GetDatetimeString(), 1, "偵測到與WiFi基地台連線異常，準備重開機"
+  //       );
+  //       ESP.restart();
+  //     }
+  //   }
+  // }
+
+  // IPAddress GlobalNet (8, 8, 8, 8); 
+  // bool GlobalNetResult = Ping.ping(GlobalNet);
+  // ESP_LOGD("SYS", "網際網路 Ping 測試: %s", GlobalNetResult?"成功":"失敗");
+  // if (GlobalNetResult == false) {
+  //   InsertNewLogToDB(
+  //     GetDatetimeString(), 1, "偵測到與網際網路連線異常"
+  //   );
+  // }
 }                                                                                                  
 
 /**

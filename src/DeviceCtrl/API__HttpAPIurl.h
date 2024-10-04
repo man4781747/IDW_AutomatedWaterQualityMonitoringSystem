@@ -26,6 +26,8 @@ size_t newWebUpdateFileBufferLen;
 uint8_t *newFirmwareUpdateFileBuffer;
 size_t newFirmwareUpdateFileBufferLen;
 
+int UploadPer = 0;
+
 void Set_Http_apis(AsyncWebServer &asyncServer)
 {
   //! CORS 檢查用
@@ -89,6 +91,70 @@ void Set_Http_apis(AsyncWebServer &asyncServer)
 //! Pipeline檔案相關API
 void Set_Pipeline_apis(AsyncWebServer &asyncServer)
 {
+  // asyncServer.on("/api/piplines/run", HTTP_GET, [&](AsyncWebServerRequest *request){
+
+  //   if (request->hasParam("order")) {
+  //     String orderString = request->getParam("order")->value();
+  //     DynamicJsonDocument NewPipelineSetting(60000);
+  //     int splitIndex = -1;
+  //     int prevSpliIndex = 0;
+  //     int eventCount = 0;
+  //     splitIndex = orderString.indexOf(',', prevSpliIndex);
+  //     while (splitIndex != -1) {
+  //       String token = orderString.substring(prevSpliIndex, splitIndex);
+  //       String TargetName = token+".json";
+  //       String FullFilePath = "/pipelines/"+TargetName;
+  //       DynamicJsonDocument singlePipelineSetting(10000);
+  //       singlePipelineSetting["FullFilePath"].set(FullFilePath);
+  //       singlePipelineSetting["TargetName"].set(TargetName);
+  //       singlePipelineSetting["stepChose"].set("");
+  //       singlePipelineSetting["eventChose"].set("");
+  //       singlePipelineSetting["eventIndexChose"].set(-1);
+  //       // (*Device_Ctrl.JSON__pipelineStack).add(singlePipelineSetting);
+  //       NewPipelineSetting.add(singlePipelineSetting);
+  //       prevSpliIndex = splitIndex +1;
+  //       eventCount++;
+  //       splitIndex = orderString.indexOf(',', prevSpliIndex);
+  //       ESP_LOGD("WebSocket", " - 事件 %d", eventCount);
+  //       ESP_LOGD("WebSocket", "   - 檔案路徑:\t%s", FullFilePath.c_str());
+  //       ESP_LOGD("WebSocket", "   - 目標名稱:\t%s", TargetName.c_str());
+  //     }
+  //     String lastToken = orderString.substring(prevSpliIndex);
+  //     if (lastToken.length() > 0) {
+  //       String TargetName = lastToken+".json";
+  //       String FullFilePath = "/pipelines/"+TargetName;
+  //       DynamicJsonDocument singlePipelineSetting(3000);
+  //       singlePipelineSetting["FullFilePath"].set(FullFilePath);
+  //       singlePipelineSetting["TargetName"].set(TargetName);
+  //       singlePipelineSetting["stepChose"].set("");
+  //       singlePipelineSetting["eventChose"].set("");
+  //       singlePipelineSetting["eventIndexChose"].set(-1);
+  //       // (*Device_Ctrl.JSON__pipelineStack).add(singlePipelineSetting);
+  //       NewPipelineSetting.add(singlePipelineSetting);
+  //       ESP_LOGD("WebSocket", " - 事件 %d", eventCount+1);
+  //       ESP_LOGD("WebSocket", "   - 檔案路徑:\t%s", FullFilePath.c_str());
+  //       ESP_LOGD("WebSocket", "   - 目標名稱:\t%s", TargetName.c_str());
+  //     }
+  //     if (!RunNewPipeline(NewPipelineSetting)) {
+  //       Device_Ctrl.BroadcastLogToClient(client,1,"儀器忙碌中，請稍後再試");
+  //     }
+  //     else {
+
+  //     }
+  //   }
+  //   else {
+  //     AsyncWebServerResponse* response = request->beginResponse(400, "application/json", "缺乏必要參數: order");
+  //     request->send(response);
+  //   }
+
+
+
+  //   String pipelineFilesList;
+  //   serializeJsonPretty(*Device_Ctrl.JSON__PipelineConfigList, pipelineFilesList);
+  //   AsyncWebServerResponse* response = request->beginResponse(200, "application/json", pipelineFilesList);
+  //   request->send(response);
+  // });
+
   //? pipeline 列表 API
   asyncServer.on("/api/piplines", HTTP_GET, [&](AsyncWebServerRequest *request){
     String pipelineFilesList;
@@ -195,6 +261,10 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/config/device_base_config", HTTP_PATCH,
     [&](AsyncWebServerRequest *request)
     { 
+      if (request->hasParam("device_name")) {
+        String NewDeviceName = request->getParam("device_name")->value();
+        (*Device_Ctrl.JSON__DeviceBaseInfo)["device_name"].set(NewDeviceName);
+      }
       if (request->hasParam("device_no")) {
         String NewDeviceNo = request->getParam("device_no")->value();
         (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].set(NewDeviceNo);
@@ -491,11 +561,78 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+
+  //? 單一 pipeline log 檔案讀取 API
+  asyncServer.on("^\\/api\\/pipeline_log\\/([a-zA-Z0-9_.-]+)\\.log$", HTTP_GET,[&](AsyncWebServerRequest *request){ 
+    String fileName = request->pathArg(0);
+    String fullPath = "/pipeline_log/"+fileName+".log";
+    AsyncWebServerResponse* response;
+    if (!SD.exists(fullPath)) {
+      response = request->beginResponse(500, "application/json", "{\"Result\":\"Can't Find: "+fileName+"\"}");
+      request->send(response);
+    }
+    else {
+      AsyncWebServerResponse *response = request->beginResponse(SD, fullPath, "text/plain");
+
+      // File FileChose = SD.open(fullPath, "r");
+      // String ContentString = FileChose.readString();
+      // FileChose.close();       
+      // response = request->beginResponse(200, "application/json", ContentString);       
+      request->send(response);
+    }
+  });
+
 }
 
 //! 工具類型API
 void Set_tool_apis(AsyncWebServer &asyncServer)
 {
+  asyncServer.on("/api/PoolData", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      DynamicJsonDocument D_baseInfo(20000);
+      D_baseInfo["device_no"] = (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>();
+      JsonObject pool_datas = D_baseInfo.createNestedObject("pool_datas");
+      for (JsonPair JsonPair_poolsSensorData : (*Device_Ctrl.JSON__sensorDataSave).as<JsonObject>()) {
+        String S_PoolID = String(JsonPair_poolsSensorData.key().c_str());
+        if (S_PoolID == "test" | S_PoolID == "RO") {
+          continue;
+        }
+        int IsUsed = true;
+        for (JsonVariant value : (*Device_Ctrl.JSON__PoolConfig).as<JsonArray>()) {
+          JsonObject PoolConfigItem = value.as<JsonObject>();
+          if (PoolConfigItem["id"].as<String>() == S_PoolID) {
+            //? 檢查 pool id 是否有指定，如果有則給出的資料 id 會改使用這個指定的名稱
+            if (PoolConfigItem["external_mapping"].as<String>() != "") {
+              S_PoolID = PoolConfigItem["external_mapping"].as<String>();
+            }
+            IsUsed = PoolConfigItem["Used"].as<int>();
+            break;
+          }
+        }
+        //? 如果該池設定上為 NodeRed不上傳資料，則跳過該池
+        if (IsUsed == false) {
+          continue;
+        }
+        DynamicJsonDocument D_poolSensorDataSended(5000);
+        JsonObject D_poolsSensorData = JsonPair_poolsSensorData.value();
+        D_poolSensorDataSended["PoolID"] = S_PoolID;
+        for (JsonPair JsonPair_SensorData : D_poolsSensorData["DataItem"].as<JsonObject>()) {
+          String ItemName = String(JsonPair_SensorData.key().c_str());
+          JsonObject ItemObj = JsonPair_SensorData.value();
+          pool_datas[S_PoolID][ItemName]["value"] = ItemObj["Value"].as<double>();
+          pool_datas[S_PoolID][ItemName]["data_time"] = ItemObj["data_time"].as<String>();
+          // serializeJsonPretty(JsonPair_SensorData.value(), Serial);
+        }
+      }
+      String returnString;
+      serializeJson(D_baseInfo, returnString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+      request->send(response);
+    }
+  );
+
+
   //? 耗材通知功能測試API
   //? 無參數，GET後直接執行通知流程
   //! 注意，若儀器當前沒有項目達到發送閥值，則會無反應
@@ -733,35 +870,59 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/firmware", HTTP_POST, 
     [&](AsyncWebServerRequest *request)
     { 
-      free(newFirmwareUpdateFileBuffer);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"Result\":\"OK\"}");
+      Serial.printf("檔案更新完成，準備釋放暫存空間\n");
+      // free(newFirmwareUpdateFileBuffer);
+      Device_Ctrl.CheckUpdateFile = true;
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"Result\":\"ok\"}");
       request->send(response);
-      vTaskDelay(500/portTICK_PERIOD_MS);
-      ESP.restart();
     },
     [&](AsyncWebServerRequest * request, String filename, size_t index, uint8_t *data, size_t len, bool final)
     {
       String filePath = "/firmware/firmware.bin";
+      File configTempFile;
       if (index == 0) {
-        newFirmwareUpdateFileBuffer = (uint8_t *)malloc(request->contentLength());
-      }
-      memcpy(newFirmwareUpdateFileBuffer + index, data, len);
-      if (final) {
-        Serial.printf("檔案 %s 接收完成， len: %d ，共 %d/%d bytes\n", filename.c_str(), len ,index + len, request->contentLength());
-        newFirmwareUpdateFileBufferLen = index + len;
         if (!SD.exists("/firmware")) {
           SD.mkdir("/firmware");
         }
-        String filePath = "/firmware/firmware.bin";
-        ExFile_CreateFile(SD, filePath);
-        File configTempFile;
+        UploadPer = 0;
+        Device_Ctrl.BroadcastLogToClient(NULL, 3,"收到新韌體上傳需求，資料大小: %d", request->contentLength());
+        // newFirmwareUpdateFileBuffer = (uint8_t *)malloc(request->contentLength());
         configTempFile = SD.open(filePath, FILE_WRITE);
-        configTempFile.write(newFirmwareUpdateFileBuffer ,index + len);
-        configTempFile.close();
-        Serial.printf("檔案更新完成\n", filename.c_str());
+      }
+      else {
+        configTempFile = SD.open(filePath, FILE_APPEND);
+      }
+      configTempFile.write(data, len);
+      configTempFile.close();
+
+      // memcpy(newFirmwareUpdateFileBuffer + index, data, len);
+      if (final) {
+        Device_Ctrl.BroadcastLogToClient(NULL, 3,"新韌體上傳完畢");
+        Serial.printf("檔案 %s 接收完成， len: %d ，共 %d/%d bytes\n", filename.c_str(), len ,index + len, request->contentLength());
+        // newFirmwareUpdateFileBufferLen = index + len;
+        // ExFile_CreateFile(SD, filePath);
+        // File configTempFile;
+        // configTempFile = SD.open(filePath, FILE_WRITE);
+        // int segmentSize = 1024;
+        // int dataSize = index + len;
+        // for (int i = 0; i < dataSize; i += segmentSize) {
+        //   int bytesToWrite = min(segmentSize, dataSize - i);
+        //   configTempFile.write(&newFirmwareUpdateFileBuffer[i], bytesToWrite);
+        //   vTaskDelay(1/portTICK_PERIOD_MS);
+        // }
+        // configTempFile.close();
+        Device_Ctrl.BroadcastLogToClient(NULL, 3,"新韌體儲存完畢");
       } 
       else {
+        int nowPer = static_cast<int>((float)(index + len)/(float)(request->contentLength()) * 100.);
+        nowPer = nowPer/10*10;
+        if (nowPer != UploadPer) {
+          UploadPer = nowPer;
+          Device_Ctrl.BroadcastLogToClient(NULL, 3,"新韌體上傳進度: %d %%", UploadPer);
+        }
         Serial.printf("檔案 %s 正在傳輸， len: %d ，目前已接收 %d/%d bytes\n", filename.c_str(), len, index + len, request->contentLength());
+
+
       }
     }
   );
