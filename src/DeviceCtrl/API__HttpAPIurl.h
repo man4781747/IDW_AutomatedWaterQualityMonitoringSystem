@@ -870,8 +870,7 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/firmware", HTTP_POST, 
     [&](AsyncWebServerRequest *request)
     { 
-      Serial.printf("檔案更新完成，準備釋放暫存空間\n");
-      // free(newFirmwareUpdateFileBuffer);
+      Serial.printf("檔案更新完成，等待韌體更新\n");
       Device_Ctrl.CheckUpdateFile = true;
       AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"Result\":\"ok\"}");
       request->send(response);
@@ -881,37 +880,18 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       String filePath = "/firmware/firmware.bin";
       File configTempFile;
       if (index == 0) {
-        if (!SD.exists("/firmware")) {
-          SD.mkdir("/firmware");
-        }
-        UploadPer = 0;
         Device_Ctrl.BroadcastLogToClient(NULL, 3,"收到新韌體上傳需求，資料大小: %d", request->contentLength());
-        // newFirmwareUpdateFileBuffer = (uint8_t *)malloc(request->contentLength());
-        configTempFile = SD.open(filePath, FILE_WRITE);
+        UploadPer = 0;
+        if (Device_Ctrl.firmwareBuffer) {
+          free(Device_Ctrl.firmwareBuffer);
+        }
+        Device_Ctrl.firmwareBuffer = (uint8_t *)malloc(request->contentLength());
+        Device_Ctrl.firmwareLen = request->contentLength();
       }
-      else {
-        configTempFile = SD.open(filePath, FILE_APPEND);
-      }
-      configTempFile.write(data, len);
-      configTempFile.close();
-
-      // memcpy(newFirmwareUpdateFileBuffer + index, data, len);
+      memcpy(Device_Ctrl.firmwareBuffer + index, data, len);
       if (final) {
         Device_Ctrl.BroadcastLogToClient(NULL, 3,"新韌體上傳完畢");
         Serial.printf("檔案 %s 接收完成， len: %d ，共 %d/%d bytes\n", filename.c_str(), len ,index + len, request->contentLength());
-        // newFirmwareUpdateFileBufferLen = index + len;
-        // ExFile_CreateFile(SD, filePath);
-        // File configTempFile;
-        // configTempFile = SD.open(filePath, FILE_WRITE);
-        // int segmentSize = 1024;
-        // int dataSize = index + len;
-        // for (int i = 0; i < dataSize; i += segmentSize) {
-        //   int bytesToWrite = min(segmentSize, dataSize - i);
-        //   configTempFile.write(&newFirmwareUpdateFileBuffer[i], bytesToWrite);
-        //   vTaskDelay(1/portTICK_PERIOD_MS);
-        // }
-        // configTempFile.close();
-        Device_Ctrl.BroadcastLogToClient(NULL, 3,"新韌體儲存完畢");
       } 
       else {
         int nowPer = static_cast<int>((float)(index + len)/(float)(request->contentLength()) * 100.);
@@ -921,8 +901,6 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
           Device_Ctrl.BroadcastLogToClient(NULL, 3,"新韌體上傳進度: %d %%", UploadPer);
         }
         Serial.printf("檔案 %s 正在傳輸， len: %d ，目前已接收 %d/%d bytes\n", filename.c_str(), len, index + len, request->contentLength());
-
-
       }
     }
   );
@@ -943,14 +921,17 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
     {
       if (index == 0) {
         newWebUpdateFileBuffer = (uint8_t *)malloc(request->contentLength());
+        String fileType = request->getParam("type")->value();
+        if (fileType == "html") {
+          Device_Ctrl.BroadcastLogToClient(NULL, 3,"收到網頁HTML更新檔上傳需求: %d", request->contentLength());;
+        } else if (fileType == "js"){
+          Device_Ctrl.BroadcastLogToClient(NULL, 3,"收到網頁.js更新檔上傳需求: %d", request->contentLength());;
+        }
       }
       memcpy(newWebUpdateFileBuffer + index, data, len);
       if (final) {
         Serial.printf("檔案 %s 接收完成， len: %d ，共 %d/%d bytes\n", filename.c_str(), len ,index + len, request->contentLength());
         newWebUpdateFileBufferLen = index + len;
-        if (!SD.exists("/pipelines")) {
-          SD.mkdir("/pipelines");
-        }
         String fileType = request->getParam("type")->value();
         String filePath;
         if (fileType == "html") {
@@ -966,10 +947,19 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
         Serial.printf("檔案更新完成\n", filename.c_str());
         
         if (fileType == "js"){
-          Device_Ctrl.preLoadWebJSFile();
+          free(Device_Ctrl.webJS_Buffer);
+          Device_Ctrl.webJS_Buffer = (uint8_t *)malloc(request->contentLength());
+          memcpy(Device_Ctrl.webJS_Buffer, newWebUpdateFileBuffer, request->contentLength());
         }
+        Device_Ctrl.BroadcastLogToClient(NULL, 3,"新網頁檔案上傳完畢");
       } 
       else {
+        int nowPer = static_cast<int>((float)(index + len)/(float)(request->contentLength()) * 100.);
+        nowPer = nowPer/10*10;
+        if (nowPer != UploadPer) {
+          UploadPer = nowPer;
+          Device_Ctrl.BroadcastLogToClient(NULL, 3,"新網頁檔案上傳進度: %d %%", UploadPer);
+        }
         Serial.printf("檔案 %s 正在傳輸， len: %d ，目前已接收 %d/%d bytes\n", filename.c_str(), len, index + len, request->contentLength());
       }
     }

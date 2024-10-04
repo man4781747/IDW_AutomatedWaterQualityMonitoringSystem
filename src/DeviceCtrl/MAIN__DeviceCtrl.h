@@ -176,17 +176,22 @@ class C_Device_Ctrl
     void preLoadWebJSFile();
     void ConnectWiFi();
     void INITWebServer();
-    uint8_t *webJS_Buffer;
-    size_t webJS_BufferLen;
-    void CreateOTAService();
-    bool CheckUpdateFile = false;
-    TaskHandle_t TASK__OTAService = NULL;
     void UpdateDeviceTimerByNTP();
     void BroadcastLogToClient(
       AsyncWebSocketClient *client,
       int Level, const char* content, ...
     );
     DynamicJsonDocument GetWebsocketConnectInfo();
+
+    //! OTA 相關功能
+    uint8_t *webJS_Buffer;
+    size_t webJS_BufferLen;
+    void CreateOTAService();
+    bool CheckUpdateFile = false;
+    TaskHandle_t TASK__OTAService = NULL;
+    uint8_t *firmwareBuffer = NULL;
+    size_t firmwareLen;
+
     //! WiFi連線檢查Task
     void CreateWifiManagerTask();
     TaskHandle_t TASK__WifiManager = NULL;

@@ -567,11 +567,11 @@ void C_Device_Ctrl::preLoadWebJSFile()
     ESP_LOGD("網頁檔案初始化", "無法讀取SD中的網頁檔案");
   }
   else {
+    ESP_LOGD("網頁檔案初始化", "大小: %d", webJS_BufferLen);
     free(webJS_Buffer);
     webJS_Buffer = (uint8_t *)malloc(webJS_BufferLen);
     JSFile.read(webJS_Buffer, webJS_BufferLen);
     JSFile.close();
-    ESP_LOGD("網頁檔案初始化", "大小: %d", webJS_BufferLen);
   }
 }
 
@@ -674,44 +674,35 @@ void OTAServiceTask(void* parameter) {
     //! File OTA 檢查
     if (Device_Ctrl.CheckUpdateFile == true) {
       Device_Ctrl.CheckUpdateFile = false;
-      if (SD.exists("/firmware/firmware.bin")) {
-        File firmware =  SD.open("/firmware/firmware.bin");
-        if (firmware) {
-          Device_Ctrl.BroadcastLogToClient(NULL, 3,"準備更新儀器");
-          ESP_LOGI("","找到新的韌體檔案，嘗試更新");
-          Device_Ctrl.AddNewOledLog("Update Firmware");
-          Device_Ctrl.AddNewOledLog("Update: 0%");
-          UpdateStatus = 0;
-          Update.onProgress([&](unsigned int progress, unsigned int total) {
-            Serial.printf("OTA progress: %u%%\r", (progress / (total / 100)));
-            Device_Ctrl.ChangeLastOledLog("Update: %u%%\r", (progress / (total / 100)));
-            int NowStatus = (int)(progress / (total / 100))/10*10;
-            if (UpdateStatus != NowStatus) {
-              UpdateStatus = NowStatus;
-              Device_Ctrl.BroadcastLogToClient(NULL, 3, "韌體更新中: %d %%",UpdateStatus);
-            };
-          });
-          Update.begin(firmware.size(), U_FLASH);
-          Update.writeStream(firmware);
-          if (Update.end()){
-            firmware.close();
-            SD.remove("/firmware/firmware.bin");
-            Device_Ctrl.BroadcastLogToClient(NULL, 3,"韌體更新成功，2秒後重啟");
-            Serial.println(F("Update finished!"));
-            Device_Ctrl.AddNewOledLog("Update finished!");
-            Device_Ctrl.AddNewOledLog("ReStart in 2s");
-            vTaskDelay(2000/portTICK_PERIOD_MS);
-            ESP.restart();
-
-          } else {
-            firmware.close();
-            SD.remove("/firmware/firmware.bin");
-            Device_Ctrl.BroadcastLogToClient(NULL, 1,"韌體更新失敗");
-            Device_Ctrl.AddNewOledLog("Update error!: %d", Update.getError());
-            Serial.println(F("Update error!"));
-            Serial.println(Update.getError());
-          }
-        }
+      Device_Ctrl.BroadcastLogToClient(NULL, 3,"準備更新儀器");
+      ESP_LOGI("","準備更新儀器");
+      Device_Ctrl.AddNewOledLog("Update Firmware");
+      Device_Ctrl.AddNewOledLog("Update: 0%");
+      UpdateStatus = 0;
+      Update.onProgress([&](unsigned int progress, unsigned int total) {
+        Serial.printf("OTA progress: %u%%\r", (progress / (total / 100)));
+        Device_Ctrl.ChangeLastOledLog("Update: %u%%\r", (progress / (total / 100)));
+        int NowStatus = (int)(progress / (total / 100))/10*10;
+        if (UpdateStatus != NowStatus) {
+          UpdateStatus = NowStatus;
+          Device_Ctrl.BroadcastLogToClient(NULL, 3, "韌體更新中: %d %%",UpdateStatus);
+        };
+      });
+      Update.begin(Device_Ctrl.firmwareLen, U_FLASH);
+      Update.write(Device_Ctrl.firmwareBuffer, Device_Ctrl.firmwareLen);
+      if (Update.end()){
+        Device_Ctrl.BroadcastLogToClient(NULL, 3,"韌體更新成功，2秒後重啟");
+        Serial.println(F("Update finished!"));
+        Device_Ctrl.AddNewOledLog("Update finished!");
+        Device_Ctrl.AddNewOledLog("ReStart in 2s");
+        vTaskDelay(2000/portTICK_PERIOD_MS);
+        ESP.restart();
+      } else {
+        free(Device_Ctrl.firmwareBuffer);
+        Device_Ctrl.BroadcastLogToClient(NULL, 1,"韌體更新失敗");
+        Device_Ctrl.AddNewOledLog("Update error!: %d", Update.getError());
+        Serial.println(F("Update error!"));
+        Serial.println(Update.getError());
       }
     }
     vTaskDelay(1000/portTICK_PERIOD_MS);
