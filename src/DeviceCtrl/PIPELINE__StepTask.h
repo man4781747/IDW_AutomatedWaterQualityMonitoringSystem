@@ -417,7 +417,7 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
     String failAction = peristalticMotorItem["failAction"].as<String>();
 
     String consumeTarget = peristalticMotorItem["consumeTarget"].as<String>();
-    double consumeRate = peristalticMotorItem["consumeRate"].as<double>();
+    double consumeNum = peristalticMotorItem["consumeNum"].as<double>();
 
     if (endTimeCheckList.containsKey(motorIndexString)) {
       continue;
@@ -439,7 +439,7 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
     endTimeCheckList[motorIndexString]["failAction"] = failAction;
     endTimeCheckList[motorIndexString]["finish"] = false;
     endTimeCheckList[motorIndexString]["consumeTarget"] = consumeTarget;
-    endTimeCheckList[motorIndexString]["consumeRate"] = consumeRate;
+    endTimeCheckList[motorIndexString]["consumeNum"] = consumeNum;
     
     if (untilString == "RO") {
       endTimeCheckList[motorIndexString]["until"] = PIN__ADC_RO_FULL;
@@ -491,7 +491,7 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
         String thisFailType = endTimeCheckJSON["failType"].as<String>();
         String thisFailAction = endTimeCheckJSON["failAction"].as<String>();
         int motorIndex = endTimeCheckJSON["index"].as<int>();
-        if (thisFailType == "timeout") {
+        if (thisFailType == "timeout") { //! 馬達運轉超時判斷
           result.message="馬達:"+String(motorIndex)+" 運轉超時\n";
           char buffer[1024];
           sprintf(buffer, "[%s][%s]蠕動馬達(%d)觸發Timeout，檢查錯誤處裡: %s", 
@@ -564,9 +564,12 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
             Device_Ctrl.ItemUsedAdd(itemName, usedTime);
             //! 若設定檔有消耗紀錄設定，則計算預估消耗量，並紀錄之
             String consumeTarget = endTimeCheckJSON["consumeTarget"].as<String>();
-            if (consumeTarget) {
+            Serial.println(consumeTarget);
+            if (consumeTarget or consumeTarget != "null") {
               int consumeNum = endTimeCheckJSON["consumeNum"].as<int>();
               int consumeRemaining = (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].as<int>();
+              Serial.println(consumeNum);
+              Serial.println(consumeRemaining);
               (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].set(consumeRemaining - consumeNum);
               ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Consume, *Device_Ctrl.JSON__Consume);
             }
@@ -779,11 +782,12 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
     }
     digitalWrite(activePin, HIGH);
     vTaskDelay(2000/portTICK_PERIOD_MS);
-
+    Device_Ctrl.ScanI2C();
     Device_Ctrl._Wire.beginTransmission(sensorAddr);
     byte error = Device_Ctrl._Wire.endTransmission();
 
     if (error != 0) {
+      digitalWrite(activePin, LOW);
       char buffer[1024];
       sprintf(buffer, "[%s][%s] 找不到光度計: %s", 
         StepTaskDetailItem->PipelineName.c_str(), 
@@ -800,7 +804,6 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
 
     INA226 ina226(Device_Ctrl._Wire);
     ina226.begin(sensorAddr);
-    Device_Ctrl.ScanI2C();
     Serial.println(sensorAddr);
     ina226.configure(
       INA226_AVERAGES_4, // 采样平均
