@@ -74,6 +74,52 @@ struct StepTaskDetail {
   String PipelineName="";
 };
 
+// TODO 資料大小縮減計畫
+enum class SensorData_Type : int {
+  unknow,
+  NO2_test_volt,
+  NO2_wash_volt,
+  NO2,
+  NH4_test_volt,
+  NH4_wash_volt,
+  NH4,
+  pH_volt,
+  pH
+};
+
+enum class SensorData_Pool : int {
+  unknow,
+  test,
+  RO,
+  Pool1,
+  Pool2,
+  Pool3,
+  Pool4
+};
+
+struct SensorData {
+  union {
+    struct {
+      time_t data_time;  //32
+      unsigned int pool : 4;
+      unsigned int type : 5;
+      unsigned int value : 22;
+      unsigned int NoUes : 1;
+    } parts;
+    u_int64_t value;
+  };
+};
+
+struct SensorData_Short {
+  union {
+    struct {
+      unsigned int day_time: 17; //? 當日秒數，0~131072
+      unsigned int value : 15; //? 數值，0~32767
+    } parts;
+    u_int32_t value;
+  };
+};
+// TODO 資料大小縮減計畫
 
 class C_Device_Ctrl
 {
@@ -109,16 +155,21 @@ class C_Device_Ctrl
     bool all_INIT_done = false;
     bool CheckUpdate();
 
-    //! Sqlite3相關操作
+    //! 資烙庫相關操作
     int INIT_SqliteDB();
     int DropLogsTable();
     sqlite3 *DB_Main;
     String FilePath__SD__MainDB = "/sd/mainDB.db";
     sqlite3 *DB_Log;
     String FilePath__SD__LogDB = "/sd/logDB.db";
-
     void InsertNewDataToDB(String time, String pool, String ValueName, double result);
     void InsertNewLogToDB(String time, int level, const char* content, ...);
+
+    // TODO 資料大小縮減計畫
+    int mappingPoolNameToID(String poolName);
+    int mappingTypeNameToID(String typeName);
+    void SaveSensorDataToBinFile(time_t time, String pool, String type, int value);
+    // TODO 資料大小縮減計畫
 
     //! SD相關操作與函式
     void LoadConfigJsonFiles();

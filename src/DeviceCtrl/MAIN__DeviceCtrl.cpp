@@ -335,7 +335,7 @@ void C_Device_Ctrl::InsertNewDataToDB(String time, String pool, String ValueName
   SqlString += " );";
   db_exec(DB_Main, SqlString);
 
-
+  
   String FileSavePath = String("/datas/")+String(GetDateString("-"))+String(".csv");
   ExFile_CreateFile(SD, FileSavePath);
   File SaveFile = SD.open(FileSavePath, FILE_APPEND);
@@ -369,6 +369,46 @@ void C_Device_Ctrl::InsertNewLogToDB(String time, int level, const char* content
   SqlString += "' );";
   db_exec(DB_Log, SqlString);
 }
+
+int C_Device_Ctrl::mappingPoolNameToID(String poolName)
+{
+  if (poolName == "pool-1") {return (int)SensorData_Pool::Pool1;}
+  else if (poolName == "pool-2") {return (int)SensorData_Pool::Pool2;}
+  else if (poolName == "pool-3") {return (int)SensorData_Pool::Pool3;}
+  else if (poolName == "pool-4") {return (int)SensorData_Pool::Pool4;}
+  else if (poolName == "RO") {return (int)SensorData_Pool::RO;}
+  else if (poolName == "test") {return (int)SensorData_Pool::test;}
+  else {return (int)SensorData_Pool::unknow;}
+}
+
+int C_Device_Ctrl::mappingTypeNameToID(String typeName)
+{
+  if (typeName == "NO2_test_volt") {return (int)SensorData_Type::NO2_test_volt;}
+  else if (typeName == "NO2_wash_volt") {return (int)SensorData_Type::NO2_wash_volt;}
+  else if (typeName == "NO2") {return (int)SensorData_Type::NO2;}
+  else if (typeName == "NH4_test_volt") {return (int)SensorData_Type::NH4_test_volt;}
+  else if (typeName == "NH4_wash_volt") {return (int)SensorData_Type::NH4_wash_volt;}
+  else if (typeName == "NH4") {return (int)SensorData_Type::NH4;}
+  else if (typeName == "pH_volt") {return (int)SensorData_Type::pH_volt;}
+  else if (typeName == "pH") {return (int)SensorData_Type::pH;}
+  else {return (int)SensorData_Type::unknow;}
+}
+
+void C_Device_Ctrl::SaveSensorDataToBinFile(time_t time, String pool, String type, int value)
+{
+  SensorData_Short data_short;
+  //? 為縮減資料大小，unix只取當日秒數時間
+  data_short.parts.day_time = time % 86400;
+  //? 為縮減資料大小，value 只取 0 ~ 32768 間的整數數值
+  data_short.parts.value = value>32767?32767:value;
+  //? 儲存檔案名稱格式為: (資料日期:YYYYMMDD)__(Pool名稱)__(資料類型名稱).bin
+  String FileSavePath = "/datas/"+GetDateString("")+"__"+pool+"__"+type+".bin";
+  ExFile_CreateFile(SD, FileSavePath);
+  File SaveFile = SD.open(FileSavePath, FILE_APPEND);
+  SaveFile.write((uint8_t *)&(data_short.value), 4);
+  SaveFile.close();
+}
+
 
 //! 維護項目紀錄JSON檔案重設
 void C_Device_Ctrl::RebuildMaintainJSON()
@@ -527,7 +567,7 @@ void C_Device_Ctrl::INIT_AllWsAPI()
   AddWebsocketAPI("/api/GetState", "GET", &ws_GetNowStatus);
 
   // //!Sensor結果資料
-
+  AddWebsocketAPI("/api/GetSensorData", "GET", &ws_GetSensorData);
   AddWebsocketAPI("/api/PoolData", "GET", &ws_GetAllPoolData);
   AddWebsocketAPI("/api/PoolDataForWeb", "GET", &ws_GetAllPoolData_ForWeb);
 
@@ -543,6 +583,9 @@ void C_Device_Ctrl::INIT_AllWsAPI()
   AddWebsocketAPI("/api/v2/DeviceCtrl/Spectrophotometer", "GET", &ws_v2_RunPipeline);
   AddWebsocketAPI("/api/v2/DeviceCtrl/PwmMotor", "GET", &ws_v2_RunPwmMotor);
   AddWebsocketAPI("/api/v2/DeviceCtrl/PeristalticMotor", "GET", &ws_v2_RunPeristalticMotor);
+
+
+
 }
 
 void C_Device_Ctrl::INITWebServer()
@@ -819,6 +862,7 @@ DynamicJsonDocument C_Device_Ctrl::GetWebsocketConnectInfo()
 void WifiManager(void* parameter)
 { 
   WiFi.disconnect(); // 先斷開所有連接
+
   long CONNECT_TIMEOUT = 10*60*1000;
   time_t lastConnectTime = now();
   WiFi.mode(WIFI_AP_STA);
@@ -843,6 +887,7 @@ void WifiManager(void* parameter)
   );
   WiFi.setAutoReconnect(true);
   WiFi.setAutoConnect(true);
+
   for (;;) {
     vTaskDelay(60*1000/portTICK_PERIOD_MS);
     //! 每一分鐘 Ping WiFi 基地台

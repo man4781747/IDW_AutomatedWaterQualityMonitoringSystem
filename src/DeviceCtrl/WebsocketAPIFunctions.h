@@ -5,6 +5,7 @@
 #include <ESPAsyncWebServer.h>
 #include "MAIN__DeviceCtrl.h"
 #include "SD.h"
+#include <time.h>
 
 /**
  * @brief 強制停止所有動作
@@ -373,5 +374,95 @@ void ws_RunAllPoolPipeline(AsyncWebSocket *server, AsyncWebSocketClient *client,
     ESP_LOGD("WebSocket API", "執行蝦池數值檢測流程失敗，API需要order參數");
   }
 }
+
+void splitString(String data, char delimiter, String result[], int &count) {
+  int startIndex = 0;
+  int endIndex = 0;
+  count = 0;
+
+  // 遍歷整個字符串，找出分隔符的位置
+  while ((endIndex = data.indexOf(delimiter, startIndex)) >= 0) {
+    result[count++] = data.substring(startIndex, endIndex);
+    startIndex = endIndex + 1;
+  }
+
+  // 最後一段字符串
+  result[count++] = data.substring(startIndex);
+}
+
+
+//? 
+void ws_GetSensorData(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData) {
+  //? 初始化個參數，如果沒指定則使用預設值
+  String startDateString = (*D_QueryParameter)["st"].as<String>();
+  if (startDateString.length() != 8) {startDateString = GetDateString("");}
+  String endDateString = (*D_QueryParameter)["et"].as<String>();
+  if (endDateString.length() != 8) {endDateString = GetDateString("");}
+  String typeNmaeString = (*D_QueryParameter)["tp"].as<String>();
+  if (typeNmaeString == "null") {typeNmaeString = "pH,NO2,NH4";}
+  String poolNameString = (*D_QueryParameter)["pl"].as<String>();
+  if (poolNameString == "null") {poolNameString = "pool-1,pool-2,pool-3,pool-4";}
+  
+  //? 處理 pl 文字分割
+  int poolTargetCount = 0;
+  String poolTarget[10];
+  splitString(poolNameString, ',', poolTarget, poolTargetCount);
+  Serial.printf("%s, %d\n",poolNameString.c_str(), poolTargetCount);
+
+  //? 處理 tp 文字分割
+  int typeTargetCount = 0;
+  String typeTarget[10];
+  splitString(typeNmaeString, ',', typeTarget, typeTargetCount);
+  Serial.printf("%s, %d\n",typeNmaeString.c_str(), typeTargetCount);
+
+  //? 處理搜尋時間範圍，從 end time 開始搜尋，以日為單位
+  struct tm endTime;
+  sscanf(endDateString.c_str(), "%4d%2d%2d", &(endTime.tm_year), &(endTime.tm_mon), &(endTime.tm_mday));
+  endTime.tm_year -= 1900;
+  endTime.tm_mon -= 1;
+  endTime.tm_hour = 0;
+  endTime.tm_min = 0;
+  endTime.tm_sec = 0;
+  char dateStringBuffer[9];
+  strftime(dateStringBuffer, sizeof(dateStringBuffer), "%Y%m%d", &endTime);
+
+  struct tm startTime;
+  sscanf(startDateString.c_str(), "%4d%2d%2d", &(startTime.tm_year), &(startTime.tm_mon), &(startTime.tm_mday));
+  startTime.tm_year -= 1900;
+  startTime.tm_mon -= 1;
+  startTime.tm_hour = 0;
+  startTime.tm_min = 0;
+  startTime.tm_sec = 0;
+  
+  
+  while (mktime(&endTime)>=mktime(&startTime)) {
+    strftime(dateStringBuffer, sizeof(dateStringBuffer), "%Y%m%d", &endTime);
+    String dateString = String(dateStringBuffer);
+    time_t unixTime = mktime(&startTime);
+    for (int poolChose=0;poolChose<poolTargetCount;poolChose++) {
+      for (int typeChose=0;typeChose<typeTargetCount;typeChose++) {
+        String FileFullPath = "/datas/"+dateString+"__"+poolTarget[poolChose]+"__"+typeTarget[typeChose]+".bin";
+        Serial.println(FileFullPath);
+        if (SD.exists(FileFullPath)) {
+          File sensorFile = SD.open(FileFullPath, FILE_READ);
+          int fileSize = sensorFile.size();
+          uint8_t* fileDataBuffer = (uint8_t*)malloc(fileSize+7);
+          fileDataBuffer[0] = 0b00000000;
+          fileDataBuffer[1] = Device_Ctrl.mappingPoolNameToID(poolTarget[poolChose]);
+          fileDataBuffer[2] = Device_Ctrl.mappingTypeNameToID(typeTarget[typeChose]);
+          for (int i = 0; i < 4; i++) {
+            fileDataBuffer[3+i] = (unixTime >> (i * 8)) & 0xFF;
+          }
+          sensorFile.read(fileDataBuffer+7, fileSize);
+          sensorFile.close();
+          client->binary(fileDataBuffer, fileSize+7);
+          free(fileDataBuffer);
+        }
+      }
+    }
+    endTime.tm_mday -= 1;
+  }
+}
+
 
 #endif

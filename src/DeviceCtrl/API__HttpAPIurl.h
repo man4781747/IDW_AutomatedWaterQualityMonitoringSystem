@@ -1079,6 +1079,25 @@ void Set_DB_apis(AsyncWebServer &asyncServer) {
     }
   );
 
+  asyncServer.on("/api/v2/sensor", HTTP_DELETE,
+    [&](AsyncWebServerRequest *request)
+    { 
+      String DateString = request->getParam("tm")->value();
+      String pool = request->getParam("pl")->value();
+      String type = request->getParam("tp")->value();
+      String FileFullPath = "/datas/"+DateString+"__"+pool+"__"+type+".bin";
+      Serial.println(FileFullPath);
+      if (SD.exists(FileFullPath)) {
+        SD.remove(FileFullPath);
+        AsyncWebServerResponse* response = request->beginResponse(200, "OK");
+        request->send(response);
+      } else {
+        AsyncWebServerResponse* response = request->beginResponse(500, FileFullPath.c_str());
+        request->send(response);;
+      }
+    }
+  );
+
   //? 感測器 DB 重設 API
   //? 無參數，GET 後直接重設 DB 檔案
   asyncServer.on("/api/DB/Rebuild", HTTP_GET,
