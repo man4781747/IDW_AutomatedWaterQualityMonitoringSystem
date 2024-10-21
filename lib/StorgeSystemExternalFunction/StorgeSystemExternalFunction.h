@@ -26,6 +26,9 @@ inline DynamicJsonDocument ExFile_listDir(fs::FS& fileSystem, String dir) {
 }
 
 inline bool ExFile_CreateFile(fs::FS& fileSystem, String FilePath) {
+  if (fileSystem.exists(FilePath) == true){
+    return true;
+  }
   ESP_LOGI("", "建立檔案: %s", FilePath.c_str());
   String folderPath = FilePath.substring(0,FilePath.lastIndexOf('/')+1);
   if (folderPath.indexOf('/') == 0){
