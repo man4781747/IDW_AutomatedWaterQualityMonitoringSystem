@@ -913,11 +913,11 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
       Device_Ctrl.BroadcastLogToClient(NULL, 5, "%s", buffer);
       
       Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, TargetType, finalValue_after);
-      Device_Ctrl.SaveSensorDataToBinFile(now(), poolChose, value_name, (int)finalValue_after);
+      Device_Ctrl.SaveSensorDataToBinFile(now(), poolChose, value_name, (int)(finalValue_after*100));
       if (poolChose != "RO") {
         String TargetTypeName = TargetType+String("_Original");
         Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, TargetTypeName, finalValue_Original);
-        Device_Ctrl.SaveSensorDataToBinFile(now(), poolChose, TargetTypeName, (int)finalValue_Original);
+        Device_Ctrl.SaveSensorDataToBinFile(now(), poolChose, TargetTypeName, (int)(finalValue_Original*100));
       }
       ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__LastSensorDataSave, *Device_Ctrl.JSON__sensorDataSave);
     }
@@ -970,7 +970,7 @@ StepResult Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetail
     Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, "pH_volt", PH_RowValue);
     Device_Ctrl.SaveSensorDataToBinFile(now(), poolChose, "pH_volt", (int)PH_RowValue);
     Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, "pH", pHValue);
-    Device_Ctrl.SaveSensorDataToBinFile(now(), poolChose, "pH", (int)pHValue);
+    Device_Ctrl.SaveSensorDataToBinFile(now(), poolChose, "pH", (int)(pHValue*100));
     ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__LastSensorDataSave, *Device_Ctrl.JSON__sensorDataSave);
     char logBuffer[1024];
     sprintf(logBuffer, "[%s][%s] %s 第 %s 池 PH量測結果, 測量原始值: %s, 轉換後PH值: %s", 

@@ -1097,6 +1097,19 @@ void Set_DB_apis(AsyncWebServer &asyncServer) {
       }
     }
   );
+  asyncServer.on("/api/v2/sensor", HTTP_POST,
+    [&](AsyncWebServerRequest *request)
+    { 
+      int unixTime = request->getParam("tm")->value().toInt();
+      String pool = request->getParam("pl")->value();
+      String type = request->getParam("tp")->value();
+      int value = request->getParam("value")->value().toInt();
+      Device_Ctrl.SaveSensorDataToBinFile((time_t)unixTime, pool, type, value);
+      AsyncWebServerResponse* response = request->beginResponse(200, "OK");
+      request->send(response);
+    }
+  );
+
 
   //? 感測器 DB 重設 API
   //? 無參數，GET 後直接重設 DB 檔案
