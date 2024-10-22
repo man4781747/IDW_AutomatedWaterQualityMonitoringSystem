@@ -402,7 +402,10 @@ void C_Device_Ctrl::SaveSensorDataToBinFile(time_t time, String pool, String typ
   //? 為縮減資料大小，value 只取 0 ~ 32768 間的整數數值
   data_short.parts.value = value>32767?32767:value;
   //? 儲存檔案名稱格式為: (資料日期:YYYYMMDD)__(Pool名稱)__(資料類型名稱).bin
-  String FileSavePath = "/datas/"+GetDateString("")+"__"+pool+"__"+type+".bin";
+  struct tm *DateTime = localtime(&time);
+  char buffer[9];
+  strftime(buffer, sizeof(buffer), "%Y%m%d", DateTime);
+  String FileSavePath = "/datas/"+String(buffer)+"/"+pool+"/"+type+".bin";
   ExFile_CreateFile(SD, FileSavePath);
   File SaveFile = SD.open(FileSavePath, FILE_APPEND);
   SaveFile.write((uint8_t *)&(data_short.value), 4);

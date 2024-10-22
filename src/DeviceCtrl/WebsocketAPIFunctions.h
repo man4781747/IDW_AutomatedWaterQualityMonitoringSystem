@@ -6,6 +6,8 @@
 #include "MAIN__DeviceCtrl.h"
 #include "SD.h"
 #include <time.h>
+#include "esp_task_wdt.h"
+#include "ExternalFunctions.h"
 
 /**
  * @brief 強制停止所有動作
@@ -375,22 +377,6 @@ void ws_RunAllPoolPipeline(AsyncWebSocket *server, AsyncWebSocketClient *client,
   }
 }
 
-void splitString(String data, char delimiter, String result[], int &count) {
-  int startIndex = 0;
-  int endIndex = 0;
-  count = 0;
-
-  // 遍歷整個字符串，找出分隔符的位置
-  while ((endIndex = data.indexOf(delimiter, startIndex)) >= 0) {
-    result[count++] = data.substring(startIndex, endIndex);
-    startIndex = endIndex + 1;
-  }
-
-  // 最後一段字符串
-  result[count++] = data.substring(startIndex);
-}
-
-
 //? 
 void ws_GetSensorData(AsyncWebSocket *server, AsyncWebSocketClient *client, DynamicJsonDocument *D_baseInfo, DynamicJsonDocument *D_PathParameter, DynamicJsonDocument *D_QueryParameter, DynamicJsonDocument *D_FormData) {
   //? 初始化個參數，如果沒指定則使用預設值
@@ -403,6 +389,8 @@ void ws_GetSensorData(AsyncWebSocket *server, AsyncWebSocketClient *client, Dyna
   String poolNameString = (*D_QueryParameter)["pl"].as<String>();
   if (poolNameString == "null") {poolNameString = "pool-1,pool-2,pool-3,pool-4";}
   
+
+
   //? 處理 pl 文字分割
   int poolTargetCount = 0;
   String poolTarget[10];
@@ -434,19 +422,19 @@ void ws_GetSensorData(AsyncWebSocket *server, AsyncWebSocketClient *client, Dyna
   startTime.tm_min = 0;
   startTime.tm_sec = 0;
   
-  
   while (mktime(&endTime)>=mktime(&startTime)) {
     strftime(dateStringBuffer, sizeof(dateStringBuffer), "%Y%m%d", &endTime);
     String dateString = String(dateStringBuffer);
-    time_t unixTime = mktime(&startTime);
+    time_t unixTime = mktime(&endTime);
     for (int poolChose=0;poolChose<poolTargetCount;poolChose++) {
       for (int typeChose=0;typeChose<typeTargetCount;typeChose++) {
-        String FileFullPath = "/datas/"+dateString+"__"+poolTarget[poolChose]+"__"+typeTarget[typeChose]+".bin";
-        Serial.println(FileFullPath);
+        String FileFullPath = "/datas/"+dateString+"/"+poolTarget[poolChose]+"/"+typeTarget[typeChose]+".bin";
         if (SD.exists(FileFullPath)) {
+          Serial.println(FileFullPath);
           File sensorFile = SD.open(FileFullPath, FILE_READ);
-          int fileSize = sensorFile.size();
-          uint8_t* fileDataBuffer = (uint8_t*)malloc(fileSize+7);
+          int fileSize = sensorFile.size(); 
+          uint8_t fileDataBuffer[fileSize+7];
+          // uint8_t* fileDataBuffer = (uint8_t*)malloc(fileSize+7);
           fileDataBuffer[0] = 0b00000000;
           fileDataBuffer[1] = Device_Ctrl.mappingPoolNameToID(poolTarget[poolChose]);
           fileDataBuffer[2] = Device_Ctrl.mappingTypeNameToID(typeTarget[typeChose]);
@@ -456,12 +444,14 @@ void ws_GetSensorData(AsyncWebSocket *server, AsyncWebSocketClient *client, Dyna
           sensorFile.read(fileDataBuffer+7, fileSize);
           sensorFile.close();
           client->binary(fileDataBuffer, fileSize+7);
-          free(fileDataBuffer);
+          esp_task_wdt_reset();
         }
+        esp_task_wdt_reset();
       }
     }
     endTime.tm_mday -= 1;
   }
+
 }
 
 
