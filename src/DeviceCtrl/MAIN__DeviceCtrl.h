@@ -34,9 +34,9 @@
 enum class TaskPriority : UBaseType_t {
   NoUSE = 0,
   OTAService,  
-  DeviceInfoCheckTask,  //? 定期自我檢查並記錄儀器各項數值與狀態
+  DB_WebSocket,         //? DB資料廣播專用 Task
   OLEDCheckTask,        //? OLED螢幕顯示專用Task
-  skip_1,
+  skip_1 = 4,
   LINE_MAIN_Notify,       
   TimeCheckTask,        //? 時鐘檢查用Task
   WiFiManager,     
@@ -119,6 +119,7 @@ struct SensorData_Short {
     u_int32_t value;
   };
 };
+
 // TODO 資料大小縮減計畫
 
 class C_Device_Ctrl
@@ -138,6 +139,7 @@ class C_Device_Ctrl
       AddTask("ScheduleManager", TaskPriority::ScheduleManager, 1024*6);
       AddTask("TimeCheckTask", TaskPriority::TimeCheckTask, 1024*6);
       AddTask("OledQRCode", TaskPriority::OLEDCheckTask, 1024*6);
+      // AddTask("DB_WebSocket", TaskPriority::DB_WebSocket, 1024*10);
     };
 
     //! 初始化相關

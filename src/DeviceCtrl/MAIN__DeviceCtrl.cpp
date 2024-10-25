@@ -595,6 +595,8 @@ void C_Device_Ctrl::INITWebServer()
 {
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "*");
+  // DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "*");
+  DefaultHeaders::Instance().addHeader("Access-Control-Expose-Headers", "*");
   ws.onEvent(onWebSocketEvent);
   asyncServer.addHandler(&ws);
   ws_nodered.onEvent(onWebSocketEvent);
