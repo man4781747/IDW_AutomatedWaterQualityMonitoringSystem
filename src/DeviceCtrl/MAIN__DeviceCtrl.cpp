@@ -336,13 +336,13 @@ void C_Device_Ctrl::InsertNewDataToDB(String time, String pool, String ValueName
   db_exec(DB_Main, SqlString);
 
   
-  String FileSavePath = String("/datas/")+String(GetDateString("-"))+String(".csv");
-  ExFile_CreateFile(SD, FileSavePath);
-  File SaveFile = SD.open(FileSavePath, FILE_APPEND);
-  SaveFile.printf(
-    "%s,%s,%s,%s\n", time.c_str(), pool.c_str(), ValueName.c_str(), String(result,2).c_str()
-  );
-  SaveFile.close();
+  // String FileSavePath = String("/datas/")+String(GetDateString("-"))+String(".csv");
+  // ExFile_CreateFile(SD, FileSavePath);
+  // File SaveFile = SD.open(FileSavePath, FILE_APPEND);
+  // SaveFile.printf(
+  //   "%s,%s,%s,%s\n", time.c_str(), pool.c_str(), ValueName.c_str(), String(result,2).c_str()
+  // );
+  // SaveFile.close();
 }
 
 /**
