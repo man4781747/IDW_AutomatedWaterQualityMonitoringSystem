@@ -305,6 +305,18 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+  //? 儀器基礎設定資料重設 API
+  asyncServer.on("/api/config/device_base_config", HTTP_DELETE,
+    [&](AsyncWebServerRequest *request)
+    { 
+      Device_Ctrl.LoadDeviceBaseInfoJSONFile(true);
+      String RetuenString;
+      serializeJson((*Device_Ctrl.JSON__DeviceBaseInfo), RetuenString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      request->send(response);
+    }
+  );
+
 
   //TODO 目前已無再使用，考慮刪除
   asyncServer.on("/api/config/device_config", HTTP_GET,
