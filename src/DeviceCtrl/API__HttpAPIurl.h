@@ -533,6 +533,22 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+
+  asyncServer.on("/api/schedule_switch", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      if (request->hasArg("open")) {
+        (*Device_Ctrl.JSON__DeviceBaseInfo)["schedule_switch"] = true;
+        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__DeviceBaseInfo, *Device_Ctrl.JSON__DeviceBaseInfo);
+      } else if (request->hasArg("close")) {
+        (*Device_Ctrl.JSON__DeviceBaseInfo)["schedule_switch"] = false;
+        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__DeviceBaseInfo, *Device_Ctrl.JSON__DeviceBaseInfo);
+      }
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "OK");
+      request->send(response);
+    }
+  );
+
   //? 更改當前排程檔案資料 API
   //? 所需path參數: (int/必要)index, (String/必要)name
   asyncServer.on("/api/schedule", HTTP_PATCH,
