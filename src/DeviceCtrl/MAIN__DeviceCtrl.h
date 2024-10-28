@@ -201,8 +201,7 @@ class C_Device_Ctrl
 
     String FilePath__SD__DeviceBaseInfo = "/config/device_base_config.json";
     DynamicJsonDocument *JSON__DeviceBaseInfo = new DynamicJsonDocument(1024);
-    void LoadDeviceBaseInfoJSONFile();
-    void RebuildDeviceBaseInfoJSONFile();
+    void LoadDeviceBaseInfoJSONFile(bool rebuild);
 
     String FilePath__SD__LastSensorDataSave = "/datas/temp.json";
 

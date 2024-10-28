@@ -298,7 +298,7 @@ int C_Device_Ctrl::DropLogsTable()
  */
 void C_Device_Ctrl::LoadConfigJsonFiles()
 {
-  LoadDeviceBaseInfoJSONFile();
+  LoadDeviceBaseInfoJSONFile(false);
   ExFile_LoadJsonFile(SD, FilePath__SD__SpectrophotometerConfig, *JSON__SpectrophotometerConfig);
   ExFile_LoadJsonFile(SD, FilePath__SD__PHmeterConfig, *JSON__PHmeterConfig);
   ExFile_LoadJsonFile(SD, FilePath__SD__PoolConfig, *JSON__PoolConfig);
@@ -324,6 +324,10 @@ void C_Device_Ctrl::LoadDeviceBaseInfoJSONFile(bool rebuild=false)
   bool anyChange = false;
   if ((*JSON__DeviceBaseInfo)["device_no"] == nullptr) {
     (*JSON__DeviceBaseInfo)["device_no"].set("ID_PoolSensor");
+    anyChange = true;
+  }
+  if ((*JSON__DeviceBaseInfo)["device_name"] == nullptr) {
+    (*JSON__DeviceBaseInfo)["device_name"].set("Pool Sensor Device");
     anyChange = true;
   }
   if ((*JSON__DeviceBaseInfo)["LINE_Notify_switch"] == nullptr) {
