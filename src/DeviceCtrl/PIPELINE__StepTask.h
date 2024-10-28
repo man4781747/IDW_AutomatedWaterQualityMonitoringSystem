@@ -270,6 +270,13 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
     while (nowPosition < -100) {
       //? 若發現該馬達抓不到角度資訊，重試前重新初始化Serial與重新上電
       retryCount++;
+
+      if (retryCount == 5 ) {
+        Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達 (%d) 角度資訊獲取失敗了 5 次了", servoMotorIndex);
+      } else if (retryCount == 9) {
+        Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達 (%d) 角度資訊獲取失敗了 9 次了", servoMotorIndex);
+      }
+
       Serial2.end();
       digitalWrite(PIN__EN_Servo_Motor, LOW);
       vTaskDelay(100/portTICK_PERIOD_MS);
@@ -292,6 +299,11 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
     if (ReTry != 0) {
       ESP_LOGW("", "(重試第%d次)前次伺服馬達 (%s) 運作有誤，即將重試", ReTry, anyFail.c_str());
       //? 馬達運作重試前，Serial重設，電也重上
+      if (ReTry == 5 ) {
+        Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達 (%s) 角度變化失敗了 5 次了", anyFail.c_str());
+      } else if (ReTry == 9) {
+        Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達 (%s) 角度變化失敗了 9 次了", anyFail.c_str());
+      }
       Serial2.end();
       digitalWrite(PIN__EN_Servo_Motor, LOW);
       vTaskDelay(500/portTICK_PERIOD_MS);
@@ -349,6 +361,13 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
         }
         int d_ang = targetAngValue - readAng;
         ESP_LOGD("", "伺服馬達 %d 目標角度: %d\t真實角度: %d", ServoIndex, targetAngValue, readAng);
+
+        if (ReTry == 5 ) {
+          Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達 %d 目標角度: %d\t真實角度: %d", ServoIndex, targetAngValue, readAng);
+        } else if (ReTry == 9) {
+          Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達 %d 目標角度: %d\t真實角度: %d", ServoIndex, targetAngValue, readAng);
+        }
+
         if (abs(d_ang)>20) {
           anyFail += ServoIndexString;
           anyFail += ",";
