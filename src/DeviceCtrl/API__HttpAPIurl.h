@@ -971,7 +971,7 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
         ExFile_CreateFile(SD, filePath);
         File configTempFile;
         configTempFile = SD.open(filePath, FILE_WRITE);
-        configTempFile.write(newWebUpdateFileBuffer ,index + len);
+        configTempFile.write(newWebUpdateFileBuffer ,request->contentLength());
         configTempFile.close();
         Serial.printf("檔案更新完成\n", filename.c_str());
         
@@ -1017,6 +1017,12 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
     }
   );
 
+  asyncServer.on("/api/RESTART", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      ESP.restart();
+    }
+  );
 }
 
 //! DB 相關 API
