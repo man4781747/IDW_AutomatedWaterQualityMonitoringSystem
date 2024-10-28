@@ -639,22 +639,26 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
     { 
       if (request->hasArg("pl")) {
         String PoolID = request->getParam("pl")->value();
-        (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NO2_wash_volt"]["Value"].set(-1.);
-        (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NO2_wash_volt"]["data_time"].set("1990-01-01 00:00:00");
-        (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NO2_test_volt"]["Value"].set(-1.);
-        (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NO2_test_volt"]["data_time"].set("1990-01-01 00:00:00");
-        (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NO2"]["Value"].set(-1.);
-        (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NO2"]["data_time"].set("1990-01-01 00:00:00");
-        (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NH4_wash_volt"]["Value"].set(-1.);
-        (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NH4_wash_volt"]["data_time"].set("1990-01-01 00:00:00");
-        (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NH4_test_volt"]["Value"].set(-1.);
-        (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NH4_test_volt"]["data_time"].set("1990-01-01 00:00:00");
-        (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NH4"]["Value"].set(-1.);
-        (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NH4"]["data_time"].set("1990-01-01 00:00:00");
-        (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["pH_volt"]["Value"].set(-1.);
-        (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["pH_volt"]["data_time"].set("1990-01-01 00:00:00");
-        (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["pH"]["Value"].set(-1.);
-        (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["pH"]["data_time"].set("1990-01-01 00:00:00");
+        if (request->hasArg("delete")) {
+          (*Device_Ctrl.JSON__sensorDataSave).remove(PoolID);
+        } else {
+          (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NO2_wash_volt"]["Value"].set(-1.);
+          (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NO2_wash_volt"]["data_time"].set("1990-01-01 00:00:00");
+          (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NO2_test_volt"]["Value"].set(-1.);
+          (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NO2_test_volt"]["data_time"].set("1990-01-01 00:00:00");
+          (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NO2"]["Value"].set(-1.);
+          (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NO2"]["data_time"].set("1990-01-01 00:00:00");
+          (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NH4_wash_volt"]["Value"].set(-1.);
+          (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NH4_wash_volt"]["data_time"].set("1990-01-01 00:00:00");
+          (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NH4_test_volt"]["Value"].set(-1.);
+          (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NH4_test_volt"]["data_time"].set("1990-01-01 00:00:00");
+          (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NH4"]["Value"].set(-1.);
+          (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["NH4"]["data_time"].set("1990-01-01 00:00:00");
+          (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["pH_volt"]["Value"].set(-1.);
+          (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["pH_volt"]["data_time"].set("1990-01-01 00:00:00");
+          (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["pH"]["Value"].set(-1.);
+          (*Device_Ctrl.JSON__sensorDataSave)[PoolID]["DataItem"]["pH"]["data_time"].set("1990-01-01 00:00:00");
+        }
         ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__LastSensorDataSave, *Device_Ctrl.JSON__sensorDataSave);
       }
       AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "OK");
