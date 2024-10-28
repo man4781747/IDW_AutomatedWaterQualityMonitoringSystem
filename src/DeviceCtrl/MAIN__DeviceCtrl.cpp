@@ -298,7 +298,7 @@ int C_Device_Ctrl::DropLogsTable()
  */
 void C_Device_Ctrl::LoadConfigJsonFiles()
 {
-  ExFile_LoadJsonFile(SD, FilePath__SD__DeviceBaseInfo, *JSON__DeviceBaseInfo);
+  LoadDeviceBaseInfoJSONFile();
   ExFile_LoadJsonFile(SD, FilePath__SD__SpectrophotometerConfig, *JSON__SpectrophotometerConfig);
   ExFile_LoadJsonFile(SD, FilePath__SD__PHmeterConfig, *JSON__PHmeterConfig);
   ExFile_LoadJsonFile(SD, FilePath__SD__PoolConfig, *JSON__PoolConfig);
@@ -312,6 +312,53 @@ void C_Device_Ctrl::LoadConfigJsonFiles()
   ExFile_LoadJsonFile(SD, FilePath__SD__Consume, *JSON__Consume);
   ExFile_LoadJsonFile(SD, FilePath__SD__Maintain, *JSON__Maintain);
 }
+
+void C_Device_Ctrl::LoadDeviceBaseInfoJSONFile(bool rebuild=false)
+{
+  if (rebuild) {
+    (*JSON__DeviceBaseInfo).clear();
+  } else {
+    ExFile_LoadJsonFile(SD, FilePath__SD__DeviceBaseInfo, *JSON__DeviceBaseInfo);
+  }
+  //? 檢查各參數是否存在，不存在則使用預設值
+  bool anyChange = false;
+  if ((*JSON__DeviceBaseInfo)["device_no"] == nullptr) {
+    (*JSON__DeviceBaseInfo)["device_no"].set("ID_PoolSensor");
+    anyChange = true;
+  }
+  if ((*JSON__DeviceBaseInfo)["LINE_Notify_switch"] == nullptr) {
+    (*JSON__DeviceBaseInfo)["LINE_Notify_switch"].set(false);
+    anyChange = true;
+  }
+  if ((*JSON__DeviceBaseInfo)["LINE_Notify_id"] == nullptr) {
+    (*JSON__DeviceBaseInfo)["LINE_Notify_id"].set("");
+    anyChange = true;
+  }
+  if ((*JSON__DeviceBaseInfo)["Mail_Notify_switch"] == nullptr) {
+    (*JSON__DeviceBaseInfo)["Mail_Notify_switch"].set(false);
+    anyChange = true;
+  }
+  if ((*JSON__DeviceBaseInfo)["Mail_Notify_Auther"] == nullptr) {
+    (*JSON__DeviceBaseInfo)["Mail_Notify_Auther"].set("");
+    anyChange = true;
+  }
+  if ((*JSON__DeviceBaseInfo)["Mail_Notify_Key"] == nullptr) {
+    (*JSON__DeviceBaseInfo)["Mail_Notify_Key"].set("");
+    anyChange = true;
+  }
+  if ((*JSON__DeviceBaseInfo)["Mail_Notify_Target"] == nullptr) {
+    (*JSON__DeviceBaseInfo)["Mail_Notify_Target"].set("");
+    anyChange = true;
+  }
+  if ((*JSON__DeviceBaseInfo)["schedule_switch"] == nullptr) {
+    (*JSON__DeviceBaseInfo)["schedule_switch"].set(true);
+    anyChange = true;
+  }
+  if (anyChange) {
+    ExFile_WriteJsonFile(SD, FilePath__SD__DeviceBaseInfo, *JSON__DeviceBaseInfo);
+  }
+}
+
 
 
 /**
@@ -1581,26 +1628,27 @@ void ScheduleManager(void* parameter)
       vTaskDelay(1000/portTICK_PERIOD_MS);
       continue;
     }
-    //? 每5分鐘檢查一次排程
-    if (minute(nowTime) == 0) {
-      int Hour = hour(nowTime);
-      String targetString = (*Device_Ctrl.JSON__ScheduleConfig)[Hour].as<String>();
-      if (targetString != "-") {
-        DynamicJsonDocument NewPipelineSetting(60000);
-        int eventCount = 0;
-        String TargetName = targetString+".json";
-        String FullFilePath = "/pipelines/"+TargetName;
-        DynamicJsonDocument singlePipelineSetting(10000);
-        singlePipelineSetting["FullFilePath"].set(FullFilePath);
-        singlePipelineSetting["TargetName"].set(TargetName);
-        singlePipelineSetting["stepChose"].set("");
-        singlePipelineSetting["eventChose"].set("");
-        singlePipelineSetting["eventIndexChose"].set(-1);
-        NewPipelineSetting.add(singlePipelineSetting);
-        RunNewPipeline(NewPipelineSetting);
+    if ((*Device_Ctrl.JSON__DeviceBaseInfo)["schedule_switch"].as<bool>()) {
+      if (minute(nowTime) == 0) {
+        int Hour = hour(nowTime);
+        String targetString = (*Device_Ctrl.JSON__ScheduleConfig)[Hour].as<String>();
+        if (targetString != "-") {
+          DynamicJsonDocument NewPipelineSetting(60000);
+          int eventCount = 0;
+          String TargetName = targetString+".json";
+          String FullFilePath = "/pipelines/"+TargetName;
+          DynamicJsonDocument singlePipelineSetting(10000);
+          singlePipelineSetting["FullFilePath"].set(FullFilePath);
+          singlePipelineSetting["TargetName"].set(TargetName);
+          singlePipelineSetting["stepChose"].set("");
+          singlePipelineSetting["eventChose"].set("");
+          singlePipelineSetting["eventIndexChose"].set(-1);
+          NewPipelineSetting.add(singlePipelineSetting);
+          RunNewPipeline(NewPipelineSetting);
+        }
+        ESP_LOGI("", "排程檢查完畢，等待下一個檢查時段");
+        vTaskDelay(1000*60*30/portTICK_PERIOD_MS);
       }
-      ESP_LOGI("", "排程檢查完畢，等待下一個檢查時段");
-      vTaskDelay(1000*60*30/portTICK_PERIOD_MS);
     }
     vTaskDelay(1000*60*1/portTICK_PERIOD_MS);
   }
