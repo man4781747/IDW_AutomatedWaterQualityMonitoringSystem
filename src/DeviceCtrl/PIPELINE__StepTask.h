@@ -268,10 +268,18 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
     int retryCount = 0;
     int nowPosition = (LX_20S_SerialServoReadPosition(Serial2, servoMotorIndex));
     while (nowPosition < -100) {
+      //? 若發現該馬達抓不到角度資訊，重試前重新初始化Serial與重新上電
       retryCount++;
+      Serial2.end();
+      digitalWrite(PIN__EN_Servo_Motor, LOW);
+      vTaskDelay(100/portTICK_PERIOD_MS);
+      digitalWrite(PIN__EN_Servo_Motor, HIGH);
+      Serial2.begin(115200,SERIAL_8N1, PIN__Serial_LX_20S_RX, PIN__Serial_LX_20S_TX);
+      vTaskDelay(10/portTICK_PERIOD_MS);
       nowPosition = (LX_20S_SerialServoReadPosition(Serial2, servoMotorIndex));
-      if (retryCount > 3) {break;}
+      if (retryCount > 10) {break;}
     }
+    retryCount = 0; //? 只要有讀取成功一次，就將 retry 
     ServoOldPostion[String(servoMotorItem["index"].as<int>())] = nowPosition;
     if (abs(targetAngValue - nowPosition) > 20) {
       ServoStatusSave[String(servoMotorItem["index"].as<int>())] = false;
@@ -283,6 +291,13 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
   for (int ReTry=0;ReTry<10;ReTry++) {
     if (ReTry != 0) {
       ESP_LOGW("", "(重試第%d次)前次伺服馬達 (%s) 運作有誤，即將重試", ReTry, anyFail.c_str());
+      //? 馬達運作重試前，Serial重設，電也重上
+      Serial2.end();
+      digitalWrite(PIN__EN_Servo_Motor, LOW);
+      vTaskDelay(500/portTICK_PERIOD_MS);
+      digitalWrite(PIN__EN_Servo_Motor, HIGH);
+      Serial2.begin(115200,SERIAL_8N1, PIN__Serial_LX_20S_RX, PIN__Serial_LX_20S_TX);
+      vTaskDelay(10/portTICK_PERIOD_MS);
     }
     anyFail = "";
     for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
@@ -316,15 +331,20 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
     for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
       int ServoIndex = servoMotorItem["index"].as<int>();
       String ServoIndexString = String(ServoIndex);
-      if (ServoStatusSave[ServoIndexString] == false) {
+      if (ServoStatusSave[ServoIndexString] == false) { //? 只對尚未確定完成的馬達做判斷
         int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
         int readAng = LX_20S_SerialServoReadPosition(Serial2, ServoIndex);
-        for (int readAngRetry = 0;readAngRetry<3;readAngRetry++) {
+        for (int readAngRetry = 0;readAngRetry<10;readAngRetry++) {
           if (readAng > -100) {
             break;
           }
-          // ESP_LOGW("", "伺服馬達 %d 讀取角度有誤: %d", servoMotorItem["index"].as<int>(), readAng);
+          ESP_LOGW("", "伺服馬達 %d 讀取角度有誤: %d", servoMotorItem["index"].as<int>(), readAng);
+          Serial2.end();
+          digitalWrite(PIN__EN_Servo_Motor, LOW);
           vTaskDelay(100/portTICK_PERIOD_MS);
+          digitalWrite(PIN__EN_Servo_Motor, HIGH);
+          Serial2.begin(115200,SERIAL_8N1, PIN__Serial_LX_20S_RX, PIN__Serial_LX_20S_TX);
+          vTaskDelay(10/portTICK_PERIOD_MS);
           readAng = LX_20S_SerialServoReadPosition(Serial2, ServoIndex);
         }
         int d_ang = targetAngValue - readAng;
@@ -913,7 +933,7 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
       Device_Ctrl.BroadcastLogToClient(NULL, 5, "%s", buffer);
       
       Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, TargetType, finalValue_after);
-      Device_Ctrl.SaveSensorDataToBinFile(now(), poolChose, value_name, (int)(finalValue_after*100));
+      Device_Ctrl.SaveSensorDataToBinFile(now(), poolChose, TargetType, (int)(finalValue_after*100));
       if (poolChose != "RO") {
         String TargetTypeName = TargetType+String("_Original");
         Device_Ctrl.InsertNewDataToDB(GetDatetimeString(), poolChose, TargetTypeName, finalValue_Original);
