@@ -297,7 +297,10 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
         String Mail_Notify_Target = request->getParam("Mail_Notify_Target")->value();
         (*Device_Ctrl.JSON__DeviceBaseInfo)["Mail_Notify_Target"].set(Mail_Notify_Target);
       }
-
+      if (request->hasParam("schedule_switch")) {
+        String schedule_switch = request->getParam("schedule_switch")->value();
+        (*Device_Ctrl.JSON__DeviceBaseInfo)["schedule_switch"].set(schedule_switch);
+      }
       ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__DeviceBaseInfo, (*Device_Ctrl.JSON__DeviceBaseInfo));
       String RetuenString;
       serializeJson((*Device_Ctrl.JSON__DeviceBaseInfo), RetuenString);
