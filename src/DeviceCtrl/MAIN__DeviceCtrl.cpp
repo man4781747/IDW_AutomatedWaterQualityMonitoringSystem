@@ -448,15 +448,14 @@ int C_Device_Ctrl::mappingTypeNameToID(String typeName)
 void C_Device_Ctrl::SaveSensorDataToBinFile(time_t time, String pool, String type, int value)
 {
   SensorData_Short data_short;
+  char dateChar[9];
+  sprintf(dateChar, "%04d%02d%02d",year(time), month(time), day(time));
   //? 為縮減資料大小，unix只取當日秒數時間
-  data_short.parts.day_time = time % 86400;
+  data_short.parts.day_time = hour(time)*60*60+minute(time)*60+second(time);
   //? 為縮減資料大小，value 只取 0 ~ 32768 間的整數數值
   data_short.parts.value = value>32767?32767:value;
-  //? 儲存檔案名稱格式為: (資料日期:YYYYMMDD)__(Pool名稱)__(資料類型名稱).bin
-  struct tm *DateTime = localtime(&time);
-  char buffer[9];
-  strftime(buffer, sizeof(buffer), "%Y%m%d", DateTime);
-  String FileSavePath = "/datas/"+String(buffer)+"/"+pool+"/"+type+".bin";
+  //? 儲存檔案名稱格式為: (資料日期:YYYYMMDD)/(Pool名稱)/(資料類型名稱).bin
+  String FileSavePath = "/datas/"+String(dateChar)+"/"+pool+"/"+type+".bin";
   ExFile_CreateFile(SD, FileSavePath);
   File SaveFile = SD.open(FileSavePath, FILE_APPEND);
   SaveFile.write((uint8_t *)&(data_short.value), 4);
@@ -1470,19 +1469,19 @@ void C_Device_Ctrl::StopDeviceAllAction()
   //! 伺服馬達斷電
   digitalWrite(PIN__EN_Servo_Motor, LOW);
 
-  //! 關閉所有步進蠕動馬達
-  // TODO 目前只有一顆 測試中
-  Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_RS485_RX, PIN__Step_Motor_RS485_TX);
-  mb_.begin(&Serial1);
-  mb_.setBaudrate(115200);
-  mb_.master();
-  uint16_t writeData[4] = {1, 0,0,0};
-  mb_.writeHreg(1,1,writeData,4);
-  while(mb_.slave()) {
-    mb_.task();
-    vTaskDelay(10/portTICK_PERIOD_MS);
-  }
-  // TODO 目前只有一顆 測試中
+  // //! 關閉所有步進蠕動馬達
+  // // TODO 目前只有一顆 測試中
+  // Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_RS485_RX, PIN__Step_Motor_RS485_TX);
+  // mb_.begin(&Serial1);
+  // mb_.setBaudrate(115200);
+  // mb_.master();
+  // uint16_t writeData[4] = {1, 0,0,0};
+  // mb_.writeHreg(1,1,writeData,4);
+  // while(mb_.slave()) {
+  //   mb_.task();
+  //   vTaskDelay(10/portTICK_PERIOD_MS);
+  // }
+  // // TODO 目前只有一顆 測試中
 
   ESP_LOGD("StopDeviceAllAction", "已斷開所有設施電源");
 
