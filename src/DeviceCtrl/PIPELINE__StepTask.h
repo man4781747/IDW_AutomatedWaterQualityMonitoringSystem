@@ -98,6 +98,7 @@ void StepTask(void* parameter) {
 
       //? event細節執行內容
       JsonArray eventList = (*Device_Ctrl.JSON__pipelineConfig)["events"][eventChose]["event"].as<JsonArray>();
+      serializeJsonPretty(eventList, Serial);
       //? 一個一個event item依序執行
       for (JsonObject eventItem : eventList) {
         if (eventItem.containsKey("pwm_motor_list")) {
@@ -270,13 +271,6 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
     while (nowPosition < -100) {
       //? 若發現該馬達抓不到角度資訊，重試前重新初始化Serial與重新上電
       retryCount++;
-
-      if (retryCount == 5 ) {
-        Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達 (%d) 角度資訊獲取失敗了 5 次了", servoMotorIndex);
-      } else if (retryCount == 9) {
-        Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達 (%d) 角度資訊獲取失敗了 9 次了", servoMotorIndex);
-      }
-
       Serial2.end();
       digitalWrite(PIN__EN_Servo_Motor, LOW);
       vTaskDelay(100/portTICK_PERIOD_MS);
@@ -296,17 +290,13 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
   }
 
   for (int ReTry=0;ReTry<10;ReTry++) {
-    if (ReTry != 0) {
+    if (ReTry > 5) {
       ESP_LOGW("", "(重試第%d次)前次伺服馬達 (%s) 運作有誤，即將重試", ReTry, anyFail.c_str());
+      Device_Ctrl.BroadcastLogToClient(NULL, 1,  "(重試第%d次)前次伺服馬達 (%s) 運作有誤，即將重試", ReTry, anyFail.c_str());
       //? 馬達運作重試前，Serial重設，電也重上
-      if (ReTry == 5 ) {
-        Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達 (%s) 角度變化失敗了 5 次了", anyFail.c_str());
-      } else if (ReTry == 9) {
-        Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達 (%s) 角度變化失敗了 9 次了", anyFail.c_str());
-      }
       Serial2.end();
       digitalWrite(PIN__EN_Servo_Motor, LOW);
-      vTaskDelay(500/portTICK_PERIOD_MS);
+      vTaskDelay(2000/portTICK_PERIOD_MS);
       digitalWrite(PIN__EN_Servo_Motor, HIGH);
       Serial2.begin(115200,SERIAL_8N1, PIN__Serial_LX_20S_RX, PIN__Serial_LX_20S_TX);
       vTaskDelay(10/portTICK_PERIOD_MS);
@@ -319,8 +309,19 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
           servoMotorItem["index"].as<int>(), 
           servoMotorItem["status"].as<int>(), targetAngValue
         );
+        if (ReTry > 5) {
+          Device_Ctrl.BroadcastLogToClient(NULL, 0,  "(重試第%d次)前伺服馬達(LX-20S) %d 轉至 %d 度(%d)", ReTry,
+            servoMotorItem["index"].as<int>(), servoMotorItem["status"].as<int>(), targetAngValue
+          );
+        }
         LX_20S_SerialServoMove(Serial2, servoMotorItem["index"].as<int>(),targetAngValue,500);
         vTaskDelay(10/portTICK_PERIOD_MS);
+        if (ReTry > 5) {
+          LX_20S_SerialServoMove(Serial2, servoMotorItem["index"].as<int>(),targetAngValue,500);
+          vTaskDelay(10/portTICK_PERIOD_MS);
+          LX_20S_SerialServoMove(Serial2, servoMotorItem["index"].as<int>(),targetAngValue,500);
+          vTaskDelay(10/portTICK_PERIOD_MS);
+        }
       }
       if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
         ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
@@ -331,7 +332,11 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
         return result;
       }
     }
-    vTaskDelay(700/portTICK_PERIOD_MS);
+    if (ReTry > 5) {
+      vTaskDelay(1500/portTICK_PERIOD_MS);   
+    } else {
+      vTaskDelay(700/portTICK_PERIOD_MS);
+    }
     if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
       ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
       digitalWrite(PIN__EN_Servo_Motor, LOW);
@@ -361,11 +366,13 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
         }
         int d_ang = targetAngValue - readAng;
         ESP_LOGD("", "伺服馬達 %d 目標角度: %d\t真實角度: %d", ServoIndex, targetAngValue, readAng);
+        
+        if (ReTry >= 5 ) {
+          int vin = (LX_20S_SerialServoReadVIN(Serial2, ServoIndex));
+          int temp = (LX_20S_SerialServoReadTeampature(Serial2, ServoIndex));
 
-        if (ReTry == 5 ) {
           Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達 %d 目標角度: %d\t真實角度: %d", ServoIndex, targetAngValue, readAng);
-        } else if (ReTry == 9) {
-          Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達 %d 目標角度: %d\t真實角度: %d", ServoIndex, targetAngValue, readAng);
+          Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達 %d 溫度: %d\t電壓: %d", ServoIndex, vin, temp);
         }
 
         if (abs(d_ang)>20) {
@@ -458,6 +465,10 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
     String consumeTarget = peristalticMotorItem["consumeTarget"].as<String>();
     double consumeNum = peristalticMotorItem["consumeNum"].as<double>();
 
+    //? 是否紀錄初次抽水耗時資料
+    serializeJsonPretty(peristalticMotorItem, Serial);
+    String firstPumpingTimePoolTarget = peristalticMotorItem["pool"].as<String>();
+
     if (endTimeCheckList.containsKey(motorIndexString)) {
       continue;
     }
@@ -479,6 +490,7 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
     endTimeCheckList[motorIndexString]["finish"] = false;
     endTimeCheckList[motorIndexString]["consumeTarget"] = consumeTarget;
     endTimeCheckList[motorIndexString]["consumeNum"] = consumeNum;
+    endTimeCheckList[motorIndexString]["pool"] = firstPumpingTimePoolTarget;
     
     if (untilString == "RO") {
       endTimeCheckList[motorIndexString]["until"] = PIN__ADC_RO_FULL;
@@ -633,6 +645,12 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
             int usedTime = millis() - endTimeCheckList[String(motorIndex)]["startTime"].as<int>();
             String itemName = "motor_"+String(motorIndex);
             Device_Ctrl.ItemUsedAdd(itemName, usedTime);
+            Serial.println(endTimeCheckJSON["pool"].as<String>());
+            if (endTimeCheckJSON["pool"].as<String>() != "null") {
+              ESP_LOGV("", "記錄初次抽池水得耗時: %s, %d 秒", endTimeCheckJSON["pool"].as<String>().c_str(), usedTime/1000);
+              Device_Ctrl.SaveSensorDataToBinFile(now(), endTimeCheckJSON["pool"], "pumping_time", usedTime/1000);
+            }
+
             //! 若設定檔有消耗紀錄設定，則計算預估消耗量，並紀錄之
             String consumeTarget = endTimeCheckJSON["consumeTarget"].as<String>();
             if (consumeTarget) {
@@ -643,6 +661,8 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
             }
           }
           ESP_LOGV(StepTaskDetailItem->TaskName.c_str(), "浮球觸發，關閉蠕動馬達(%d)", motorIndex);
+
+
           //? 判斷是否有觸發錯誤
           if (thisFailType == "connect") {
             ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "蠕動馬達(%d)觸發connect錯誤", motorIndex);
@@ -1013,7 +1033,7 @@ StepResult Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetail
     ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__LastSensorDataSave, *Device_Ctrl.JSON__sensorDataSave);
     char logBuffer[1024];
     sprintf(logBuffer, "[%s][%s] %s 第 %s 池 PH量測結果, 測量原始值: %s, 轉換後PH值: %s", 
-      StepTaskDetailItem->PipelineName.c_str(), 
+      StepTaskDetailItem->PipelineName.c_str(),
       (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][StepTaskDetailItem->StepName]["title"].as<String>().c_str(),
       (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"]["pH"]["data_time"].as<String>().c_str(),
       poolChose.c_str(),
