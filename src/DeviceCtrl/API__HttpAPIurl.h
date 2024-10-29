@@ -1059,6 +1059,15 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       ESP.restart();
     }
   );
+
+  asyncServer.on("/api/STOP", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      Device_Ctrl.StopDeviceAllAction();
+      AsyncWebServerResponse* response = request->beginResponse(400, "application/json","OK");
+      request->send(response);
+    }
+  );
 }
 
 //! DB 相關 API
