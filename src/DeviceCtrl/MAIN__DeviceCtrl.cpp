@@ -442,6 +442,7 @@ int C_Device_Ctrl::mappingTypeNameToID(String typeName)
   else if (typeName == "NH4") {return (int)SensorData_Type::NH4;}
   else if (typeName == "pH_volt") {return (int)SensorData_Type::pH_volt;}
   else if (typeName == "pH") {return (int)SensorData_Type::pH;}
+  else if (typeName == "pumping_time") {return (int)SensorData_Type::pumping_time;}
   else {return (int)SensorData_Type::unknow;}
 }
 

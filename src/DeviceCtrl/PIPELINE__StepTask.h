@@ -98,7 +98,6 @@ void StepTask(void* parameter) {
 
       //? event細節執行內容
       JsonArray eventList = (*Device_Ctrl.JSON__pipelineConfig)["events"][eventChose]["event"].as<JsonArray>();
-      serializeJsonPretty(eventList, Serial);
       //? 一個一個event item依序執行
       for (JsonObject eventItem : eventList) {
         if (eventItem.containsKey("pwm_motor_list")) {
@@ -466,7 +465,6 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
     double consumeNum = peristalticMotorItem["consumeNum"].as<double>();
 
     //? 是否紀錄初次抽水耗時資料
-    serializeJsonPretty(peristalticMotorItem, Serial);
     String firstPumpingTimePoolTarget = peristalticMotorItem["pool"].as<String>();
 
     if (endTimeCheckList.containsKey(motorIndexString)) {

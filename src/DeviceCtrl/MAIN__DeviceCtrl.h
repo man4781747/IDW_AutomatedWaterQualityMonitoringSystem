@@ -84,7 +84,8 @@ enum class SensorData_Type : int {
   NH4_wash_volt,
   NH4,
   pH_volt,
-  pH
+  pH,
+  pumping_time
 };
 
 enum class SensorData_Pool : int {
