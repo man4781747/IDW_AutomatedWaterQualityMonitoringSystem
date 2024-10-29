@@ -234,7 +234,7 @@ void PipelineFlowScan(void* parameter) {
                   // Device_Ctrl.SetLog(1, "事件: " + onlyEvent + "找不到步驟: " + String(onlyIndex) + "，終止流程執行", "設定檔名稱: "+pipelineConfigFileFullPath, Device_Ctrl.BackendServer.ws_);
                   continue;
                 }
-                DynamicJsonDocument newEventIndexArray(200);
+                DynamicJsonDocument newEventIndexArray(1024);
                 JsonArray array = newEventIndexArray.to<JsonArray>();
                 array.add(
                   (*Device_Ctrl.JSON__pipelineConfig)["events"][onlyEvent]["event"][onlyIndex]
