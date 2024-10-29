@@ -5,9 +5,7 @@
 #include "hal/efuse_hal.h"
 
 //TODO
-// #include <ModbusRTU.h>
-// ModbusRTU mb;
-
+#include "esp_core_dump.h"
 
 //TODO
 
@@ -43,6 +41,59 @@ void setup() {
   ESP_LOGV("MAIN", "初始化SD卡");
   Device_Ctrl.AddNewOledLog("INIT_SD");
   Device_Ctrl.INIT_SD();
+  // TODO
+  esp_core_dump_init();
+  if (esp_core_dump_image_check() == ESP_OK) {
+    Serial.println("Core Dump gefunden");
+  } else {
+    Serial.println("Core Dump NOT gefunden");
+  }
+  esp_core_dump_summary_t *summary = (esp_core_dump_summary_t*)malloc(sizeof(esp_core_dump_summary_t));
+	if (summary) {
+		esp_log_level_set("esp_core_dump_elf", ESP_LOG_VERBOSE); // so that func below prints stuff.. but doesn't actually work, have to set logging level globally through menuconfig
+		printf("Retrieving core dump summary..\n");
+		esp_err_t err = esp_core_dump_get_summary(summary);	
+		if (err == ESP_OK) {
+			//get summary function already pints stuff
+			printf("Getting core dump summary ok.\n");
+
+      esp_core_dump_bt_info_t bt_info = summary->exc_bt_info;
+      char results[1024]; // Assuming a maximum of 256 characters for the backtrace string
+      int offset = snprintf(results, sizeof(results), "Backtrace:");
+      for (int i = 0; i < bt_info.depth; i++)
+      {
+        uintptr_t pc = bt_info.bt[i]; // Program Counter (PC)
+        int len = snprintf(results + offset, sizeof(results) - offset, " 0x%08X", pc);
+        if (len >= 0 && offset + len < sizeof(results))
+        {
+          offset += len;
+        }
+        else
+        {
+          break; // Reached the limit of the results buffer
+        }
+      }
+
+      ESP_LOGI("", "[backtrace]: %s", results);
+      Serial.println(results);
+      ESP_LOGI("", "[backtrace]Backtrace Task: %s", summary->exc_task);
+      ESP_LOGI("", "[backtrace]Backtrace Depth: %u", bt_info.depth);
+      ESP_LOGI("", "[backtrace]Backtrace Corrupted: %s", bt_info.corrupted ? "Yes" : "No");
+      ESP_LOGI("", "[backtrace]Program Counter: %d", summary->exc_pc);
+      ESP_LOGI("", "[backtrace]Coredump Version: %d", summary->core_dump_version);
+
+			//todo: do something with dump summary
+      
+		} else {
+			printf("Getting core dump summary not ok. Error: %d\n", (int) err);
+			printf("Probably no coredump present yet.\n");
+			printf("esp_core_dump_image_check() = %d\n", esp_core_dump_image_check());
+		}		
+		free(summary);
+	}
+  // TODO
+
+
   Device_Ctrl.CheckUpdate();
   ESP_LOGV("MAIN", "初始化SQLITE資料庫");
   Device_Ctrl.AddNewOledLog("INIT_SqliteDB");
@@ -81,42 +132,18 @@ void setup() {
   Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "開機完畢");
   Device_Ctrl.CreateOledQRCodeTask();
   Device_Ctrl.all_INIT_done = true;
-
-  //TODO
-  // Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_RS485_RX, PIN__Step_Motor_RS485_TX);
-  // mb.begin(&Serial1);
-  // mb.setBaudrate(115200);
-  // mb.master();
-  //TODO
-
 }
 
 void loop() {
-  // //TODO
-  // uint16_t buffer[5];
-  // uint16_t wruteData[4] = {1, 2000,0,0};
-  // mb.writeHreg(1,1,wruteData,4);
-  // while(mb.slave()) { // Check if transaction is active
-  //   mb.task();
-  //   delay(10);
+  
+
+  vTaskDelay(1000/portTICK_PERIOD_MS);
+  // if ((*Device_Ctrl.JSON__DeviceBaseInfo)["schedule_switch"].as<bool>()) {
+  //   Serial.println("排程開啟");
   // }
-  // if (!mb.slave()) {
-  //   while (true) {
-  //     mb.readHreg(1, 1, buffer, 1);
-  //     while(mb.slave()) { // Check if transaction is active
-  //       mb.task();
-  //       delay(10);
-  //     }
-  //     if (buffer[0] != 1) {
-  //       break;
-  //     }
-  //   }
-  // }
-  // //TODO
 
 
-  vTaskDelay(60000/portTICK_PERIOD_MS);
-  Device_Ctrl.WriteSysInfo();
+  // Device_Ctrl.WriteSysInfo();
 
 
   
