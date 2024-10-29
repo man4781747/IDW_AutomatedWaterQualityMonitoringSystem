@@ -625,6 +625,7 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
     { 
       DynamicJsonDocument D_baseInfo(20000);
       D_baseInfo["device_no"] = (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>();
+      D_baseInfo["device_name"] = (*Device_Ctrl.JSON__DeviceBaseInfo)["device_name"].as<String>();
       JsonObject pool_datas = D_baseInfo.createNestedObject("pool_datas");
       for (JsonPair JsonPair_poolsSensorData : (*Device_Ctrl.JSON__sensorDataSave).as<JsonObject>()) {
         String S_PoolID = String(JsonPair_poolsSensorData.key().c_str());
@@ -1238,6 +1239,7 @@ void Set_DB_apis(AsyncWebServer &asyncServer) {
             ESP_LOGV("DB搜尋","     - 準備搜尋 type: %s", typeTarget[typeChose].c_str());
             SearchCount++;
             String FileFullPath = "/datas/"+dateString+"/"+poolTarget[poolChose]+"/"+typeTarget[typeChose]+".bin";
+            Serial.println(FileFullPath);
             typeEnd = typeChose;
             if (SD.exists(FileFullPath)) {
               File sensorFile = SD.open(FileFullPath, FILE_READ);
