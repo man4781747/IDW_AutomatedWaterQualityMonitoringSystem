@@ -629,6 +629,11 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
 //! 工具類型API
 void Set_tool_apis(AsyncWebServer &asyncServer)
 {
+  //? 獲得當前最新感測器資料API
+  //? 預設只回傳有上傳 NodeRed 的項目
+  //? 可選參數:
+  //?    1. all : 回傳所有項目
+  //?    2. row_id : 回傳原始 pool id 作為 key 值的資料
   asyncServer.on("/api/PoolData", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -638,7 +643,7 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       JsonObject pool_datas = D_baseInfo.createNestedObject("pool_datas");
       for (JsonPair JsonPair_poolsSensorData : (*Device_Ctrl.JSON__sensorDataSave).as<JsonObject>()) {
         String S_PoolID = String(JsonPair_poolsSensorData.key().c_str());
-        if (S_PoolID == "test" | S_PoolID == "RO") {
+        if ((S_PoolID == "test" | S_PoolID == "RO") & request->hasArg("all") == false) {
           continue;
         }
         int IsUsed = true;
@@ -646,7 +651,7 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
           JsonObject PoolConfigItem = value.as<JsonObject>();
           if (PoolConfigItem["id"].as<String>() == S_PoolID) {
             //? 檢查 pool id 是否有指定，如果有則給出的資料 id 會改使用這個指定的名稱
-            if (PoolConfigItem["external_mapping"].as<String>() != "") {
+            if (PoolConfigItem["external_mapping"].as<String>() != "" & request->hasArg("row_id") == false) {
               S_PoolID = PoolConfigItem["external_mapping"].as<String>();
             }
             IsUsed = PoolConfigItem["Used"].as<int>();
@@ -654,7 +659,7 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
           }
         }
         //? 如果該池設定上為 NodeRed不上傳資料，則跳過該池
-        if (IsUsed == false) {
+        if (IsUsed == false & request->hasArg("all") == false) {
           continue;
         }
         DynamicJsonDocument D_poolSensorDataSended(5000);
