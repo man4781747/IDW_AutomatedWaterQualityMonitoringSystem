@@ -549,17 +549,26 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
     }
   );
 
+  //? 儀器排程功能總開關
+  //? 所需path參數: (str)open, (String)close
+  //? 範例: /api/schedule_switch?open   <= 開起排程
+  //? 範例: /api/schedule_switch?close   <= 開起排程
+  //? 範例: /api/schedule_switch?agdfvsdfgsersg   <= 不做任何行為，並回傳 HTTP Code: 500
   asyncServer.on("/api/schedule_switch", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
+      AsyncWebServerResponse* response;
       if (request->hasArg("open")) {
         (*Device_Ctrl.JSON__DeviceBaseInfo)["schedule_switch"] = true;
         ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__DeviceBaseInfo, *Device_Ctrl.JSON__DeviceBaseInfo);
+        response = request->beginResponse(200, "application/json", "OK");
       } else if (request->hasArg("close")) {
         (*Device_Ctrl.JSON__DeviceBaseInfo)["schedule_switch"] = false;
         ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__DeviceBaseInfo, *Device_Ctrl.JSON__DeviceBaseInfo);
+        response = request->beginResponse(200, "application/json", "OK");
+      } else {
+        response = request->beginResponse(500, "application/json", "{\"Result\":\"缺乏有效的參數: open/close\"}");
       }
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "OK");
       request->send(response);
     }
   );
@@ -1235,8 +1244,7 @@ void Set_DB_apis(AsyncWebServer &asyncServer) {
         // uint8_t *poolCount = &returnData[data_now_index++]; //! 此 Bytes 負責記錄當前 date 中有幾個不同的 pool 資料
         for (int poolChose=poolStart;poolChose<poolTargetCount;poolChose++) {
           ESP_LOGV("DB搜尋","   - 準備搜尋 pool: %s", poolTarget[poolChose].c_str());
-          returnData[poolCountIndex] += 1;
-          // *poolCount += 1;  //! pool 數 +1，後續如果發現此 pool 沒資料的話要捨棄掉
+          returnData[poolCountIndex] += 1; //! pool 數 +1，後續如果發現此 pool 沒資料的話要捨棄掉
           poolEnd = poolChose;
           ESP_LOGD("DB搜尋","    - 當前 index %d, pool ID 位置: %p", data_now_index, &returnData[data_now_index]);
           returnData[data_now_index++] = Device_Ctrl.mappingPoolNameToID(poolTarget[poolChose]);  //! 將此 pool ID 塞入
@@ -1245,7 +1253,7 @@ void Set_DB_apis(AsyncWebServer &asyncServer) {
           data_now_index++;
           // uint8_t *typeCount =  &returnData[data_now_index++]; //! 此 Bytes 負責記錄當前 pool 中有幾個不同的 type 資料
           for (int typeChose=typeStart;typeChose<typeTargetCount;typeChose++) {
-            ESP_LOGV("DB搜尋","     - 準備搜尋 type: %s", typeTarget[typeChose].c_str());
+            ESP_LOGV("DB搜尋","     - (%d) 準備搜尋 type: %s", SearchCount,typeTarget[typeChose].c_str());
             SearchCount++;
             String FileFullPath = "/datas/"+dateString+"/"+poolTarget[poolChose]+"/"+typeTarget[typeChose]+".bin";
             Serial.println(FileFullPath);
@@ -1257,24 +1265,10 @@ void Set_DB_apis(AsyncWebServer &asyncServer) {
               if (data_now_index+3+fileSize >= SENSOR_DATA_MAX_LEN) {
                 ESP_LOGD("DB搜尋","        - 資料過長，預計請求更長的Buffer，總長為 : %d", fileSize + 5 + data_now_index);
                 returnData = (uint8_t *)realloc(returnData, (fileSize + 5 + data_now_index) * sizeof(uint8_t));
-                // for (int i=data_now_index+1;i<fileSize + 5 + data_now_index;i++) {
-                //   returnData[i] = 0;
-                // }
-
-                // uint8_t dataBuffer[SENSOR_DATA_MAX_LEN] = {0};
-                // memcpy(dataBuffer, returnData, SENSOR_DATA_MAX_LEN * sizeof(uint8_t));
-                // returnData = (uint8_t *)realloc(returnData, (fileSize + 5 + data_now_index) * sizeof(uint8_t));
-                // for (int i=data_now_index;i<SENSOR_DATA_MAX_LEN;i++) {
-                //   returnData[i] = dataBuffer[i];
-                // }
-                // for (int i=data_now_index;i<fileSize + 5 + data_now_index;i++) {
-                //   returnData[i] = 0;
-                // }
               }
               ESP_LOGD("DB搜尋","        - 檢查記憶體長度後，當前 index %d，初始位置: %p", data_now_index, returnData);
 
               returnData[typeCountIndex] += 1;
-              // *typeCount = *typeCount + 1;
               ESP_LOGD("DB搜尋","        - 當前 index %d, type ID: %p", data_now_index, &returnData[data_now_index]);
               returnData[data_now_index++] = Device_Ctrl.mappingTypeNameToID(typeTarget[typeChose]);
               Serial.println( returnData[data_now_index-1]);
@@ -1289,7 +1283,6 @@ void Set_DB_apis(AsyncWebServer &asyncServer) {
                 Serial.printf("%d,%d,%d\n", returnData[data_now_index-3], returnData[data_now_index-2], returnData[data_now_index-1]);
                 //! 進到這邊代表資料長度加上去會超過最長長度閥值，需要加長資料欄位
                 ESP_LOGD("DB搜尋","        - 資料總長已達上限");
-                // returnData = (uint8_t *)realloc(returnData, (fileSize + data_now_index) * sizeof(uint8_t));
                 sensorFile.read(returnData+data_now_index, fileSize); //! 在當前指針處 (理論上會在 data count 的下一位) 讀取資料長度的資料
                 Serial.printf("%d,%d,%d,%d\n", returnData[data_now_index], returnData[data_now_index+1], returnData[data_now_index+2], returnData[data_now_index+3]);
                 data_now_index+=fileSize; //! 位置指針往後 fileSize 個 Bytes
@@ -1317,7 +1310,6 @@ void Set_DB_apis(AsyncWebServer &asyncServer) {
             ESP_LOGV("DB搜尋","   - pool: %s 無任何 type 資料", poolTarget[poolChose].c_str());
             //! 如果 type count 為 0，代表這個 pool 下沒有任何資料
             //! 此時 poolCount 要減回去
-            // *poolCount -= 1;
             returnData[poolCountIndex] -= 1;
             //! 並且 data_now_index 也要往回推 2 個位置
             data_now_index -= 2;
