@@ -320,17 +320,6 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
     }
   );
 
-
-  //TODO 目前已無再使用，考慮刪除
-  asyncServer.on("/api/config/device_config", HTTP_GET,
-    [&](AsyncWebServerRequest *request)
-    { 
-      String RetuenString;
-      serializeJson((*Device_Ctrl.JSON__DeviceConfig), RetuenString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
-      request->send(response);
-    }
-  );
   //? 蠕動馬達設定檔案 API
   asyncServer.on("/api/config/peristaltic_motor_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
