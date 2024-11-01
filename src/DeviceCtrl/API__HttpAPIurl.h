@@ -1078,7 +1078,7 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
     [&](AsyncWebServerRequest *request)
     { 
       Device_Ctrl.StopDeviceAllAction();
-      AsyncWebServerResponse* response = request->beginResponse(400, "application/json","OK");
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json","OK");
       request->send(response);
     }
   );
