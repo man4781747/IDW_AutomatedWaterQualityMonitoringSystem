@@ -261,6 +261,7 @@ class C_Device_Ctrl
 
     //! WiFi連線檢查Task
     void CreateWifiManagerTask();
+    bool WiFiConnectTest(int count=5);
     TaskHandle_t TASK__WifiManager = NULL;
 
     //! 錯誤警報相關功能

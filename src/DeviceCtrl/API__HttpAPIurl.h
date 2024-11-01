@@ -510,16 +510,26 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/config/wifi_check", HTTP_GET,
   [&](AsyncWebServerRequest *request)
     { 
+      bool anyChange = false;
       if (request->hasParam("open")) {
-        (*Device_Ctrl.JSON__WifiConfig)["Remote"]["check"].set(1);
+        (*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"]["check"].set(true);
+        anyChange = true;
       }
       if (request->hasParam("close")) {
-        (*Device_Ctrl.JSON__WifiConfig)["Remote"]["check"].set(0);
+        (*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"]["check"].set(false);
+        anyChange = true;
       }
-      ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__WiFiConfig, (*Device_Ctrl.JSON__WifiConfig));
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "OK");
+      if (request->hasParam("check_IP")) {
+        (*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"]["check_IP"].set(request->getParam("check_IP")->value());
+        anyChange = true;
+      }
+      if (anyChange) {
+        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__WiFiConfig, (*Device_Ctrl.JSON__WifiConfig));
+      }
+      String ReturnString;
+      serializeJson((*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"], ReturnString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", ReturnString);
       request->send(response);
-      
     }
   );
 }
@@ -1485,6 +1495,26 @@ void Set_test_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+
+  asyncServer.on("/api/test/wifi_check", HTTP_GET,
+    [&](AsyncWebServerRequest *request)
+    { 
+      AsyncWebServerResponse* response;
+      String TargetIP = (*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"]["check_IP"].as<String>();
+      IPAddress LocalWiFi;
+      if (LocalWiFi.fromString(TargetIP) == false) {
+        response = request->beginResponse(500, "application/json","check_IP 設定字串無法轉換為 IP, "+TargetIP);
+      }
+      bool result = Device_Ctrl.WiFiConnectTest(1);
+      if (result == true) {
+        response = request->beginResponse(200, "application/json","check_IP: "+TargetIP+" 連線測試成功");
+      } else {
+        response = request->beginResponse(500, "application/json","check_IP: "+TargetIP+" 連線測試失敗");
+      }
+      request->send(response);
+    }
+  );
+
 }
 
 

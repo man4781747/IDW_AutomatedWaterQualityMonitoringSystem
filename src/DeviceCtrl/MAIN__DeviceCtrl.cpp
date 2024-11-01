@@ -948,12 +948,13 @@ void WifiManager(void* parameter)
     vTaskDelay(60*1000/portTICK_PERIOD_MS);
     //! 每一分鐘 Ping WiFi 基地台
     //! 若 Ping 不到，則斷開 WiFi 並重新建立連線
-    IPAddress LocalWiFi (192, 168, 1, 1); 
-    bool LocalWiFiResult = Ping.ping(LocalWiFi);
-    ESP_LOGD("SYS", "WiFi基地台 Ping 測試: %s", LocalWiFiResult?"成功":"失敗");
-    if (LocalWiFiResult == false) {
-      int ifCheck = (*Device_Ctrl.JSON__WifiConfig)["Remote"]["check"].as<int>();
-      if (ifCheck == 1) {
+
+    bool ifCheck = (*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"]["check"].as<bool>();
+    ESP_LOGV("WIFI","ifCheck: %d", ifCheck);
+    if (ifCheck) {
+      bool LocalWiFiResult = Device_Ctrl.WiFiConnectTest();
+      ESP_LOGD("SYS", "WiFi基地台 Ping 測試: %s", LocalWiFiResult?"成功":"失敗");
+      if (LocalWiFiResult == false) {
         reconnectRetryCount++;
         //? 若 ping 不到 WiFi 分享器並且機器閒置，且當前時間不介於 55 分 ~ 59 分時，將儀器重開
         if (Device_Ctrl.IsDeviceIdle() == true & minute() < 55 & reconnectRetryCount > MAX_RECONNECT_RETRY) {
@@ -983,9 +984,9 @@ void WifiManager(void* parameter)
           WiFi.setAutoConnect(true);
         }
       }
-    }
-    else {
-      reconnectRetryCount = 0;
+      else {
+        reconnectRetryCount = 0;
+      }
     }
   }
 }
@@ -1005,6 +1006,17 @@ void C_Device_Ctrl::CreateWifiManagerTask()
     TaskSettingMap["WifiManager"].task_handle,
     1
   );
+}
+
+bool C_Device_Ctrl::WiFiConnectTest(int count)
+{
+  String TargetIP = (*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"]["check_IP"].as<String>();
+  IPAddress LocalWiFi;
+  if (LocalWiFi.fromString(TargetIP) == false) {
+    ESP_LOGE("WIFI檢查", "check_IP 設定字串無法轉換為 IP, %s", TargetIP.c_str());
+    return false;
+  }
+  return Ping.ping(LocalWiFi, count);
 }
 
 String C_Device_Ctrl::AES_encode(String content)
