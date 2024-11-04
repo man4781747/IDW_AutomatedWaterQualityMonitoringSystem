@@ -322,6 +322,18 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+  //? 蠕動馬達設定檔案 API
+  asyncServer.on("/api/config/peristaltic_motor_config", HTTP_DELETE,
+    [&](AsyncWebServerRequest *request)
+    { 
+      Device_Ctrl.CONFIG__peristaltic_motor.loadConfig(true);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__peristaltic_motor.JsonFormatString());
+      request->send(response);
+    }
+  );
+
+
+
   //? 伺服馬達設定檔案 API
   asyncServer.on("/api/config/servo_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)

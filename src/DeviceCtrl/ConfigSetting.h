@@ -275,7 +275,6 @@ struct PeristalticMotorConfig : ConfigSetting {
       ExFile_LoadJsonFile(SD, path, *json_data);
     }
     if ((*json_data).as<JsonArray>().size()==0) {
-      JsonArray dataList = (*json_data).createNestedArray();
       const char* defaultConfig[8][2] = {
         {"M1", "蝦池抽水"},
         {"M2", "RO水抽水"},
@@ -287,7 +286,7 @@ struct PeristalticMotorConfig : ConfigSetting {
         {"目前無作用", "-"},
       };
       for (int i = 0;i<8;i++) {
-        JsonObject nerObj = dataList.createNestedObject();
+        JsonObject nerObj = (*json_data).createNestedObject();
         nerObj["title"].set(defaultConfig[i][0]);
         nerObj["desp"].set(defaultConfig[i][1]);
       }
