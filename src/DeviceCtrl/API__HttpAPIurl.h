@@ -245,9 +245,7 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/config/device_base_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
-      String RetuenString;
-      serializeJson((*Device_Ctrl.JSON__DeviceBaseInfo), RetuenString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__device_base_config.JsonFormatString());
       request->send(response);
     }
   );
@@ -265,46 +263,44 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
     { 
       if (request->hasParam("device_name")) {
         String NewDeviceName = request->getParam("device_name")->value();
-        (*Device_Ctrl.JSON__DeviceBaseInfo)["device_name"].set(NewDeviceName);
+        (*Device_Ctrl.CONFIG__device_base_config.json_data)["device_name"].set(NewDeviceName);
       }
       if (request->hasParam("device_no")) {
         String NewDeviceNo = request->getParam("device_no")->value();
-        (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].set(NewDeviceNo);
+        (*Device_Ctrl.CONFIG__device_base_config.json_data)["device_no"].set(NewDeviceNo);
       }
       if (request->hasParam("LINE_Notify_id")) {
         String LINE_Notify_id = request->getParam("LINE_Notify_id")->value();
         String EncodeKey = Device_Ctrl.AES_encode(LINE_Notify_id);
-        (*Device_Ctrl.JSON__DeviceBaseInfo)["LINE_Notify_id"] .set(EncodeKey);
+        (*Device_Ctrl.CONFIG__device_base_config.json_data)["LINE_Notify_id"] .set(EncodeKey);
       }
       if (request->hasParam("LINE_Notify_switch")) {
         bool LINE_Notify_switch = request->getParam("LINE_Notify_switch")->value()=="true"?true:false;
-        (*Device_Ctrl.JSON__DeviceBaseInfo)["LINE_Notify_switch"].set(LINE_Notify_switch);
+        (*Device_Ctrl.CONFIG__device_base_config.json_data)["LINE_Notify_switch"].set(LINE_Notify_switch);
       }
       if (request->hasParam("Mail_Notify_switch")) {
         bool Mail_Notify_switch = request->getParam("Mail_Notify_switch")->value()=="true"?true:false;
-        (*Device_Ctrl.JSON__DeviceBaseInfo)["Mail_Notify_switch"].set(Mail_Notify_switch);
+        (*Device_Ctrl.CONFIG__device_base_config.json_data)["Mail_Notify_switch"].set(Mail_Notify_switch);
       }
       if (request->hasParam("Mail_Notify_Auther")) {
         String Mail_Notify_Auther = request->getParam("Mail_Notify_Auther")->value();
-        (*Device_Ctrl.JSON__DeviceBaseInfo)["Mail_Notify_Auther"].set(Mail_Notify_Auther);
+        (*Device_Ctrl.CONFIG__device_base_config.json_data)["Mail_Notify_Auther"].set(Mail_Notify_Auther);
       }
       if (request->hasParam("Mail_Notify_Key")) {
         String Mail_Notify_Key = request->getParam("Mail_Notify_Key")->value();
         String EncodeKey = Device_Ctrl.AES_encode(Mail_Notify_Key);
-        (*Device_Ctrl.JSON__DeviceBaseInfo)["Mail_Notify_Key"].set(EncodeKey);
+        (*Device_Ctrl.CONFIG__device_base_config.json_data)["Mail_Notify_Key"].set(EncodeKey);
       }
       if (request->hasParam("Mail_Notify_Target")) {
         String Mail_Notify_Target = request->getParam("Mail_Notify_Target")->value();
-        (*Device_Ctrl.JSON__DeviceBaseInfo)["Mail_Notify_Target"].set(Mail_Notify_Target);
+        (*Device_Ctrl.CONFIG__device_base_config.json_data)["Mail_Notify_Target"].set(Mail_Notify_Target);
       }
       if (request->hasParam("schedule_switch")) {
         String schedule_switch = request->getParam("schedule_switch")->value();
-        (*Device_Ctrl.JSON__DeviceBaseInfo)["schedule_switch"].set(schedule_switch);
+        (*Device_Ctrl.CONFIG__device_base_config.json_data)["schedule_switch"].set(schedule_switch);
       }
-      ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__DeviceBaseInfo, (*Device_Ctrl.JSON__DeviceBaseInfo));
-      String RetuenString;
-      serializeJson((*Device_Ctrl.JSON__DeviceBaseInfo), RetuenString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      Device_Ctrl.CONFIG__device_base_config.writeConfig();
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__device_base_config.JsonFormatString());
       request->send(response);
     }
   );
@@ -312,10 +308,8 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/config/device_base_config", HTTP_DELETE,
     [&](AsyncWebServerRequest *request)
     { 
-      Device_Ctrl.LoadDeviceBaseInfoJSONFile(true);
-      String RetuenString;
-      serializeJson((*Device_Ctrl.JSON__DeviceBaseInfo), RetuenString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      Device_Ctrl.CONFIG__device_base_config.loadConfig(true);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__device_base_config.JsonFormatString());
       request->send(response);
     }
   );
@@ -324,29 +318,34 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/config/peristaltic_motor_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
-      String RetuenString;
-      serializeJson((*Device_Ctrl.JSON__PeristalticMotorConfig), RetuenString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__peristaltic_motor.JsonFormatString());
       request->send(response);
     }
   );
   //? 伺服馬達設定檔案 API
-  asyncServer.on("/api/config/pwm_motor_config", HTTP_GET,
+  asyncServer.on("/api/config/servo_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
-      String RetuenString;
-      serializeJson((*Device_Ctrl.JSON__ServoConfig), RetuenString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__servo.JsonFormatString());
       request->send(response);
     }
   );
+
+  //? 伺服馬達設定檔重設 API
+  asyncServer.on("/api/config/servo_config", HTTP_DELETE,
+    [&](AsyncWebServerRequest *request)
+    { 
+      Device_Ctrl.CONFIG__servo.loadConfig(true);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__servo.JsonFormatString());
+      request->send(response);
+    }
+  );
+
   //? 蝦池設定檔案 API
   asyncServer.on("/api/config/pool_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
-      String RetuenString;
-      serializeJson((*Device_Ctrl.JSON__PoolConfig), RetuenString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__pool.JsonFormatString());
       request->send(response);
     }
   );
@@ -365,9 +364,10 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
           request->send(response);
         }
         else {
-          (*Device_Ctrl.JSON__PoolConfig).clear();
-          (*Device_Ctrl.JSON__PoolConfig).set(tempJSONItem);
-          ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__PoolConfig, (*Device_Ctrl.JSON__PoolConfig));
+
+          (*Device_Ctrl.CONFIG__pool.json_data).clear();
+          (*Device_Ctrl.CONFIG__pool.json_data).set(tempJSONItem);
+          Device_Ctrl.CONFIG__pool.writeConfig();
           AsyncWebServerResponse* response = request->beginResponse(200, "application/json", NewContent);
           request->send(response);
         }
@@ -378,14 +378,22 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       }
     }
   );
+  //? 蝦池設定檔案 API
+  asyncServer.on("/api/config/pool_config", HTTP_DELETE,
+    [&](AsyncWebServerRequest *request)
+    { 
+      Device_Ctrl.CONFIG__pool.loadConfig(true);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__pool.JsonFormatString());
+      request->send(response);
+    }
+  );
+
 
   //? 光度計設定檔案 API
   asyncServer.on("/api/config/spectrophotometer_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
-      String RetuenString;
-      serializeJson((*Device_Ctrl.JSON__SpectrophotometerConfig), RetuenString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__spectrophoto_meter.JsonFormatString());
       request->send(response);
     }
   );
@@ -401,21 +409,21 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       if (request->hasParam("index")) {
         int SettingIndex = request->getParam("index")->value().toInt();
         if (request->hasParam("title")) {
-          (*Device_Ctrl.JSON__SpectrophotometerConfig)[SettingIndex]["title"].set(request->getParam("title")->value());
+          (*Device_Ctrl.CONFIG__spectrophoto_meter.json_data)[SettingIndex]["title"].set(request->getParam("title")->value());
         }
         if (request->hasParam("desp")) {
-          (*Device_Ctrl.JSON__SpectrophotometerConfig)[SettingIndex]["desp"].set(request->getParam("desp")->value());
+          (*Device_Ctrl.CONFIG__spectrophoto_meter.json_data)[SettingIndex]["desp"].set(request->getParam("desp")->value());
         }
         if (request->hasParam("m")) {
-          (*Device_Ctrl.JSON__SpectrophotometerConfig)[SettingIndex]["m"].set(request->getParam("m")->value().toDouble());
+          (*Device_Ctrl.CONFIG__spectrophoto_meter.json_data)[SettingIndex]["m"].set(request->getParam("m")->value().toDouble());
         }
         if (request->hasParam("b")) {
-          (*Device_Ctrl.JSON__SpectrophotometerConfig)[SettingIndex]["b"].set(request->getParam("b")->value().toDouble());
+          (*Device_Ctrl.CONFIG__spectrophoto_meter.json_data)[SettingIndex]["b"].set(request->getParam("b")->value().toDouble());
         }
-        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__SpectrophotometerConfig, (*Device_Ctrl.JSON__SpectrophotometerConfig));
+        Device_Ctrl.CONFIG__spectrophoto_meter.writeConfig();
 
         DynamicJsonDocument ReturnData(10000);
-        ReturnData["new"].set((*Device_Ctrl.JSON__SpectrophotometerConfig)[SettingIndex]);
+        ReturnData["new"].set((*Device_Ctrl.CONFIG__spectrophoto_meter.json_data)[SettingIndex]);
         ReturnData["index"].set(SettingIndex);
         String RetuenString;
         serializeJson(ReturnData, RetuenString);
@@ -428,13 +436,19 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       }
     }
   );
+  asyncServer.on("/api/config/spectrophotometer_config", HTTP_DELETE,
+    [&](AsyncWebServerRequest *request)
+    { 
+      Device_Ctrl.CONFIG__spectrophoto_meter.loadConfig(true);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__spectrophoto_meter.JsonFormatString());
+      request->send(response);
+    }
+  );
 
   asyncServer.on("/api/config/PHmeter_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
-      String RetuenString;
-      serializeJson((*Device_Ctrl.JSON__PHmeterConfig), RetuenString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__ph_meter.JsonFormatString());
       request->send(response);
     }
   );
@@ -450,21 +464,21 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       if (request->hasParam("index")) {
         int SettingIndex = request->getParam("index")->value().toInt();
         if (request->hasParam("title")) {
-          (*Device_Ctrl.JSON__PHmeterConfig)[SettingIndex]["title"].set(request->getParam("title")->value());
+          (*Device_Ctrl.CONFIG__ph_meter.json_data)[SettingIndex]["title"].set(request->getParam("title")->value());
         }
         if (request->hasParam("desp")) {
-          (*Device_Ctrl.JSON__PHmeterConfig)[SettingIndex]["desp"].set(request->getParam("desp")->value());
+          (*Device_Ctrl.CONFIG__ph_meter.json_data)[SettingIndex]["desp"].set(request->getParam("desp")->value());
         }
         if (request->hasParam("m")) {
-          (*Device_Ctrl.JSON__PHmeterConfig)[SettingIndex]["m"].set(request->getParam("m")->value().toDouble());
+          (*Device_Ctrl.CONFIG__ph_meter.json_data)[SettingIndex]["m"].set(request->getParam("m")->value().toDouble());
         }
         if (request->hasParam("b")) {
-          (*Device_Ctrl.JSON__PHmeterConfig)[SettingIndex]["b"].set(request->getParam("b")->value().toDouble());
+          (*Device_Ctrl.CONFIG__ph_meter.json_data)[SettingIndex]["b"].set(request->getParam("b")->value().toDouble());
         }
-        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__PHmeterConfig, (*Device_Ctrl.JSON__PHmeterConfig));
+        Device_Ctrl.CONFIG__ph_meter.writeConfig();
 
         DynamicJsonDocument ReturnData(10000);
-        ReturnData["new"].set((*Device_Ctrl.JSON__PHmeterConfig)[SettingIndex]);
+        ReturnData["new"].set((*Device_Ctrl.CONFIG__ph_meter.json_data)[SettingIndex]);
         ReturnData["index"].set(SettingIndex);
         String RetuenString;
         serializeJson(ReturnData, RetuenString);
@@ -481,9 +495,7 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/config/wifi_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
-      String RetuenString;
-      serializeJson((*Device_Ctrl.JSON__WifiConfig), RetuenString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__wifi_config.JsonFormatString());
       request->send(response);
       
     }
@@ -492,16 +504,19 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/config/wifi_config", HTTP_PATCH,
     [&](AsyncWebServerRequest *request)
     { 
+      bool AnyChange = false;
       if (request->hasParam("STA_Name")) {
-        (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Name"].set(request->getParam("STA_Name")->value());
+        (*Device_Ctrl.CONFIG__wifi_config.json_data)["Remote"]["remote_Name"].set(request->getParam("STA_Name")->value());
+        AnyChange = true;
       }
       if (request->hasParam("STA_Password")) {
-        (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Password"].set(request->getParam("STA_Password")->value());
+        (*Device_Ctrl.CONFIG__wifi_config.json_data)["Remote"]["remote_Password"].set(request->getParam("STA_Password")->value());
+        AnyChange = true;
       }
-      ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__WiFiConfig, (*Device_Ctrl.JSON__WifiConfig));
-      String RetuenString;
-      serializeJson((*Device_Ctrl.JSON__WifiConfig), RetuenString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      if (AnyChange) {
+        Device_Ctrl.CONFIG__wifi_config.writeConfig();
+      }
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__wifi_config.JsonFormatString());
       request->send(response);
       Device_Ctrl.ConnectWiFi();
     }
@@ -512,23 +527,21 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
     { 
       bool anyChange = false;
       if (request->hasParam("open")) {
-        (*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"]["check"].set(true);
+        (*Device_Ctrl.CONFIG__wifi_config.json_data)["Remote"]["checker"]["check"].set(true);
         anyChange = true;
       }
       if (request->hasParam("close")) {
-        (*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"]["check"].set(false);
+        (*Device_Ctrl.CONFIG__wifi_config.json_data)["Remote"]["checker"]["check"].set(false);
         anyChange = true;
       }
       if (request->hasParam("check_IP")) {
-        (*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"]["check_IP"].set(request->getParam("check_IP")->value());
+        (*Device_Ctrl.CONFIG__wifi_config.json_data)["Remote"]["checker"]["check_IP"].set(request->getParam("check_IP")->value());
         anyChange = true;
       }
       if (anyChange) {
-        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__WiFiConfig, (*Device_Ctrl.JSON__WifiConfig));
+        Device_Ctrl.CONFIG__wifi_config.writeConfig();
       }
-      String ReturnString;
-      serializeJson((*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"], ReturnString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", ReturnString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__wifi_config.JsonFormatString());
       request->send(response);
     }
   );
@@ -541,9 +554,7 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/schedule", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
-      String RetuenString;
-      serializeJson(*Device_Ctrl.JSON__ScheduleConfig, RetuenString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", RetuenString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__schedule.JsonFormatString());
       request->send(response);
     }
   );
@@ -558,12 +569,12 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
     { 
       AsyncWebServerResponse* response;
       if (request->hasArg("open")) {
-        (*Device_Ctrl.JSON__DeviceBaseInfo)["schedule_switch"] = true;
-        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__DeviceBaseInfo, *Device_Ctrl.JSON__DeviceBaseInfo);
+        (*Device_Ctrl.CONFIG__device_base_config.json_data)["schedule_switch"] = true;
+        Device_Ctrl.CONFIG__device_base_config.writeConfig();
         response = request->beginResponse(200, "application/json", "OK");
       } else if (request->hasArg("close")) {
-        (*Device_Ctrl.JSON__DeviceBaseInfo)["schedule_switch"] = false;
-        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__DeviceBaseInfo, *Device_Ctrl.JSON__DeviceBaseInfo);
+        (*Device_Ctrl.CONFIG__device_base_config.json_data)["schedule_switch"] = false;
+        Device_Ctrl.CONFIG__device_base_config.writeConfig();
         response = request->beginResponse(200, "application/json", "OK");
       } else {
         response = request->beginResponse(500, "application/json", "{\"Result\":\"缺乏有效的參數: open/close\"}");
@@ -583,8 +594,8 @@ void Set_scheduleConfig_apis(AsyncWebServer &asyncServer)
         if (request->hasArg("name")) {
           int index = String(request->getParam("index")->value()).toInt();
           String name = request->getParam("name")->value();
-          (*Device_Ctrl.JSON__ScheduleConfig)[index].set(name);
-          ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__ScheduleConfig, *Device_Ctrl.JSON__ScheduleConfig);
+          (*Device_Ctrl.CONFIG__schedule.json_data)[index].set(name);
+          Device_Ctrl.CONFIG__schedule.writeConfig();
           DynamicJsonDocument returnJSON(1000);
           returnJSON["index"] = index;
           returnJSON["name"] = name;
@@ -637,8 +648,8 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
     [&](AsyncWebServerRequest *request)
     { 
       DynamicJsonDocument D_baseInfo(20000);
-      D_baseInfo["device_no"] = (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>();
-      D_baseInfo["device_name"] = (*Device_Ctrl.JSON__DeviceBaseInfo)["device_name"].as<String>();
+      D_baseInfo["device_no"] = (*Device_Ctrl.CONFIG__device_base_config.json_data)["device_no"].as<String>();
+      D_baseInfo["device_name"] = (*Device_Ctrl.CONFIG__device_base_config.json_data)["device_name"].as<String>();
       JsonObject pool_datas = D_baseInfo.createNestedObject("pool_datas");
       for (JsonPair JsonPair_poolsSensorData : (*Device_Ctrl.JSON__sensorDataSave).as<JsonObject>()) {
         String S_PoolID = String(JsonPair_poolsSensorData.key().c_str());
@@ -646,7 +657,7 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
           continue;
         }
         int IsUsed = true;
-        for (JsonVariant value : (*Device_Ctrl.JSON__PoolConfig).as<JsonArray>()) {
+        for (JsonVariant value : (*Device_Ctrl.CONFIG__pool.json_data).as<JsonArray>()) {
           JsonObject PoolConfigItem = value.as<JsonObject>();
           if (PoolConfigItem["id"].as<String>() == S_PoolID) {
             //? 檢查 pool id 是否有指定，如果有則給出的資料 id 會改使用這個指定的名稱
@@ -711,10 +722,11 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
     }
   );
 
-  //? 耗材通知功能測試API
+
+  //? 維護項目通知功能測試API
   //? 無參數，GET後直接執行通知流程
   //! 注意，若儀器當前沒有項目達到發送閥值，則會無反應
-  asyncServer.on("/api/consume/test", HTTP_GET,
+  asyncServer.on("/api/maintenance_item/test", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
       Device_Ctrl.SendComsumeWaring();
@@ -722,57 +734,78 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+
   //? 耗材設定值/剩餘量資料獲取API，無參數
-  asyncServer.on("/api/consume", HTTP_GET,
+  asyncServer.on("/api/maintenance_item", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
-      String returnString;
-      serializeJson(*Device_Ctrl.JSON__Consume, returnString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__maintenance_item.JsonFormatString());
       request->send(response);
     }
   );
   //? 耗材設定值/剩餘量資料重設API
   //? 無參數，GET後直接重設各項數值
-  asyncServer.on("/api/consume", HTTP_DELETE,
+  asyncServer.on("/api/maintenance_item", HTTP_DELETE,
     [&](AsyncWebServerRequest *request)
     { 
-      (*Device_Ctrl.JSON__Consume)["RO"]["alarm"].set(10);
-      (*Device_Ctrl.JSON__Consume)["RO"]["remaining"].set(300);
-      (*Device_Ctrl.JSON__Consume)["NO2_R1"]["alarm"].set(10);
-      (*Device_Ctrl.JSON__Consume)["NO2_R1"]["remaining"].set(500);
-      (*Device_Ctrl.JSON__Consume)["NH4_R1"]["alarm"].set(10);
-      (*Device_Ctrl.JSON__Consume)["NH4_R1"]["remaining"].set(500);
-      (*Device_Ctrl.JSON__Consume)["NH4_R2"]["alarm"].set(10);
-      (*Device_Ctrl.JSON__Consume)["NH4_R2"]["remaining"].set(500);
-      ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Consume, *Device_Ctrl.JSON__Consume);
-      String returnString;
-      serializeJson(*Device_Ctrl.JSON__Consume, returnString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+      Device_Ctrl.CONFIG__maintenance_item.loadConfig(true);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__maintenance_item.JsonFormatString());
       request->send(response);
     }
   );
   //? 耗材設定值/剩餘量資料數值變更API
-  //? 所需path參數: (String/必要)name, (double)alarm, (double)remaining
-  asyncServer.on("/api/consume", HTTP_PATCH,
+  //? 所需path參數: (String/必要)name, (int: 1/0)time_check_switch, (String: YYYY-MM-DD)start_time, (int)day_alarm,
+  //?                                 (int: 1/0)remaining_check_switch, (int)remaining, (int)remaining_alarm
+  asyncServer.on("/api/maintenance_item", HTTP_PATCH,
     [&](AsyncWebServerRequest *request)
     { 
       AsyncWebServerResponse* response;
       String keyName = request->pathArg(0);
       if (request->hasArg("name")) {
         String name = request->getParam("name")->value();
-        if (request->hasArg("alarm")) {
-          double alarm = String(request->getParam("alarm")->value()).toDouble();
-          (*Device_Ctrl.JSON__Consume)[name]["alarm"].set(alarm);
+        bool AnyChange = false;
+        if (request->hasArg("time_check_switch")) {
+          int new_time_check_switch = request->getParam("time_check_switch")->value().toInt();
+          if (new_time_check_switch == 1) {
+            (*Device_Ctrl.CONFIG__maintenance_item.json_data)[name]["time_check_switch"].set(true);
+          } else {
+            (*Device_Ctrl.CONFIG__maintenance_item.json_data)[name]["time_check_switch"].set(false);
+          }
+          AnyChange = true;
+        }
+        if (request->hasArg("start_time")) {
+          String new_start_time = request->getParam("start_time")->value();
+          (*Device_Ctrl.CONFIG__maintenance_item.json_data)[name]["start_time"].set(new_start_time);
+          AnyChange = true;
+        }
+        if (request->hasArg("day_alarm")) {
+          int new_day_alarm = request->getParam("day_alarm")->value().toInt();
+          (*Device_Ctrl.CONFIG__maintenance_item.json_data)[name]["day_alarm"].set(new_day_alarm);
+          AnyChange = true;
+        }
+        if (request->hasArg("remaining_check_switch")) {
+          int new_time_check_switch = request->getParam("remaining_check_switch")->value().toInt();
+          if (new_time_check_switch == 1) {
+            (*Device_Ctrl.CONFIG__maintenance_item.json_data)[name]["remaining_check_switch"].set(true);
+          } else {
+            (*Device_Ctrl.CONFIG__maintenance_item.json_data)[name]["remaining_check_switch"].set(false);
+          }
+          AnyChange = true;
         }
         if (request->hasArg("remaining")) {
-          double remaining = String(request->getParam("remaining")->value()).toDouble();
-          (*Device_Ctrl.JSON__Consume)[name]["remaining"].set(remaining);
+          int new_remaining = request->getParam("remaining")->value().toInt();
+          (*Device_Ctrl.CONFIG__maintenance_item.json_data)[name]["remaining"].set(new_remaining);
+          AnyChange = true;
         }
-        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Consume, *Device_Ctrl.JSON__Consume);
-        String returnString;
-        serializeJson(*Device_Ctrl.JSON__Consume, returnString);
-        response = request->beginResponse(200, "application/json", returnString);
+        if (request->hasArg("remaining_alarm")) {
+          int new_remaining_alarm = request->getParam("remaining_alarm")->value().toInt();
+          (*Device_Ctrl.CONFIG__maintenance_item.json_data)[name]["remaining_alarm"].set(new_remaining_alarm);
+          AnyChange = true;
+        }
+        if (AnyChange) {
+          Device_Ctrl.CONFIG__maintenance_item.writeConfig();
+        }
+        response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__maintenance_item.JsonFormatString());
       }
       else {
         response = request->beginResponse(500, "application/json", "{\"Result\":\"缺少para: 'name'\"}");
@@ -780,57 +813,57 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
-  //? 維護項目資料獲取API，無參數
-  asyncServer.on("/api/maintain", HTTP_GET,
-    [&](AsyncWebServerRequest *request)
-    { 
-      String returnString;
-      serializeJson(*Device_Ctrl.JSON__Maintain, returnString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
-      request->send(response);
-    }
-  );
-  //? 維護項目重設API
-  //? 無參數，DELETE後直接重設各項數值
-  asyncServer.on("/api/maintain", HTTP_DELETE,
-    [&](AsyncWebServerRequest *request)
-    { 
-      Device_Ctrl.RebuildMaintainJSON();
-      String returnString;
-      serializeJson(*Device_Ctrl.JSON__Consume, returnString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
-      request->send(response);
-    }
-  );
-  //? 維護項目數值變更API
-  //? 所需path參數: (String/必要)name, (String/必要)time
-  asyncServer.on("/api/maintain", HTTP_PATCH,
-    [&](AsyncWebServerRequest *request)
-    { 
-      AsyncWebServerResponse* response;
-      String keyName = request->pathArg(0);
-      if (request->hasArg("name")) {
-        String name = request->getParam("name")->value();
-        if (request->hasArg("time")) {
-          String time = request->getParam("time")->value();
-          (*Device_Ctrl.JSON__Maintain)[name]["time"].set(time);
-          ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Maintain, *Device_Ctrl.JSON__Maintain);
-          String returnString;
-          serializeJson(*Device_Ctrl.JSON__Maintain, returnString);
-          response = request->beginResponse(200, "application/json", returnString);
-          request->send(response);
-        }
-        else {
-          response = request->beginResponse(500, "application/json", "{\"Result\":\"缺少para: 'time'\"}");
-          request->send(response);
-        }
-      }
-      else {
-        response = request->beginResponse(500, "application/json", "{\"Result\":\"缺少para: 'name'\"}");
-        request->send(response);
-      }
-    }
-  );
+  // //? 維護項目資料獲取API，無參數
+  // asyncServer.on("/api/maintain", HTTP_GET,
+  //   [&](AsyncWebServerRequest *request)
+  //   { 
+  //     String returnString;
+  //     serializeJson(*Device_Ctrl.JSON__Maintain, returnString);
+  //     AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+  //     request->send(response);
+  //   }
+  // );
+  // //? 維護項目重設API
+  // //? 無參數，DELETE後直接重設各項數值
+  // asyncServer.on("/api/maintain", HTTP_DELETE,
+  //   [&](AsyncWebServerRequest *request)
+  //   { 
+  //     Device_Ctrl.RebuildMaintainJSON();
+  //     String returnString;
+  //     serializeJson(*Device_Ctrl.JSON__Consume, returnString);
+  //     AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+  //     request->send(response);
+  //   }
+  // );
+  // //? 維護項目數值變更API
+  // //? 所需path參數: (String/必要)name, (String/必要)time
+  // asyncServer.on("/api/maintain", HTTP_PATCH,
+  //   [&](AsyncWebServerRequest *request)
+  //   { 
+  //     AsyncWebServerResponse* response;
+  //     String keyName = request->pathArg(0);
+  //     if (request->hasArg("name")) {
+  //       String name = request->getParam("name")->value();
+  //       if (request->hasArg("time")) {
+  //         String time = request->getParam("time")->value();
+  //         (*Device_Ctrl.JSON__Maintain)[name]["time"].set(time);
+  //         ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Maintain, *Device_Ctrl.JSON__Maintain);
+  //         String returnString;
+  //         serializeJson(*Device_Ctrl.JSON__Maintain, returnString);
+  //         response = request->beginResponse(200, "application/json", returnString);
+  //         request->send(response);
+  //       }
+  //       else {
+  //         response = request->beginResponse(500, "application/json", "{\"Result\":\"缺少para: 'time'\"}");
+  //         request->send(response);
+  //       }
+  //     }
+  //     else {
+  //       response = request->beginResponse(500, "application/json", "{\"Result\":\"缺少para: 'name'\"}");
+  //       request->send(response);
+  //     }
+  //   }
+  // );
 
   //? RO 水最新量測結果修正/獲取，用以修正池水量測值
   //? 所需path參數: (double)NO2, (double)NH4
@@ -839,19 +872,29 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/RO/Result", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
+      bool AnyChange = false;
       if (request->hasParam("NO2")) {
         double NO2_Value = request->getParam("NO2")->value().toDouble();
-        (*Device_Ctrl.JSON__RO_Result)["NO2"].set(NO2_Value);
-        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__RO_Result, *Device_Ctrl.JSON__RO_Result);
+        (*Device_Ctrl.CONFIG__RO_correction.json_data)["data"]["NO2"].set(NO2_Value);
+        AnyChange = true;
       }
       if (request->hasParam("NH4")) {
         double NH4_Value = request->getParam("NH4")->value().toDouble();
-        (*Device_Ctrl.JSON__RO_Result)["NH4"].set(NH4_Value);
-        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__RO_Result, *Device_Ctrl.JSON__RO_Result);
+        (*Device_Ctrl.CONFIG__RO_correction.json_data)["data"]["NH4"].set(NH4_Value);
+        AnyChange = true;
       }
-      String returnString;
-      serializeJson(*Device_Ctrl.JSON__RO_Result, returnString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+      if (request->hasParam("open")) {
+        (*Device_Ctrl.CONFIG__RO_correction.json_data)["switch"].set(true);
+        AnyChange = true;
+      }
+      else if (request->hasParam("close")) {
+        (*Device_Ctrl.CONFIG__RO_correction.json_data)["switch"].set(true);
+        AnyChange = true;
+      }
+      if (AnyChange) {
+        Device_Ctrl.CONFIG__RO_correction.writeConfig();
+      }
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__RO_correction.JsonFormatString());
       request->send(response);
     }
   );
@@ -863,15 +906,13 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
     { 
       if (request->hasParam("name")) {
         String resetName = request->getParam("name")->value();
-        if ((*Device_Ctrl.JSON__ItemUseCount)[resetName] == nullptr) {
+        if ((*Device_Ctrl.CONFIG__item_use_count.json_data)[resetName] == nullptr) {
           AsyncWebServerResponse* response = request->beginResponse(500, "application/json", "{\"Result\":\"找不到 name: "+resetName+"\"}");
           request->send(response);
         } else {
-          (*Device_Ctrl.JSON__ItemUseCount)[resetName] = 0;
-          ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__ItemUseCount, *Device_Ctrl.JSON__ItemUseCount);
-          String returnString;
-          serializeJson(*Device_Ctrl.JSON__ItemUseCount, returnString);
-          AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+          (*Device_Ctrl.CONFIG__item_use_count.json_data)[resetName] = 0;
+          Device_Ctrl.CONFIG__item_use_count.writeConfig();
+          AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__item_use_count.JsonFormatString());
           request->send(response);
         }
       } 
@@ -885,9 +926,7 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/device/used", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
-      String returnString;
-      serializeJson(*Device_Ctrl.JSON__ItemUseCount, returnString);
-      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", returnString);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__item_use_count.JsonFormatString());
       request->send(response);
     }
   );
@@ -1500,7 +1539,7 @@ void Set_test_apis(AsyncWebServer &asyncServer)
     [&](AsyncWebServerRequest *request)
     { 
       AsyncWebServerResponse* response;
-      String TargetIP = (*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"]["check_IP"].as<String>();
+      String TargetIP = (*Device_Ctrl.CONFIG__wifi_config.json_data)["Remote"]["checker"]["check_IP"].as<String>();
       IPAddress LocalWiFi;
       if (LocalWiFi.fromString(TargetIP) == false) {
         response = request->beginResponse(500, "application/json","check_IP 設定字串無法轉換為 IP, "+TargetIP);

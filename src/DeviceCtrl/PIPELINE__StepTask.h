@@ -103,7 +103,7 @@ void StepTask(void* parameter) {
         if (eventItem.containsKey("pwm_motor_list")) {
           StepResult actionResult = Do_ServoMotorAction(eventItem, StepTaskDetailItem);
           if (actionResult.code == ResultCode::STOP_DEVICE) {
-            String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            String sendString = "\n儀器: " + (*Device_Ctrl.CONFIG__device_base_config.json_data)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
             sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
@@ -135,7 +135,7 @@ void StepTask(void* parameter) {
             break;
           }
           else if (actionResult.code == ResultCode::STOP_THIS_PIPELINE) {
-            String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            String sendString = "\n儀器: " + (*Device_Ctrl.CONFIG__device_base_config.json_data)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
             sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
@@ -149,7 +149,7 @@ void StepTask(void* parameter) {
             break;
           }
           else if (actionResult.code == ResultCode::STOP_DEVICE) {
-            String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            String sendString = "\n儀器: " + (*Device_Ctrl.CONFIG__device_base_config.json_data)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
             sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
@@ -166,7 +166,7 @@ void StepTask(void* parameter) {
         else if (eventItem.containsKey("spectrophotometer_list")) {
           StepResult actionResult = Do_SpectrophotometerAction(eventItem, StepTaskDetailItem);
           if (actionResult.code == ResultCode::KEEP_RUN) {
-            String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            String sendString = "\n儀器: " + (*Device_Ctrl.CONFIG__device_base_config.json_data)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
             sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
@@ -180,7 +180,7 @@ void StepTask(void* parameter) {
         else if (eventItem.containsKey("ph_meter")) {
           StepResult actionResult = Do_PHmeterAction(eventItem, StepTaskDetailItem);
           if (actionResult.code == ResultCode::KEEP_RUN) {
-            String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
+            String sendString = "\n儀器: " + (*Device_Ctrl.CONFIG__device_base_config.json_data)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
             sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
             sendString += actionResult.message;
@@ -410,7 +410,7 @@ StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDet
     ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "伺服馬達(LX-20S)發生預期外的動作，準備中止儀器的所有動作");
     Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "伺服馬達(LX-20S)發生預期外的動作，準備中止儀器的所有動作");
     Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達(LX-20S)發生預期外的動作，準備中止儀器的所有動作");
-    // String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到伺服馬達異常\n";
+    // String sendString = "\n儀器: " + (*Device_Ctrl.CONFIG__device_base_config.json_data)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到伺服馬達異常\n";
     // sendString += "異常馬達編號: "+anyFail;
     // Device_Ctrl.SendLineNotifyMessage(sendString);
     // Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",sendString);
@@ -616,11 +616,9 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
             Serial.println(consumeTarget);
             if (consumeTarget or consumeTarget != "null") {
               int consumeNum = endTimeCheckJSON["consumeNum"].as<int>();
-              int consumeRemaining = (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].as<int>();
-              Serial.println(consumeNum);
-              Serial.println(consumeRemaining);
-              (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].set(consumeRemaining - consumeNum);
-              ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Consume, *Device_Ctrl.JSON__Consume);
+              int consumeRemaining = (*Device_Ctrl.CONFIG__maintenance_item.json_data)[consumeTarget]["remaining"].as<int>();
+              (*Device_Ctrl.CONFIG__maintenance_item.json_data)[consumeTarget]["remaining"].set(consumeRemaining - consumeNum);
+              Device_Ctrl.CONFIG__maintenance_item.writeConfig();
             }
           }
           ESP_LOGV(StepTaskDetailItem->TaskName.c_str(), "蠕動馬達(%d)執行至最大時間，停止其動作", motorIndex);
@@ -653,9 +651,9 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
             String consumeTarget = endTimeCheckJSON["consumeTarget"].as<String>();
             if (consumeTarget) {
               int consumeNum = endTimeCheckJSON["consumeNum"].as<int>();
-              int consumeRemaining = (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].as<int>();
-              (*Device_Ctrl.JSON__Consume)[consumeTarget]["remaining"].set(consumeRemaining - consumeNum);
-              ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Consume, *Device_Ctrl.JSON__Consume);
+              int consumeRemaining = (*Device_Ctrl.CONFIG__maintenance_item.json_data)[consumeTarget]["remaining"].as<int>();
+              (*Device_Ctrl.CONFIG__maintenance_item.json_data)[consumeTarget]["remaining"].set(consumeRemaining - consumeNum);
+              Device_Ctrl.CONFIG__maintenance_item.writeConfig();
             }
           }
           ESP_LOGV(StepTaskDetailItem->TaskName.c_str(), "浮球觸發，關閉蠕動馬達(%d)", motorIndex);
@@ -814,7 +812,7 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
     //? spectrophotometerIndex 為 1 時，代表綠光模組
     int spectrophotometerIndex = spectrophotometerItem["index"].as<int>();
   
-    JsonObject spectrophotometerConfigChose = (*Device_Ctrl.JSON__SpectrophotometerConfig)[spectrophotometerIndex].as<JsonObject>();
+    JsonObject spectrophotometerConfigChose = (*Device_Ctrl.CONFIG__spectrophoto_meter.json_data)[spectrophotometerIndex].as<JsonObject>();
     //? spectrophotometerTitle: 光度計Title
     String spectrophotometerTitle = spectrophotometerConfigChose["title"].as<String>();
     //? value_name: 預計獲得的數值類型名稱
@@ -948,11 +946,11 @@ StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* Step
       double finalValue_after = -log10(finalValue/A0_Value)*mValue+bValue;
       double finalValue_Original = finalValue_after;
       if (poolChose == "RO") {
-        (*Device_Ctrl.JSON__RO_Result)[TargetType].set(finalValue_after);
-        ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__RO_Result, *Device_Ctrl.JSON__RO_Result);
+        (*Device_Ctrl.CONFIG__RO_correction.json_data)["data"][TargetType].set(finalValue_after);
+        Device_Ctrl.CONFIG__RO_correction.writeConfig();
       }
-      else {
-        finalValue_after -= (*Device_Ctrl.JSON__RO_Result)[TargetType].as<double>();
+      else if ((*Device_Ctrl.CONFIG__RO_correction.json_data)["switch"].as<bool>() == true) {
+        finalValue_after -= (*Device_Ctrl.CONFIG__RO_correction.json_data)["data"][TargetType].as<double>();
       }
       if (finalValue_after < 0) { finalValue_after = 0; }
       (*Device_Ctrl.JSON__sensorDataSave)[poolChose]["DataItem"][TargetType]["Value"].set(String(finalValue_after,2).toDouble());
@@ -1007,10 +1005,8 @@ StepResult Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetail
       return result;  
     }
 
-    // double m = (*Device_Ctrl.JSON__PHmeterConfig)[0]["calibration"][0]["ret"]["m"].as<String>().toDouble();
-    // double b = (*Device_Ctrl.JSON__PHmeterConfig)[0]["calibration"][0]["ret"]["b"].as<String>().toDouble();
-    double m = (*Device_Ctrl.JSON__PHmeterConfig)[0]["m"].as<String>().toDouble();
-    double b = (*Device_Ctrl.JSON__PHmeterConfig)[0]["b"].as<String>().toDouble();
+    double m = (*Device_Ctrl.CONFIG__ph_meter.json_data)[0]["m"].as<String>().toDouble();
+    double b = (*Device_Ctrl.CONFIG__ph_meter.json_data)[0]["b"].as<String>().toDouble();
 
     double pHValue = m*PH_RowValue + b;
     if (pHValue<0) {

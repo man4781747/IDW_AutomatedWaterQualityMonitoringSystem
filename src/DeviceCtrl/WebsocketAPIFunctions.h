@@ -66,7 +66,7 @@ void ws_GetAllPoolData(AsyncWebSocket *server, AsyncWebSocketClient *client, Dyn
       continue;
     }
     int IsUsed = true;
-    for (JsonVariant value : (*Device_Ctrl.JSON__PoolConfig).as<JsonArray>()) {
+    for (JsonVariant value : (*Device_Ctrl.CONFIG__pool.json_data).as<JsonArray>()) {
       JsonObject PoolConfigItem = value.as<JsonObject>();
       if (PoolConfigItem["id"].as<String>() == S_PoolID) {
         //? 檢查 pool id 是否有指定，如果有則給出的資料 id 會改使用這個指定的名稱

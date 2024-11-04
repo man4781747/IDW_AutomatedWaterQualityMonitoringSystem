@@ -140,7 +140,7 @@ bool C_Device_Ctrl::INIT_PoolData()
     }
   }
   ESP_LOGE("", "找不到或讀取最新各池感測器測量數值失敗，重建資料庫");
-  for (JsonVariant SinPoolInfo : (*JSON__PoolConfig).as<JsonArray>()) {
+  for (JsonVariant SinPoolInfo : (*CONFIG__pool.json_data).as<JsonArray>()) {
     JsonObject Array_SinPoolInfo = SinPoolInfo.as<JsonObject>();
     String PoolID = Array_SinPoolInfo["id"].as<String>();
     (*JSON__sensorDataSave)[PoolID]["PoolID"].set(PoolID);
@@ -297,73 +297,20 @@ int C_Device_Ctrl::DropLogsTable()
  * 
  */
 void C_Device_Ctrl::LoadConfigJsonFiles()
-{
-  LoadDeviceBaseInfoJSONFile(false);
-  ExFile_LoadJsonFile(SD, FilePath__SD__SpectrophotometerConfig, *JSON__SpectrophotometerConfig);
-  ExFile_LoadJsonFile(SD, FilePath__SD__PHmeterConfig, *JSON__PHmeterConfig);
-  ExFile_LoadJsonFile(SD, FilePath__SD__PoolConfig, *JSON__PoolConfig);
-  ExFile_LoadJsonFile(SD, FilePath__SD__ServoConfig, *JSON__ServoConfig);
-  ExFile_LoadJsonFile(SD, FilePath__SD__PeristalticMotorConfig, *JSON__PeristalticMotorConfig);
-  ExFile_LoadJsonFile(SD, FilePath__SD__ScheduleConfig, *JSON__ScheduleConfig);
+{ 
+  CONFIG__device_base_config.loadConfig();
+  CONFIG__wifi_config.loadConfig();
+  CONFIG__spectrophoto_meter.loadConfig();
+  CONFIG__ph_meter.loadConfig();
+  CONFIG__pool.loadConfig();
+  CONFIG__servo.loadConfig();
+  CONFIG__peristaltic_motor.loadConfig();
+  CONFIG__schedule.loadConfig();
+  CONFIG__item_use_count.loadConfig();
+  CONFIG__RO_correction.loadConfig();
+  CONFIG__maintenance_item.loadConfig();
   ExFile_LoadJsonFile(SD, FilePath__SD__DeviceConfig, *JSON__DeviceConfig);
-  ExFile_LoadJsonFile(SD, FilePath__SD__WiFiConfig, *JSON__WifiConfig);
-  ExFile_LoadJsonFile(SD, FilePath__SD__ItemUseCount, *JSON__ItemUseCount);
-  ExFile_LoadJsonFile(SD, FilePath__SD__RO_Result, *JSON__RO_Result);
-  ExFile_LoadJsonFile(SD, FilePath__SD__Consume, *JSON__Consume);
-  ExFile_LoadJsonFile(SD, FilePath__SD__Maintain, *JSON__Maintain);
 }
-
-void C_Device_Ctrl::LoadDeviceBaseInfoJSONFile(bool rebuild=false)
-{
-  if (rebuild) {
-    (*JSON__DeviceBaseInfo).clear();
-  } else {
-    ExFile_LoadJsonFile(SD, FilePath__SD__DeviceBaseInfo, *JSON__DeviceBaseInfo);
-  }
-  //? 檢查各參數是否存在，不存在則使用預設值
-  bool anyChange = false;
-  if ((*JSON__DeviceBaseInfo)["device_no"] == nullptr) {
-    (*JSON__DeviceBaseInfo)["device_no"].set("ID_PoolSensor");
-    anyChange = true;
-  }
-  if ((*JSON__DeviceBaseInfo)["device_name"] == nullptr) {
-    (*JSON__DeviceBaseInfo)["device_name"].set("Pool Sensor Device");
-    anyChange = true;
-  }
-  if ((*JSON__DeviceBaseInfo)["LINE_Notify_switch"] == nullptr) {
-    (*JSON__DeviceBaseInfo)["LINE_Notify_switch"].set(false);
-    anyChange = true;
-  }
-  if ((*JSON__DeviceBaseInfo)["LINE_Notify_id"] == nullptr) {
-    (*JSON__DeviceBaseInfo)["LINE_Notify_id"].set("");
-    anyChange = true;
-  }
-  if ((*JSON__DeviceBaseInfo)["Mail_Notify_switch"] == nullptr) {
-    (*JSON__DeviceBaseInfo)["Mail_Notify_switch"].set(false);
-    anyChange = true;
-  }
-  if ((*JSON__DeviceBaseInfo)["Mail_Notify_Auther"] == nullptr) {
-    (*JSON__DeviceBaseInfo)["Mail_Notify_Auther"].set("");
-    anyChange = true;
-  }
-  if ((*JSON__DeviceBaseInfo)["Mail_Notify_Key"] == nullptr) {
-    (*JSON__DeviceBaseInfo)["Mail_Notify_Key"].set("");
-    anyChange = true;
-  }
-  if ((*JSON__DeviceBaseInfo)["Mail_Notify_Target"] == nullptr) {
-    (*JSON__DeviceBaseInfo)["Mail_Notify_Target"].set("");
-    anyChange = true;
-  }
-  if ((*JSON__DeviceBaseInfo)["schedule_switch"] == nullptr) {
-    (*JSON__DeviceBaseInfo)["schedule_switch"].set(true);
-    anyChange = true;
-  }
-  if (anyChange) {
-    ExFile_WriteJsonFile(SD, FilePath__SD__DeviceBaseInfo, *JSON__DeviceBaseInfo);
-  }
-}
-
-
 
 /**
  * @brief 對 sensor DB Insert 一筆新的資料 
@@ -461,15 +408,6 @@ void C_Device_Ctrl::SaveSensorDataToBinFile(time_t time, String pool, String typ
   File SaveFile = SD.open(FileSavePath, FILE_APPEND);
   SaveFile.write((uint8_t *)&(data_short.value), 4);
   SaveFile.close();
-}
-
-
-//! 維護項目紀錄JSON檔案重設
-void C_Device_Ctrl::RebuildMaintainJSON()
-{
-  (*Device_Ctrl.JSON__Maintain).clear();
-  (*Device_Ctrl.JSON__Maintain)["pH"]["time"].set(GetDatetimeString());
-  ExFile_WriteJsonFile(SD, Device_Ctrl.FilePath__SD__Maintain, *Device_Ctrl.JSON__Maintain);
 }
 
 /**
@@ -574,20 +512,20 @@ void C_Device_Ctrl::ConnectWiFi()
   // WiFi.setAutoReconnect(false);
   // Serial.println(WiFi.getAutoConnect());
   // WiFi.begin(
-  //   (*JSON__WifiConfig)["Remote"]["remote_Name"].as<String>().c_str(),
-  //   (*JSON__WifiConfig)["Remote"]["remote_Password"].as<String>().c_str()
+  //   (*CONFIG__wifi_config.json_data)["Remote"]["remote_Name"].as<String>().c_str(),
+  //   (*CONFIG__wifi_config.json_data)["Remote"]["remote_Password"].as<String>().c_str()
   // );
   IPAddress AP_IP;
-  AP_IP.fromString((*JSON__WifiConfig)["AP"]["AP_IP"].as<String>());
+  AP_IP.fromString((*CONFIG__wifi_config.json_data)["AP"]["AP_IP"].as<String>());
   IPAddress AP_gateway;
-  AP_gateway.fromString((*JSON__WifiConfig)["AP"]["AP_gateway"].as<String>());
+  AP_gateway.fromString((*CONFIG__wifi_config.json_data)["AP"]["AP_gateway"].as<String>());
   IPAddress AP_subnet_mask;
-  AP_subnet_mask.fromString((*JSON__WifiConfig)["AP"]["AP_subnet_mask"].as<String>());
+  AP_subnet_mask.fromString((*CONFIG__wifi_config.json_data)["AP"]["AP_subnet_mask"].as<String>());
 
 
   WiFi.softAPConfig(AP_IP,AP_gateway,AP_subnet_mask);
   WiFi.softAP(
-    (*JSON__WifiConfig)["AP"]["AP_Name"].as<String>()
+    (*CONFIG__wifi_config.json_data)["AP"]["AP_Name"].as<String>()
   );
   Serial.print("AP IP address: ");
   Serial.println(WiFi.softAPIP());
@@ -678,8 +616,8 @@ DynamicJsonDocument C_Device_Ctrl::GetBaseWSReturnData(String MessageString)
 {
   DynamicJsonDocument BaseWSReturnData(65525);
   BaseWSReturnData["firmware_version"].set(FIRMWARE_VERSION);
-  String mode = (*Device_Ctrl.JSON__DeviceBaseInfo)["mode"].as<String>();
-  String device_no = (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>();
+  String mode = (*Device_Ctrl.CONFIG__device_base_config.json_data)["mode"].as<String>();
+  String device_no = (*Device_Ctrl.CONFIG__device_base_config.json_data)["device_no"].as<String>();
   BaseWSReturnData["mode"].set(mode);
   BaseWSReturnData["device_no"].set(device_no);
   int startIndex = MessageString.indexOf("/", 0);
@@ -925,21 +863,21 @@ void WifiManager(void* parameter)
 
   //? 先建立 AP 熱點
   IPAddress AP_IP;
-  AP_IP.fromString((*Device_Ctrl.JSON__WifiConfig)["AP"]["AP_IP"].as<String>());
+  AP_IP.fromString((*Device_Ctrl.CONFIG__wifi_config.json_data)["AP"]["AP_IP"].as<String>());
   IPAddress AP_gateway;
-  AP_gateway.fromString((*Device_Ctrl.JSON__WifiConfig)["AP"]["AP_gateway"].as<String>());
+  AP_gateway.fromString((*Device_Ctrl.CONFIG__wifi_config.json_data)["AP"]["AP_gateway"].as<String>());
   IPAddress AP_subnet_mask;
-  AP_subnet_mask.fromString((*Device_Ctrl.JSON__WifiConfig)["AP"]["AP_subnet_mask"].as<String>());
+  AP_subnet_mask.fromString((*Device_Ctrl.CONFIG__wifi_config.json_data)["AP"]["AP_subnet_mask"].as<String>());
   WiFi.softAPConfig(AP_IP,AP_gateway,AP_subnet_mask);
-  WiFi.softAP((*Device_Ctrl.JSON__WifiConfig)["AP"]["AP_Name"].as<String>());
+  WiFi.softAP((*Device_Ctrl.CONFIG__wifi_config.json_data)["AP"]["AP_Name"].as<String>());
   ESP_LOGI("", "AP 熱點 IP address: %s, macAddress: %s", WiFi.softAPIP().toString().c_str(), WiFi.softAPmacAddress().c_str());
 
   //? 而後嘗試與基地台連接
   int reconnectRetryCount = 0;
   int MAX_RECONNECT_RETRY = 3;
   WiFi.begin(
-    (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Name"].as<String>().c_str(),
-    (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Password"].as<String>().c_str()
+    (*Device_Ctrl.CONFIG__wifi_config.json_data)["Remote"]["remote_Name"].as<String>().c_str(),
+    (*Device_Ctrl.CONFIG__wifi_config.json_data)["Remote"]["remote_Password"].as<String>().c_str()
   );
   WiFi.setAutoReconnect(true);
   WiFi.setAutoConnect(true);
@@ -949,7 +887,7 @@ void WifiManager(void* parameter)
     //! 每一分鐘 Ping WiFi 基地台
     //! 若 Ping 不到，則斷開 WiFi 並重新建立連線
 
-    bool ifCheck = (*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"]["check"].as<bool>();
+    bool ifCheck = (*Device_Ctrl.CONFIG__wifi_config.json_data)["Remote"]["checker"]["check"].as<bool>();
     ESP_LOGV("WIFI","ifCheck: %d", ifCheck);
     if (ifCheck) {
       bool LocalWiFiResult = Device_Ctrl.WiFiConnectTest();
@@ -969,16 +907,16 @@ void WifiManager(void* parameter)
           );
           WiFi.disconnect();
           IPAddress AP_IP;
-          AP_IP.fromString((*Device_Ctrl.JSON__WifiConfig)["AP"]["AP_IP"].as<String>());
+          AP_IP.fromString((*Device_Ctrl.CONFIG__wifi_config.json_data)["AP"]["AP_IP"].as<String>());
           IPAddress AP_gateway;
-          AP_gateway.fromString((*Device_Ctrl.JSON__WifiConfig)["AP"]["AP_gateway"].as<String>());
+          AP_gateway.fromString((*Device_Ctrl.CONFIG__wifi_config.json_data)["AP"]["AP_gateway"].as<String>());
           IPAddress AP_subnet_mask;
-          AP_subnet_mask.fromString((*Device_Ctrl.JSON__WifiConfig)["AP"]["AP_subnet_mask"].as<String>());
+          AP_subnet_mask.fromString((*Device_Ctrl.CONFIG__wifi_config.json_data)["AP"]["AP_subnet_mask"].as<String>());
           WiFi.softAPConfig(AP_IP,AP_gateway,AP_subnet_mask);
-          WiFi.softAP((*Device_Ctrl.JSON__WifiConfig)["AP"]["AP_Name"].as<String>());
+          WiFi.softAP((*Device_Ctrl.CONFIG__wifi_config.json_data)["AP"]["AP_Name"].as<String>());
           WiFi.begin(
-            (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Name"].as<String>().c_str(),
-            (*Device_Ctrl.JSON__WifiConfig)["Remote"]["remote_Password"].as<String>().c_str()
+            (*Device_Ctrl.CONFIG__wifi_config.json_data)["Remote"]["remote_Name"].as<String>().c_str(),
+            (*Device_Ctrl.CONFIG__wifi_config.json_data)["Remote"]["remote_Password"].as<String>().c_str()
           );
           WiFi.setAutoReconnect(true);
           WiFi.setAutoConnect(true);
@@ -1010,7 +948,7 @@ void C_Device_Ctrl::CreateWifiManagerTask()
 
 bool C_Device_Ctrl::WiFiConnectTest(int count)
 {
-  String TargetIP = (*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"]["check_IP"].as<String>();
+  String TargetIP = (*Device_Ctrl.CONFIG__wifi_config.json_data)["Remote"]["checker"]["check_IP"].as<String>();
   IPAddress LocalWiFi;
   if (LocalWiFi.fromString(TargetIP) == false) {
     ESP_LOGE("WIFI檢查", "check_IP 設定字串無法轉換為 IP, %s", TargetIP.c_str());
@@ -1070,13 +1008,13 @@ String C_Device_Ctrl::AES_decode(String content)
 void C_Device_Ctrl::SendLineNotifyMessage(char * content)
 {
   String LINE_Notify_id;
-  String LINE_Notify_id_encode = (*Device_Ctrl.JSON__DeviceBaseInfo)["LINE_Notify_id"].as<String>();
+  String LINE_Notify_id_encode = (*Device_Ctrl.CONFIG__device_base_config.json_data)["LINE_Notify_id"].as<String>();
   if (LINE_Notify_id_encode != "null") {
     LINE_Notify_id = Device_Ctrl.AES_decode(LINE_Notify_id_encode);
   } else {
     LINE_Notify_id = "";
   }
-  bool LINE_Notify_switch = (*Device_Ctrl.JSON__DeviceBaseInfo)["LINE_Notify_switch"].as<bool>();
+  bool LINE_Notify_switch = (*Device_Ctrl.CONFIG__device_base_config.json_data)["LINE_Notify_switch"].as<bool>();
   if (LINE_Notify_id != "" & LINE_Notify_switch) {
     HTTPClient http;
     http.setTimeout(2000);
@@ -1128,26 +1066,26 @@ void smtpCallback(SMTP_Status status){
 int C_Device_Ctrl::SendGmailNotifyMessage(char * MailSubject, char * content)
 {
   //? https://support.google.com/accounts/answer/185833
-  bool isSendMail = (*JSON__DeviceBaseInfo)["Mail_Notify_switch"].as<bool>();
+  bool isSendMail = (*CONFIG__device_base_config.json_data)["Mail_Notify_switch"].as<bool>();
   if (isSendMail) {
     String SMTP_HOST = "smtp.gmail.com";
     int SMTP_PORT = 465;
-    String DeviceName = (*JSON__DeviceBaseInfo)["device_no"].as<String>();
+    String DeviceName = (*CONFIG__device_base_config.json_data)["device_no"].as<String>();
     String SenderName = String("自動化水質機-") + DeviceName;
     String User = "User";
-    String AutherMail = (*JSON__DeviceBaseInfo)["Mail_Notify_Auther"].as<String>();
+    String AutherMail = (*CONFIG__device_base_config.json_data)["Mail_Notify_Auther"].as<String>();
     if (AutherMail=="null") {
       ESP_LOGE("Mail", "Mail警告訊息功能缺乏");
       smtp.sendingResult.clear();
       return -4;
     }
-    String Key_encode = (*JSON__DeviceBaseInfo)["Mail_Notify_Key"].as<String>();
+    String Key_encode = (*CONFIG__device_base_config.json_data)["Mail_Notify_Key"].as<String>();
     if (Key_encode=="null") {
       smtp.sendingResult.clear();
       return -5;
     }
     String Key = Device_Ctrl.AES_decode(Key_encode);
-    String TargetMail = (*JSON__DeviceBaseInfo)["Mail_Notify_Target"].as<String>();
+    String TargetMail = (*CONFIG__device_base_config.json_data)["Mail_Notify_Target"].as<String>();
     if (TargetMail=="null") {
       smtp.sendingResult.clear();
       return -6;
@@ -1352,21 +1290,29 @@ void C_Device_Ctrl::CreateLINE_MAIN_NotifyTask()
   }
 }
 
-DynamicJsonDocument C_Device_Ctrl::CheckComsumeStatus()
+//? 檢查個別維護項目是否需要發出警報
+DynamicJsonDocument C_Device_Ctrl::CheckMaintenanceItemStatus()
 {
   DynamicJsonDocument ReturnData(1024);
-  for (JsonPair ConsumeData : (*JSON__Consume).as<JsonObject>()) {
+  for (JsonPair ConsumeData : (*CONFIG__maintenance_item.json_data).as<JsonObject>()) {
     String TargetName = String(ConsumeData.key().c_str());
     if (TargetName == "null") {
       continue;
     }
-    double alarm = (*JSON__Consume)[TargetName]["alarm"].as<double>();
-    double remaining = (*JSON__Consume)[TargetName]["remaining"].as<double>();
-    ESP_LOGD("", "%s, %.2f, %.2f",
-      TargetName, alarm, remaining
-    );
-    if (remaining < alarm) {
-      ReturnData[TargetName].set((*JSON__Consume)[TargetName]);
+    bool ifTimeCheck = (*CONFIG__maintenance_item.json_data)[TargetName]["time_check_switch"].as<bool>();
+    if (ifTimeCheck) {
+      int day_alarm = (*CONFIG__maintenance_item.json_data)[TargetName]["day_alarm"].as<int>();
+      String start_time = (*CONFIG__maintenance_item.json_data)[TargetName]["start_time"].as<String>();
+      // TODO: 判斷時間差是否要發出警告 
+      
+    }
+    bool ifRemainingCheck = (*CONFIG__maintenance_item.json_data)[TargetName]["remaining_check_switch"].as<bool>();
+    if (ifRemainingCheck) {
+      int remaining = (*CONFIG__maintenance_item.json_data)[TargetName]["remaining"].as<int>();
+      int remaining_alarm = (*CONFIG__maintenance_item.json_data)[TargetName]["remaining_alarm"].as<int>();
+      if (remaining < remaining_alarm) {
+        ReturnData[TargetName].set((*CONFIG__maintenance_item.json_data)[TargetName]);
+      }
     }
   }
   return ReturnData;
@@ -1375,29 +1321,30 @@ DynamicJsonDocument C_Device_Ctrl::CheckComsumeStatus()
 void C_Device_Ctrl::SendComsumeWaring()
 {
   String WarningStr = "";
-  DynamicJsonDocument WarningData = CheckComsumeStatus();
-  for (JsonPair ConsumeData : WarningData.as<JsonObject>()) {
-    String TargetName = String(ConsumeData.key().c_str());
-    if (TargetName == "null") {
-      continue;
-    }
-    double alarm = (*JSON__Consume)[TargetName]["alarm"].as<double>();
-    double remaining = (*JSON__Consume)[TargetName]["remaining"].as<double>();
-    if (TargetName == "RO") {
-      WarningStr += " - 自來水桶剩餘量: "+String(remaining,2)+"ml, 低於設定值: "+String(alarm,2)+" ml\n";
-    }
-    else if (TargetName == "NO2_R1") {
-      WarningStr += " - 亞硝酸鹽R1試劑剩餘量: "+String(remaining,2)+"ml, 低於設定值: "+String(alarm,2)+" ml\n";
-    }
-    else if (TargetName == "NH4_R1") {
-      WarningStr += " - 氨氮R1試劑剩餘量: "+String(remaining,2)+"ml, 低於設定值: "+String(alarm,2)+" ml\n";
-    }
-    else if (TargetName == "NH4_R2") {
-      WarningStr += " - 氨氮R2試劑剩餘量: "+String(remaining,2)+"ml, 低於設定值: "+String(alarm,2)+" ml\n";
-    }
-  }
+  DynamicJsonDocument WarningData = CheckMaintenanceItemStatus();
+  // TODO 修改
+  // for (JsonPair ConsumeData : WarningData.as<JsonObject>()) {
+  //   String TargetName = String(ConsumeData.key().c_str());
+  //   if (TargetName == "null") {
+  //     continue;
+  //   }
+  //   double alarm = (*JSON__Consume)[TargetName]["alarm"].as<double>();
+  //   double remaining = (*JSON__Consume)[TargetName]["remaining"].as<double>();
+  //   if (TargetName == "RO") {
+  //     WarningStr += " - 自來水桶剩餘量: "+String(remaining,2)+"ml, 低於設定值: "+String(alarm,2)+" ml\n";
+  //   }
+  //   else if (TargetName == "NO2_R1") {
+  //     WarningStr += " - 亞硝酸鹽R1試劑剩餘量: "+String(remaining,2)+"ml, 低於設定值: "+String(alarm,2)+" ml\n";
+  //   }
+  //   else if (TargetName == "NH4_R1") {
+  //     WarningStr += " - 氨氮R1試劑剩餘量: "+String(remaining,2)+"ml, 低於設定值: "+String(alarm,2)+" ml\n";
+  //   }
+  //   else if (TargetName == "NH4_R2") {
+  //     WarningStr += " - 氨氮R2試劑剩餘量: "+String(remaining,2)+"ml, 低於設定值: "+String(alarm,2)+" ml\n";
+  //   }
+  // }
   if (WarningStr.length() == 0) {return;}
-  String sendString = "\n儀器: " + (*Device_Ctrl.JSON__DeviceBaseInfo)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 以下耗材可能需要更換\n";
+  String sendString = "\n儀器: " + (*Device_Ctrl.CONFIG__device_base_config.json_data)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 以下耗材可能需要更換\n";
   sendString += WarningStr;
   sendString += "請盡速確認列表內耗材是否充足";
   Serial.println(sendString);
@@ -1644,10 +1591,10 @@ void ScheduleManager(void* parameter)
       vTaskDelay(1000/portTICK_PERIOD_MS);
       continue;
     }
-    if ((*Device_Ctrl.JSON__DeviceBaseInfo)["schedule_switch"].as<bool>()) {
+    if ((*Device_Ctrl.CONFIG__device_base_config.json_data)["schedule_switch"].as<bool>()) {
       if (minute(nowTime) == 0) {
         int Hour = hour(nowTime);
-        String targetString = (*Device_Ctrl.JSON__ScheduleConfig)[Hour].as<String>();
+        String targetString = (*Device_Ctrl.CONFIG__schedule.json_data)[Hour].as<String>();
         if (targetString != "-") {
           DynamicJsonDocument NewPipelineSetting(60000);
           int eventCount = 0;
@@ -1904,11 +1851,11 @@ void C_Device_Ctrl::WriteSysInfo()
 
 
 
-  // int IsCheckOpen = (*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"]["check"].as<int>();
+  // int IsCheckOpen = (*Device_Ctrl.CONFIG__wifi_config.json_data)["Remote"]["checker"]["check"].as<int>();
   // Serial.println(IsCheckOpen);
   // if (IsCheckOpen == 1) {
   //   IPAddress LocalWiFi; 
-  //   LocalWiFi.fromString((*Device_Ctrl.JSON__WifiConfig)["Remote"]["checker"]["check_IP"].as<String>());
+  //   LocalWiFi.fromString((*Device_Ctrl.CONFIG__wifi_config.json_data)["Remote"]["checker"]["check_IP"].as<String>());
   //   bool LocalWiFiResult = Ping.ping(LocalWiFi);
   //   ESP_LOGD("SYS", "WiFi基地台 Ping 測試: %s", LocalWiFiResult?"成功":"失敗");
   //   if (LocalWiFiResult == false) {
@@ -1945,12 +1892,12 @@ void C_Device_Ctrl::ItemUsedAdd(String ItemName, int countAdd)
   //? 寫入 sqlite DB
   InsertNewUsedDataToDB(now(), ItemName, countAdd);
   //? 寫入JSON
-  if ((*JSON__ItemUseCount)[ItemName] == nullptr) {
-    (*JSON__ItemUseCount)[ItemName] = countAdd;
+  if ((*CONFIG__item_use_count.json_data)[ItemName] == nullptr) {
+    (*CONFIG__item_use_count.json_data)[ItemName] = countAdd;
   } else {
-    (*JSON__ItemUseCount)[ItemName] = (*JSON__ItemUseCount)[ItemName].as<int>() + countAdd;
+    (*CONFIG__item_use_count.json_data)[ItemName] = (*CONFIG__item_use_count.json_data)[ItemName].as<int>() + countAdd;
   }
-  ExFile_WriteJsonFile(SD, FilePath__SD__ItemUseCount, *JSON__ItemUseCount);
+  CONFIG__item_use_count.writeConfig();
 }
 
 void C_Device_Ctrl::InsertNewUsedDataToDB(time_t time, String item, int count)

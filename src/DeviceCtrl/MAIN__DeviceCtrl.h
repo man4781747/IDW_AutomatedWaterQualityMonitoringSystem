@@ -20,7 +20,7 @@
 #include <ESPAsyncWebServer.h>
 #include <sqlite3.h>
 #include "PeristalticMotorCtrl.h"
-// #include "WebsocketSetting.h"
+#include "./DeviceCtrl/ConfigSetting.h"
 #include <unordered_map>
 #include <map>
 
@@ -179,47 +179,41 @@ class C_Device_Ctrl
     String FilePath__SD__DeviceConfig = "/config/device_config.json";
     DynamicJsonDocument *JSON__DeviceConfig = new DynamicJsonDocument(1024);
 
-    String FilePath__SD__SpectrophotometerConfig = "/config/spectrophotometer_config.json";
-    DynamicJsonDocument *JSON__SpectrophotometerConfig = new DynamicJsonDocument(1024*4);
-
-    String FilePath__SD__PHmeterConfig = "/config/PHmeter_config.json";
-    DynamicJsonDocument *JSON__PHmeterConfig = new DynamicJsonDocument(1024);
-
-    String FilePath__SD__PoolConfig = "/config/pool_config.json";
-    DynamicJsonDocument *JSON__PoolConfig = new DynamicJsonDocument(1024*2);
-
-    String FilePath__SD__ScheduleConfig = "/config/schedule_config.json";
-    DynamicJsonDocument *JSON__ScheduleConfig = new DynamicJsonDocument(1024*4);
-
-    String FilePath__SD__ServoConfig = "/config/pwm_motor_config.json";
-    DynamicJsonDocument *JSON__ServoConfig = new DynamicJsonDocument(1024*8);
-
-    String FilePath__SD__PeristalticMotorConfig = "/config/peristaltic_motor_config.json";
-    DynamicJsonDocument *JSON__PeristalticMotorConfig = new DynamicJsonDocument(1024*2);
 
     String FilePath__SD__WiFiConfig = "/config/wifi_config.json";
-    DynamicJsonDocument *JSON__WifiConfig = new DynamicJsonDocument(1024);
+    WiFiConfig CONFIG__wifi_config = WiFiConfig(FilePath__SD__WiFiConfig, 1024);
 
     String FilePath__SD__DeviceBaseInfo = "/config/device_base_config.json";
-    DynamicJsonDocument *JSON__DeviceBaseInfo = new DynamicJsonDocument(1024);
-    void LoadDeviceBaseInfoJSONFile(bool rebuild);
+    DeviceBaseConfig CONFIG__device_base_config = DeviceBaseConfig(FilePath__SD__DeviceBaseInfo, 1024);
+
+    String FilePath__SD__SpectrophotometerConfig = "/config/spectrophotometer_config.json";
+    SpectrophotoMeterConfig CONFIG__spectrophoto_meter = SpectrophotoMeterConfig(FilePath__SD__SpectrophotometerConfig, 1024*4);
+
+    String FilePath__SD__PHmeterConfig = "/config/PHmeter_config.json";
+    pH_MeterConfig CONFIG__ph_meter = pH_MeterConfig(FilePath__SD__PHmeterConfig, 1024);
+
+    String FilePath__SD__PoolConfig = "/config/pool_config.json";
+    PoolConfig CONFIG__pool = PoolConfig(FilePath__SD__PoolConfig, 1024*2);
+
+    String FilePath__SD__ServoConfig = "/config/pwm_motor_config.json";
+    ServoConfig CONFIG__servo = ServoConfig(FilePath__SD__ServoConfig, 1024*8);
+
+    String FilePath__SD__PeristalticMotorConfig = "/config/peristaltic_motor_config.json";
+    PeristalticMotorConfig CONFIG__peristaltic_motor = PeristalticMotorConfig(FilePath__SD__PeristalticMotorConfig, 1024*2);
+
+    String FilePath__SD__ScheduleConfig = "/config/schedule_config.json";
+    ScheduleConfig CONFIG__schedule = ScheduleConfig(FilePath__SD__ScheduleConfig, 1024*4);
+
+    String FilePath__SD__ItemUseCount = "/datas/ItemUseCount.json";
+    ItemUseCountConfig CONFIG__item_use_count = ItemUseCountConfig(FilePath__SD__ItemUseCount, 1024*5);
+
+    String FilePath__SD__RO_Result = "/datas/RO_Result.json";
+    RO_CorrectionConfig CONFIG__RO_correction = RO_CorrectionConfig(FilePath__SD__RO_Result, 1024);
+
+    String FilePath__SD__MaintenanceItem = "/datas/Consume.json";
+    MaintenanceItemConfig CONFIG__maintenance_item = MaintenanceItemConfig(FilePath__SD__MaintenanceItem, 1024*4);
 
     String FilePath__SD__LastSensorDataSave = "/datas/temp.json";
-
-    DynamicJsonDocument *JSON__ItemUseCount = new DynamicJsonDocument(1024*5); //? 裝置使用累積檔案
-    String FilePath__SD__ItemUseCount = "/datas/ItemUseCount.json";
-
-    DynamicJsonDocument *JSON__RO_Result = new DynamicJsonDocument(1024);
-    String FilePath__SD__RO_Result = "/datas/RO_Result.json";
-
-    DynamicJsonDocument *JSON__Consume = new DynamicJsonDocument(1024);
-    String FilePath__SD__Consume = "/datas/Consume.json";
-
-    DynamicJsonDocument *JSON__Maintain = new DynamicJsonDocument(1024);
-    String FilePath__SD__Maintain = "/datas/Maintain.json";
-
-    void RebuildMaintainJSON();
-
 
     
     /**
@@ -281,7 +275,7 @@ class C_Device_Ctrl
     TaskHandle_t TASK__LINE_MAIN_Notify = NULL;
     void CreateLINE_MAIN_NotifyTask();
 
-    DynamicJsonDocument CheckComsumeStatus();
+    DynamicJsonDocument CheckMaintenanceItemStatus();
     void SendComsumeWaring();
 
     //! Websocket相關
