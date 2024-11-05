@@ -928,8 +928,13 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
           request->send(response);
         }
       } 
+      else if (request->hasParam("all")) {
+        Device_Ctrl.CONFIG__item_use_count.loadConfig(true);
+        AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__item_use_count.JsonFormatString());
+        request->send(response);
+      }
       else {
-        AsyncWebServerResponse* response = request->beginResponse(500, "application/json", "{\"Result\":\"需要參數: name\"}");
+        AsyncWebServerResponse* response = request->beginResponse(500, "application/json", "{\"Result\":\"需要參數: name or all\"}");
         request->send(response);
       }
     }
