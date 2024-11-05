@@ -60,7 +60,8 @@ inline bool ExFile_CreateFile(fs::FS& fileSystem, String FilePath) {
 
 inline bool ExFile_WriteJsonFile(fs::FS& fileSystem, String filePath, JsonDocument &jsonData) {
   if (!fileSystem.exists(filePath)) {
-     return true;
+    ExFile_CreateFile(fileSystem, filePath);
+    // return true;
   }
   File file = fileSystem.open(filePath, FILE_WRITE);
   size_t writeSize = serializeJson(jsonData, file);

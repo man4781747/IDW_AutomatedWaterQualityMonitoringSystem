@@ -17,6 +17,7 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include <esp_log.h>
 #include "StorgeSystemExternalFunction.h"
 #include "TimeLibExternalFunction.h"
 
@@ -305,12 +306,15 @@ struct ScheduleConfig : ConfigSetting {
   void loadConfig(bool rebuild=false) override {
     if (rebuild) {
       (*json_data).clear();
+    } else {
+      ExFile_LoadJsonFile(SD, path, *json_data);
+    }
+    if ((*json_data).as<JsonArray>().size()==0) {
+      ESP_LOGW("CONFIG", "排程數據有誤，重建之");
       for (int i = 0;i<24;i++) {
         (*json_data).add("-");
       }
       ExFile_WriteJsonFile(SD, path, *json_data);
-    } else {
-      ExFile_LoadJsonFile(SD, path, *json_data);
     }
   }
 };
@@ -320,9 +324,14 @@ struct ItemUseCountConfig : ConfigSetting {
   void loadConfig(bool rebuild=false) override {
     if (rebuild) {
       (*json_data).clear();
-      json_data->createNestedObject();
-      ExFile_WriteJsonFile(SD, path, *json_data);
     } else {
+      ExFile_LoadJsonFile(SD, path, *json_data);
+    }
+    if ((*json_data).isNull()) {
+      ESP_LOGW("CONFIG", "儀器運作計數為空，重建");
+      File file = SD.open(path, FILE_WRITE);
+      file.print("{}");
+      file.close();
       ExFile_LoadJsonFile(SD, path, *json_data);
     }
   }
