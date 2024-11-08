@@ -276,10 +276,12 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       }
       if (request->hasParam("LINE_Notify_switch")) {
         bool LINE_Notify_switch = request->getParam("LINE_Notify_switch")->value()=="true"?true:false;
+        // String LINE_Notify_switch = request->getParam("LINE_Notify_switch")->value();
         (*Device_Ctrl.CONFIG__device_base_config.json_data)["LINE_Notify_switch"].set(LINE_Notify_switch);
       }
       if (request->hasParam("Mail_Notify_switch")) {
         bool Mail_Notify_switch = request->getParam("Mail_Notify_switch")->value()=="true"?true:false;
+        // String Mail_Notify_switch = request->getParam("Mail_Notify_switch")->value();
         (*Device_Ctrl.CONFIG__device_base_config.json_data)["Mail_Notify_switch"].set(Mail_Notify_switch);
       }
       if (request->hasParam("Mail_Notify_Auther")) {
@@ -308,7 +310,40 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
   asyncServer.on("/api/config/device_base_config", HTTP_DELETE,
     [&](AsyncWebServerRequest *request)
     { 
-      Device_Ctrl.CONFIG__device_base_config.loadConfig(true);
+      if (request->hasParam("all")) {
+        Device_Ctrl.CONFIG__device_base_config.loadConfig(true);
+      }
+      else {
+        if (request->hasParam("device_name")) {
+          (*Device_Ctrl.CONFIG__device_base_config.json_data).remove("device_name");
+        }
+        if (request->hasParam("device_no")) {
+          (*Device_Ctrl.CONFIG__device_base_config.json_data).remove("device_no");
+        }
+        if (request->hasParam("LINE_Notify_id")) {
+          (*Device_Ctrl.CONFIG__device_base_config.json_data).remove("LINE_Notify_id");
+        }
+        if (request->hasParam("LINE_Notify_switch")) {
+          (*Device_Ctrl.CONFIG__device_base_config.json_data).remove("LINE_Notify_switch");
+        }
+        if (request->hasParam("Mail_Notify_switch")) {
+          (*Device_Ctrl.CONFIG__device_base_config.json_data).remove("Mail_Notify_switch");
+        }
+        if (request->hasParam("Mail_Notify_Auther")) {
+          (*Device_Ctrl.CONFIG__device_base_config.json_data).remove("Mail_Notify_Auther");
+        }
+        if (request->hasParam("Mail_Notify_Key")) {
+          (*Device_Ctrl.CONFIG__device_base_config.json_data).remove("Mail_Notify_Key");
+        }
+        if (request->hasParam("Mail_Notify_Target")) {
+          (*Device_Ctrl.CONFIG__device_base_config.json_data).remove("Mail_Notify_Target");
+        }
+        if (request->hasParam("schedule_switch")) {
+          (*Device_Ctrl.CONFIG__device_base_config.json_data).remove("schedule_switch");
+        }
+        Device_Ctrl.CONFIG__device_base_config.writeConfig();
+        Device_Ctrl.CONFIG__device_base_config.loadConfig();
+      }
       AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__device_base_config.JsonFormatString());
       request->send(response);
     }
