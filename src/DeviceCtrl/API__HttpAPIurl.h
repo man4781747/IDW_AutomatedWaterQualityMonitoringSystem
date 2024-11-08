@@ -547,7 +547,6 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
     }
   );
 
-
   asyncServer.on("/api/config/wifi_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
     { 
@@ -601,6 +600,79 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       request->send(response);
     }
   );
+
+
+  asyncServer.on("/api/config/maintenance_item", HTTP_GET,
+  [&](AsyncWebServerRequest *request)
+    { 
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__maintenance_item.JsonFormatString());
+      request->send(response);
+    }
+  );
+
+  asyncServer.on("/api/config/maintenance_item", HTTP_PATCH,
+  [&](AsyncWebServerRequest *request)
+    { 
+      if (request->hasParam("key")) {
+        bool anyChange = false;
+        String key = request->getParam("key")->value();
+        if (request->hasParam("time_check_switch")) {
+          bool time_check_switch = request->getParam("time_check_switch")->value()=="true"?true:false;
+          (*Device_Ctrl.CONFIG__maintenance_item.json_data)[key]["time_check_switch"].set(time_check_switch);
+          anyChange = true;
+        }
+        if (request->hasParam("start_time")) {
+          (*Device_Ctrl.CONFIG__maintenance_item.json_data)[key]["start_time"].set(request->getParam("start_time")->value());
+          anyChange = true;
+        }
+        if (request->hasParam("day_alarm")) {
+          (*Device_Ctrl.CONFIG__maintenance_item.json_data)[key]["day_alarm"].set(request->getParam("day_alarm")->value().toInt());
+          anyChange = true;
+        }
+        if (request->hasParam("remaining_check_switch")) {
+          bool remaining_check_switch = request->getParam("remaining_check_switch")->value()=="true"?true:false;
+          (*Device_Ctrl.CONFIG__maintenance_item.json_data)[key]["remaining_check_switch"].set(remaining_check_switch);
+          anyChange = true;
+        }
+        if (request->hasParam("remaining")) {
+          (*Device_Ctrl.CONFIG__maintenance_item.json_data)[key]["remaining"].set(request->getParam("remaining")->value().toInt());
+          anyChange = true;
+        }
+        if (request->hasParam("reset_remaining")) {
+          (*Device_Ctrl.CONFIG__maintenance_item.json_data)[key]["reset_remaining"].set(request->getParam("reset_remaining")->value().toInt());
+          anyChange = true;
+        }
+        if (request->hasParam("remaining_alarm")) {
+          (*Device_Ctrl.CONFIG__maintenance_item.json_data)[key]["remaining_alarm"].set(request->getParam("remaining_alarm")->value().toInt());
+          anyChange = true;
+        }
+        if (anyChange) {Device_Ctrl.CONFIG__maintenance_item.writeConfig();}
+        AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__maintenance_item.JsonFormatString());
+        request->send(response);
+      }
+      else {
+        AsyncWebServerResponse* response = request->beginResponse(500, "application/json", "缺乏參數: key");
+        request->send(response);
+      }
+    }
+  );
+
+
+  asyncServer.on("/api/config/maintenance_item", HTTP_DELETE,
+  [&](AsyncWebServerRequest *request)
+    { 
+      if (request->hasParam("all")) {
+        Device_Ctrl.CONFIG__maintenance_item.loadConfig(true);
+      } else if (request->hasParam("key")) {
+        (*Device_Ctrl.CONFIG__maintenance_item.json_data).remove(request->getParam("key")->value());
+        Device_Ctrl.CONFIG__maintenance_item.writeConfig();
+        Device_Ctrl.CONFIG__maintenance_item.loadConfig();
+      }
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__maintenance_item.JsonFormatString());
+      request->send(response);
+    }
+  );
+
 }
 
 //! 排程相關API

@@ -378,13 +378,17 @@ struct MaintenanceItemConfig : ConfigSetting {
     }
     bool anyChange = false;
     const char* defaultConfig[5] = {"RO", "NO2_R1", "NH4_R1", "NH4_R2", "pH"};
+    const char* nameConfig[5] = {"自來水", "亞硝酸鹽 R1", "氨氮 R1", "氨氮 R2", "pH計"};
+    const int resetRemaining[5] = {500, 300, 300, 300, 99999};
+    const bool defaultTimeCheckSwitch[5] = {true, true, true, true, true};
+    const bool defaultRemainingCheckSwitch[5] = {true,true,true,true,false};
     for (int i=0;i<5;i++) {
       if ((*json_data)[defaultConfig[i]]["time_check_switch"] == nullptr) {
-        (*json_data)[defaultConfig[i]]["time_check_switch"].set(false);
+        (*json_data)[defaultConfig[i]]["time_check_switch"].set(defaultTimeCheckSwitch[i]);
         anyChange = true;
       }
       if ((*json_data)[defaultConfig[i]]["start_time"] == nullptr) {
-        (*json_data)[defaultConfig[i]]["start_time"].set(GetDatetimeString());
+        (*json_data)[defaultConfig[i]]["start_time"].set(GetDateString("-"));
         anyChange = true;
       }
       if ((*json_data)[defaultConfig[i]]["time_check_days"] == nullptr) {
@@ -392,17 +396,27 @@ struct MaintenanceItemConfig : ConfigSetting {
         anyChange = true;
       }
       if ((*json_data)[defaultConfig[i]]["remaining_check_switch"] == nullptr) {
-        (*json_data)[defaultConfig[i]]["remaining_check_switch"].set(false);
+        (*json_data)[defaultConfig[i]]["remaining_check_switch"].set(defaultRemainingCheckSwitch[i]);
         anyChange = true;
       }
       if ((*json_data)[defaultConfig[i]]["remaining"] == nullptr) {
-        (*json_data)[defaultConfig[i]]["remaining"].set(500);
+        (*json_data)[defaultConfig[i]]["remaining"].set(resetRemaining[i]);
+        anyChange = true;
+      }
+      if ((*json_data)[defaultConfig[i]]["reset_remaining"] == nullptr) {
+        (*json_data)[defaultConfig[i]]["reset_remaining"].set(resetRemaining[i]);
         anyChange = true;
       }
       if ((*json_data)[defaultConfig[i]]["remaining_alarm"] == nullptr) {
         (*json_data)[defaultConfig[i]]["remaining_alarm"].set(10);
         anyChange = true;
       }
+      if ((*json_data)[defaultConfig[i]]["name"] == nullptr) {
+        (*json_data)[defaultConfig[i]]["name"].set(nameConfig[i]);
+        anyChange = true;
+      }
+
+
     }
     if (anyChange) {
       ExFile_WriteJsonFile(SD, path, *json_data);
