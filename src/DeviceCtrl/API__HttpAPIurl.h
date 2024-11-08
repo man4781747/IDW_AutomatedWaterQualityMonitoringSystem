@@ -503,6 +503,15 @@ void Set_deviceConfigs_apis(AsyncWebServer &asyncServer)
       }
     }
   );
+  asyncServer.on("/api/config/PHmeter_config", HTTP_DELETE,
+    [&](AsyncWebServerRequest *request)
+    { 
+      Device_Ctrl.CONFIG__ph_meter.loadConfig(true);
+      AsyncWebServerResponse* response = request->beginResponse(200, "application/json", Device_Ctrl.CONFIG__ph_meter.JsonFormatString());
+      request->send(response);
+    }
+  );
+
 
   asyncServer.on("/api/config/wifi_config", HTTP_GET,
     [&](AsyncWebServerRequest *request)
