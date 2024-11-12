@@ -17,9 +17,9 @@
 #include "DoAction/servo.h"
 #include "DoAction/ph_meter.h"
 #include "DoAction/spectrophoto_meter.h"
+#include "DoAction/wait.h"
 
 void StopStep(StepTaskDetail* StepTaskDetailItem);
-int Do_WaitAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
 StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
 void StepTask(void* parameter) {
   //! StepTaskDetailItem 指針來源於 Device_Ctrl.StepTaskDetailList[i]
@@ -104,7 +104,9 @@ void StepTask(void* parameter) {
           }
         }
         else if (eventItem.containsKey("wait")) {
-          if (Do_WaitAction(eventItem, StepTaskDetailItem) != 1) {
+          DoWaitAction action = DoWaitAction(eventItem, StepTaskDetailItem);
+          action.Run();
+          if (action.result_code == ResultCode::STOP_BY_OUTSIDE) {
             isStepFail = true;
             EmergencyStop = true;
             break;
@@ -522,29 +524,5 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
 }
 
 
-int Do_WaitAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
-{
-  int waitSeconds = eventItem["wait"].as<int>();
-  char buffer[1024];
-  sprintf(buffer, "[%s][%s]等待 %d 秒", 
-    StepTaskDetailItem->PipelineName.c_str(), 
-    (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][StepTaskDetailItem->StepName]["title"].as<String>().c_str(),
-    waitSeconds
-  );
 
-
-  ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"%s",buffer);
-  // Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3,"%s",buffer);
-  Device_Ctrl.BroadcastLogToClient(NULL, 3,"%s",buffer);
-  unsigned long start_time = millis();
-  unsigned long end_time = start_time + waitSeconds*1000;
-  while (millis() < end_time) {
-    if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
-      ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"等待時間步驟收到緊急中斷要求，準備緊急終止儀器");
-      return -1;
-    }
-    vTaskDelay(100/portTICK_PERIOD_MS);
-  }
-  return 1;
-}
 #endif
