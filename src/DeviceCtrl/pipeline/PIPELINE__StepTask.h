@@ -3,7 +3,7 @@
 
 #include <esp_log.h>
 #include <ArduinoJson.h>
-#include "MAIN__DeviceCtrl.h"
+#include "../MAIN__DeviceCtrl.h"
 #include "lx_20s.h"
 #include "PeristalticMotorCtrl.h"
 #include <INA226.h>
@@ -12,30 +12,17 @@
 #include <driver/ledc.h>
 #include <driver/timer.h>
 #include <ModbusRTU.h>
-ModbusRTU mb;
 
-enum ResultCode: int {
-  SUCCESS = 0,
-  STOP_BY_OUTSIDE = 1,
-  KEEP_RUN = 2,
-  STOP_THIS_STEP = -1,
-  STOP_THIS_PIPELINE = -2,
-  STOP_DEVICE = -3,
-};
+#include "DoAction/common.h"
+#include "DoAction/servo.h"
 
-struct StepResult {
-  ResultCode code;
-  String message;
-};
+
 
 void StopStep(StepTaskDetail* StepTaskDetailItem);
-StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
 int Do_WaitAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
 StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
 StepResult Do_SpectrophotometerAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
 StepResult Do_PHmeterAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
-StepResult Do_StepMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem);
-
 void StepTask(void* parameter) {
   //! StepTaskDetailItem 指針來源於 Device_Ctrl.StepTaskDetailList[i]
   //! 其中 i 代表不同 task index
@@ -101,12 +88,15 @@ void StepTask(void* parameter) {
       //? 一個一個event item依序執行
       for (JsonObject eventItem : eventList) {
         if (eventItem.containsKey("pwm_motor_list")) {
-          StepResult actionResult = Do_ServoMotorAction(eventItem, StepTaskDetailItem);
-          if (actionResult.code == ResultCode::STOP_DEVICE) {
+          DoServoAction actionItem = DoServoAction(eventItem, StepTaskDetailItem);
+          actionItem.Run();
+          // StepResult actionResult = DoServoAction(eventItem, StepTaskDetailItem).Run();
+          // StepResult actionResult = Do_ServoMotorAction(eventItem, StepTaskDetailItem);
+          if (actionItem.result_code == ResultCode::STOP_DEVICE) {
             String sendString = "\n儀器: " + (*Device_Ctrl.CONFIG__device_base_config.json_data)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到異常\n";
             sendString += "Pipeline: "+pipelineName+"\n";
             sendString += "異常步驟: "+ThisStepGroupTitle+"\n===========\n";
-            sendString += actionResult.message;
+            sendString += actionItem.ResultMessage;
             sendString += "\n後續處理方法: 整機停止\n";
             Device_Ctrl.AddLineNotifyEvent(sendString);
             Device_Ctrl.AddGmailNotifyEvent("機台錯誤訊息",sendString);
@@ -121,10 +111,6 @@ void StepTask(void* parameter) {
             EmergencyStop = true;
             break;
           }
-        }
-        else if (eventItem.containsKey("step_motor_list")) {
-          StepResult actionResult = Do_StepMotorAction(eventItem, StepTaskDetailItem);
-
         }
         else if (eventItem.containsKey("peristaltic_motor_list")) {
           StepResult actionResult = Do_PeristalticMotorAction(eventItem, StepTaskDetailItem);
@@ -239,196 +225,31 @@ void StopStep(StepTaskDetail* StepTaskDetailItem) {
   StepTaskDetailItem->TaskStatus = StepTaskStatus::Idle;
 }
 
-StepResult Do_ServoMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
-{
-  StepResult result;
-  pinMode(PIN__EN_Servo_Motor, OUTPUT);
-  xSemaphoreTake(Device_Ctrl.xMutex__LX_20S, portMAX_DELAY);
-  digitalWrite(PIN__EN_Servo_Motor, HIGH);
-  Serial2.begin(115200,SERIAL_8N1, PIN__Serial_LX_20S_RX, PIN__Serial_LX_20S_TX);
-  vTaskDelay(1000/portTICK_PERIOD_MS);
-  if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
-    ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
-    digitalWrite(PIN__EN_Servo_Motor, LOW);
-    xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
-    result.code = ResultCode::STOP_BY_OUTSIDE;
-    result.message = "";
-    return result;
-  }
 
-  String anyFail;
-  DynamicJsonDocument ServoStatusSave(3000);
-  DynamicJsonDocument ServoOldPostion(3000);
-  //? 初始化流程所需的資料
-  for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
-    int servoMotorIndex = servoMotorItem["index"].as<int>();
-    String servoMotorIndexString = String(servoMotorIndex);
-    int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
-    //? 首先讀取目標馬達的角度
-    int retryCount = 0;
-    int nowPosition = (LX_20S_SerialServoReadPosition(Serial2, servoMotorIndex));
-    while (nowPosition < -100) {
-      //? 若發現該馬達抓不到角度資訊，重試前重新初始化Serial與重新上電
-      retryCount++;
-      Serial2.end();
-      digitalWrite(PIN__EN_Servo_Motor, LOW);
-      vTaskDelay(100/portTICK_PERIOD_MS);
-      digitalWrite(PIN__EN_Servo_Motor, HIGH);
-      Serial2.begin(115200,SERIAL_8N1, PIN__Serial_LX_20S_RX, PIN__Serial_LX_20S_TX);
-      vTaskDelay(10/portTICK_PERIOD_MS);
-      nowPosition = (LX_20S_SerialServoReadPosition(Serial2, servoMotorIndex));
-      if (retryCount > 10) {break;}
-    }
-    retryCount = 0; //? 只要有讀取成功一次，就將 retry 
-    ServoOldPostion[String(servoMotorItem["index"].as<int>())] = nowPosition;
-    if (abs(targetAngValue - nowPosition) > 20) {
-      ServoStatusSave[String(servoMotorItem["index"].as<int>())] = false;
-    } else {
-      ServoStatusSave[String(servoMotorItem["index"].as<int>())] = true;
-    }
-  }
-
-  for (int ReTry=0;ReTry<10;ReTry++) {
-    if (ReTry > 5) {
-      ESP_LOGW("", "(重試第%d次)前次伺服馬達 (%s) 運作有誤，即將重試", ReTry, anyFail.c_str());
-      Device_Ctrl.BroadcastLogToClient(NULL, 1,  "(重試第%d次)前次伺服馬達 (%s) 運作有誤，即將重試", ReTry, anyFail.c_str());
-      //? 馬達運作重試前，Serial重設，電也重上
-      Serial2.end();
-      digitalWrite(PIN__EN_Servo_Motor, LOW);
-      vTaskDelay(2000/portTICK_PERIOD_MS);
-      digitalWrite(PIN__EN_Servo_Motor, HIGH);
-      Serial2.begin(115200,SERIAL_8N1, PIN__Serial_LX_20S_RX, PIN__Serial_LX_20S_TX);
-      vTaskDelay(10/portTICK_PERIOD_MS);
-    }
-    anyFail = "";
-    for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
-      if (ServoStatusSave[String(servoMotorItem["index"].as<int>())] == false) {
-        int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
-        ESP_LOGD(StepTaskDetailItem->TaskName.c_str(),"伺服馬達(LX-20S) %d 轉至 %d 度(%d)", 
-          servoMotorItem["index"].as<int>(), 
-          servoMotorItem["status"].as<int>(), targetAngValue
-        );
-        if (ReTry > 5) {
-          Device_Ctrl.BroadcastLogToClient(NULL, 0,  "(重試第%d次)前伺服馬達(LX-20S) %d 轉至 %d 度(%d)", ReTry,
-            servoMotorItem["index"].as<int>(), servoMotorItem["status"].as<int>(), targetAngValue
-          );
-        }
-        LX_20S_SerialServoMove(Serial2, servoMotorItem["index"].as<int>(),targetAngValue,500);
-        vTaskDelay(10/portTICK_PERIOD_MS);
-        if (ReTry > 5) {
-          LX_20S_SerialServoMove(Serial2, servoMotorItem["index"].as<int>(),targetAngValue,500);
-          vTaskDelay(10/portTICK_PERIOD_MS);
-          LX_20S_SerialServoMove(Serial2, servoMotorItem["index"].as<int>(),targetAngValue,500);
-          vTaskDelay(10/portTICK_PERIOD_MS);
-        }
-      }
-      if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
-        ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
-        digitalWrite(PIN__EN_Servo_Motor, LOW);
-        xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
-        result.code = ResultCode::STOP_BY_OUTSIDE;
-        result.message = "";
-        return result;
-      }
-    }
-    if (ReTry > 5) {
-      vTaskDelay(1500/portTICK_PERIOD_MS);   
-    } else {
-      vTaskDelay(700/portTICK_PERIOD_MS);
-    }
-    if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
-      ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
-      digitalWrite(PIN__EN_Servo_Motor, LOW);
-      xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
-      result.code = ResultCode::STOP_BY_OUTSIDE;
-      result.message = "";
-      return result;
-    }
-    for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
-      int ServoIndex = servoMotorItem["index"].as<int>();
-      String ServoIndexString = String(ServoIndex);
-      if (ServoStatusSave[ServoIndexString] == false) { //? 只對尚未確定完成的馬達做判斷
-        int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
-        int readAng = LX_20S_SerialServoReadPosition(Serial2, ServoIndex);
-        for (int readAngRetry = 0;readAngRetry<10;readAngRetry++) {
-          if (readAng > -100) {
-            break;
-          }
-          ESP_LOGW("", "伺服馬達 %d 讀取角度有誤: %d", servoMotorItem["index"].as<int>(), readAng);
-          Serial2.end();
-          digitalWrite(PIN__EN_Servo_Motor, LOW);
-          vTaskDelay(100/portTICK_PERIOD_MS);
-          digitalWrite(PIN__EN_Servo_Motor, HIGH);
-          Serial2.begin(115200,SERIAL_8N1, PIN__Serial_LX_20S_RX, PIN__Serial_LX_20S_TX);
-          vTaskDelay(10/portTICK_PERIOD_MS);
-          readAng = LX_20S_SerialServoReadPosition(Serial2, ServoIndex);
-        }
-        int d_ang = targetAngValue - readAng;
-        ESP_LOGD("", "伺服馬達 %d 目標角度: %d\t真實角度: %d", ServoIndex, targetAngValue, readAng);
-        
-        if (ReTry >= 5 ) {
-          int vin = (LX_20S_SerialServoReadVIN(Serial2, ServoIndex));
-          int temp = (LX_20S_SerialServoReadTeampature(Serial2, ServoIndex));
-
-          Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達 %d 目標角度: %d\t真實角度: %d", ServoIndex, targetAngValue, readAng);
-          Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達 %d 溫度: %d\t電壓: %d", ServoIndex, vin, temp);
-        }
-
-        if (abs(d_ang)>20) {
-          anyFail += ServoIndexString;
-          anyFail += ",";
-        }
-        else {
-          ServoStatusSave[ServoIndexString] = true;
-          if (abs(ServoOldPostion[ServoIndexString].as<int>() - readAng) > 500) {
-            Device_Ctrl.ItemUsedAdd("Servo_"+ServoIndexString, 2);
-          } else {
-            Device_Ctrl.ItemUsedAdd("Servo_"+ServoIndexString, 1);
-          }
-        }
-        if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
-          ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"收到緊急中斷要求，準備停止當前Step");
-          digitalWrite(PIN__EN_Servo_Motor, LOW);
-          xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
-          result.code = ResultCode::STOP_BY_OUTSIDE;
-          result.message = "";
-          return result;
-        }
-        vTaskDelay(100/portTICK_PERIOD_MS);
-      }
-    }
-
-    if (anyFail == "") {break;}
-  }
-
-  // Serial2.end();
-  digitalWrite(PIN__EN_Servo_Motor, LOW);
-  xSemaphoreGive(Device_Ctrl.xMutex__LX_20S);
-
-  if (anyFail != "") {
-    String ErrorInfo = "偵測到伺服馬達異常\n異常馬達編號: "+anyFail;
-    ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "伺服馬達(LX-20S)發生預期外的動作，準備中止儀器的所有動作");
-    Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "伺服馬達(LX-20S)發生預期外的動作，準備中止儀器的所有動作");
-    Device_Ctrl.BroadcastLogToClient(NULL, 1, "伺服馬達(LX-20S)發生預期外的動作，準備中止儀器的所有動作");
-    // String sendString = "\n儀器: " + (*Device_Ctrl.CONFIG__device_base_config.json_data)["device_no"].as<String>() + "("+WiFi.localIP().toString()+") 偵測到伺服馬達異常\n";
-    // sendString += "異常馬達編號: "+anyFail;
-    // Device_Ctrl.SendLineNotifyMessage(sendString);
-    // Device_Ctrl.SendGmailNotifyMessage("機台錯誤訊息",sendString);
-    result.code = ResultCode::STOP_DEVICE;
-    result.message = ErrorInfo;
-    return result;
-  }
-  result.code = ResultCode::SUCCESS;
-  result.message = "";
-  return result;
-}
-
-/**
- * @return int: 1 - 正常完成
- * @return int: 0 - 異常失敗
- * @return int: -1 - 標記失敗，並停下此Step
- * @return int: -2 - 標記失敗，並停下此Pipeline
- * @return int: -3 - 標記失敗，並停下儀器
+/** 蠕動馬達功能設定
+ *  可設定參數: 
+ *    1. (必要/int)index: 馬達編號
+ *    2. (必要/int)status: 0 不轉、1 正轉、2 反轉
+ *    3. (必要/float)time: 旋轉秒數
+ *    4. (str)until: 觸發停止目標物: "RO"、"SAMPLE"、"-"
+ *    5. (str)failType: 錯誤觸發類型: "timeout"、"-"
+ *    6. (str)failAction: 錯誤後行為: "stopPipeline"、"continue"
+ *    7. (str)pool: 抽取耗時記錄目標: pool-1 ~ pool-4、無
+ *    8. (str)consumeTarget: 消耗記數目標: "RO"、"NO2_R1"、"NH4_R1"、"NH4_R2"
+ *    9. (int)consumeNum: 消耗記數數量
+ *   10. (float)consumeRate: 消耗記數比率
+ *  設定檔範例: 
+  "peristaltic_motor_list": [{
+    "index": 1,
+    "status": 1,
+    "time": 240,
+    "until": "RO",
+    "consumeTarget": "RO",
+    "consumeNum": 1,
+    "failType": "timeout",
+    "failAction": "stopPipeline",
+    "pool": "pool-1"
+  }]
  */
 StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
 {
@@ -704,76 +525,6 @@ StepResult Do_PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepT
 portMUX_TYPE stepMotor_mux0 = portMUX_INITIALIZER_UNLOCKED;
 hw_timer_t * stepMotor_timer0;
 int stepMotor_countGo = 0;
-
-
-StepResult Do_StepMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)
-{
-  ESP_LOGI("TSET", "步進蠕動馬達測試");
-  //TODO 目前只有一顆 測試用
-  StepResult result;
-  Serial1.end();
-  Serial1.begin(115200,SERIAL_8N1,PIN__Step_Motor_RS485_RX, PIN__Step_Motor_RS485_TX);
-  mb.begin(&Serial1);
-  mb.setBaudrate(115200);
-  mb.master();
-  for (JsonObject stepMotorItem : eventItem["step_motor_list"].as<JsonArray>()) {
-    uint16_t status = stepMotorItem["status"].as<uint16_t>();
-    uint16_t targetID = stepMotorItem["ID"].as<uint16_t>();
-    /** 
-      * stepLevel : 馬達轉速 
-      * Step_Full = 0b000,
-      * Step_1_2 = 0b001,
-      * Step_1_4 = 0b010,
-      * Step_1_8 = 0b011,
-      * Step_1_16 = 0b100,
-      * Step_1_32 = 0b101,
-      * Step_1_64 = 0b110,
-      * Step_1_128 = 0b111
-     * 
-     */
-    uint16_t stepLevel = stepMotorItem["level"].as<uint16_t>();
-    uint16_t loopMax = stepMotorItem["time"].as<uint16_t>();
-    loopMax = loopMax*200*pow(2,stepLevel);
-    uint16_t writeData[4] = {1, loopMax,stepLevel,status};
-    mb.writeHreg(targetID,1,writeData,4);
-    while(mb.slave()) {
-      mb.task();
-      vTaskDelay(10/portTICK_PERIOD_MS);
-    }
-    Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "已發出步進馬達需求");
-    uint16_t buffer[5];
-    buffer[0] = 100;
-    int test = 0;
-    while (true) {
-      Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "準備確認剩餘數量");
-      mb.readHreg(1, 2, buffer, 1);
-      while(mb.slave()) {
-        mb.task();
-        vTaskDelay(100/portTICK_PERIOD_MS);
-      }
-      Device_Ctrl.WritePipelineLogFile(Device_Ctrl.Pipeline_LogFileName, "剩餘數量: %d", buffer[0]);
-      if (buffer[0] == 0) {
-        break;
-      }
-
-      // if (test > 10) {
-      //   break;
-      // }
-      // test ++;
-
-      buffer[0] = 100;
-      if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {
-        ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"步進蠕動馬達收到緊急中斷要求，準備緊急終止儀器");
-        uint16_t writeData[4] = {1,0,0,0};
-        mb.writeHreg(targetID,1,writeData,4);
-        return result;
-      }
-      vTaskDelay(1000/portTICK_PERIOD_MS);
-    }
-  }
-  return result;
-  //TODO 目前只有一顆 測試用
-}
 
 
 int Do_WaitAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem)

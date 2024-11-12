@@ -6,8 +6,8 @@
 #include <ESPAsyncWebServer.h>
 #include "API__HttpAPIurl.h"
 #include "SqliteFunctions.h"
-#include "PIPELINE__PipelineFlowScanTask.h"
-#include "PIPELINE__StepTask.h"
+#include "pipeline/PIPELINE__PipelineFlowScanTask.h"
+#include "pipeline/PIPELINE__StepTask.h"
 #include <TimeLib.h>
 #include "TimeLibExternalFunction.h"
 #include "WebsocketSetting.h"
