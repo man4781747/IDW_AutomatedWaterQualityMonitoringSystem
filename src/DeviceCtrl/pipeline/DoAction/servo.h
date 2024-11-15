@@ -23,7 +23,7 @@
  */
 struct DoServoAction : DoAction
 {
-  explicit DoServoAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem) :  DoAction(eventItem, StepTaskDetailItem){};
+  explicit DoServoAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem) :  DoAction(eventItem, StepTaskDetailItem) {}
   
   void Init_Serial() {
     Serial2.end();
@@ -37,6 +37,9 @@ struct DoServoAction : DoAction
   }
 
   void Run() {
+    Serial.println();
+    serializeJsonPretty(eventItem, Serial);
+    Serial.println();
     xSemaphoreTake(Device_Ctrl.xMutex__LX_20S, portMAX_DELAY);
     this->Init_Serial();
     this->TurnOnPower();
@@ -49,7 +52,9 @@ struct DoServoAction : DoAction
     // DynamicJsonDocument ServoStatusSave(1024); // 紀錄伺服馬達運行的結果 [true, false,....]
     DynamicJsonDocument ServoOldPostion(1024); // 紀錄伺服馬達運行前的角度 [0, 90, 180,....]
     //? 初始化流程所需的資料
+    int itemIndex = -1;
     for (JsonObject servoMotorItem : eventItem["pwm_motor_list"].as<JsonArray>()) {
+      itemIndex ++;
       int servoMotorIndex = servoMotorItem["index"].as<int>();
       int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
       //? 首先讀取目標馬達的角度
@@ -71,7 +76,7 @@ struct DoServoAction : DoAction
       }
       ServoOldPostion[String(servoMotorItem["index"].as<int>())] = nowPosition;
       if (abs(targetAngValue - nowPosition) > 20) {
-        UnDoneServoItemIndex.push_back(servoMotorItem["index"].as<int>());
+        UnDoneServoItemIndex.push_back(itemIndex);
         // ServoStatusSave[String(servoMotorItem["index"].as<int>())] = false;
       }
       if (StepTaskDetailItem->TaskStatus == StepTaskStatus::Close) {this->StopByOutside();return;}
@@ -100,6 +105,8 @@ struct DoServoAction : DoAction
       //? 對每個尚未運行完畢的伺服馬達發出指令
       for (int index : UnDoneServoItemIndex) {
         JsonObject servoMotorItem = eventItem["pwm_motor_list"][index].as<JsonObject>();
+        Serial.println(index);
+        serializeJsonPretty(servoMotorItem, Serial);
         int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
         ESP_LOGD(StepTaskDetailItem->TaskName.c_str(),"伺服馬達(LX-20S) %d 轉至 %d 度(%d)", servoMotorItem["index"].as<int>(),servoMotorItem["status"].as<int>(), targetAngValue);
         if (ReTry > 5) {
