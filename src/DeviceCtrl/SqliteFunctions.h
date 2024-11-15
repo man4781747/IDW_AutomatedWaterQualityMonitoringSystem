@@ -46,12 +46,12 @@ int db_exec(sqlite3 *db, String sql, JsonDocument *jsonData=NULL) {
       sqlite3_open(Device_Ctrl.FilePath__SD__MainDB.c_str(), &Device_Ctrl.DB_Main);
       sqlite3_open(Device_Ctrl.FilePath__SD__LogDB.c_str(), &Device_Ctrl.DB_Log);
       int retry_rc = sqlite3_exec(db, sql.c_str(), callback, (void*)jsonData, &zErrMsg);
-      if (retry_rc != SQLITE_OK) {
-        ESP_LOGE("Sqlite", "Sqlite發現DB無法讀寫，強制重開機"); 
-        Device_Ctrl.BroadcastLogToClient(NULL, 3, "Sqlite發現DB無法讀寫，強制重開機");
-        vTaskDelay(2000/portTICK_PERIOD_MS);
-        ESP.restart();
-      }
+      // if (retry_rc != SQLITE_OK) {
+      //   ESP_LOGE("Sqlite", "Sqlite發現DB無法讀寫，強制重開機"); 
+      //   Device_Ctrl.BroadcastLogToClient(NULL, 3, "Sqlite發現DB無法讀寫，強制重開機");
+      //   vTaskDelay(2000/portTICK_PERIOD_MS);
+      //   ESP.restart();
+      // }
     }
   } else {
     Serial.printf("Operation done successfully\n");

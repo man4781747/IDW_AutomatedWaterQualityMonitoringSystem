@@ -308,7 +308,6 @@ class C_Device_Ctrl
     SemaphoreHandle_t xMutex__pipelineFlowScan = NULL;
     //? pipeline 運行詳細 log 的儲存檔案完整路徑
     String Pipeline_LogFileName;
-    void WritePipelineLogFile(String FileFullPath, const char* content, ...);
 
     
     TaskHandle_t TASKLIST__StepTask[MAX_STEP_TASK_NUM];

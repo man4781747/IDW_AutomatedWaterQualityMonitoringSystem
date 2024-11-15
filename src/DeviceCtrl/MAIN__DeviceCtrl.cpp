@@ -1534,18 +1534,6 @@ void C_Device_Ctrl::StopAllStepTask()
   }
 }
 
-void C_Device_Ctrl::WritePipelineLogFile(String FileFullPath, const char *content, ...)
-{
-  char buffer[4096];  // 用于存储格式化后的文本
-  va_list ap;
-  va_start(ap, content);
-  vsprintf(buffer, content, ap);
-  va_end(ap);
-  File logFile = SD.open(FileFullPath, FILE_APPEND);
-  logFile.printf("[%s] %s\n",GetDatetimeString().c_str(), String(buffer).c_str());
-  logFile.close();
-}
-
 void C_Device_Ctrl::CreateStepTasks()
 {
   for (int i=0;i<MAX_STEP_TASK_NUM;i++) {
