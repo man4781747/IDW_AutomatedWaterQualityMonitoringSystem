@@ -37,9 +37,6 @@ struct DoServoAction : DoAction
   }
 
   void Run() {
-    Serial.println();
-    serializeJsonPretty(eventItem, Serial);
-    Serial.println();
     xSemaphoreTake(Device_Ctrl.xMutex__LX_20S, portMAX_DELAY);
     this->Init_Serial();
     this->TurnOnPower();
@@ -105,8 +102,6 @@ struct DoServoAction : DoAction
       //? 對每個尚未運行完畢的伺服馬達發出指令
       for (int index : UnDoneServoItemIndex) {
         JsonObject servoMotorItem = eventItem["pwm_motor_list"][index].as<JsonObject>();
-        Serial.println(index);
-        serializeJsonPretty(servoMotorItem, Serial);
         int targetAngValue = map(servoMotorItem["status"].as<int>(), -30, 210, 0, 1000);
         ESP_LOGD(StepTaskDetailItem->TaskName.c_str(),"伺服馬達(LX-20S) %d 轉至 %d 度(%d)", servoMotorItem["index"].as<int>(),servoMotorItem["status"].as<int>(), targetAngValue);
         if (ReTry > 5) {

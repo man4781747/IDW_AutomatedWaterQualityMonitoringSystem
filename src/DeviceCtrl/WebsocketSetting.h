@@ -35,7 +35,7 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
     D_baseInfo["action"]["message"].set("OK");
     D_baseInfo["action"]["status"].set("OK");
     String returnString;
-    serializeJsonPretty(D_baseInfo, returnString);
+    serializeJson(D_baseInfo, returnString);
     //? 2024-08-28 NodeRed端需求
     //? 希望開一個群組，群組收到訊息時，所有的回傳訊息是傳給原始訊號端以外的所有人
     if (String(server->url()) == "/ws/NodeRed") {
@@ -98,7 +98,7 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
       D_errorbaseInfo["message"] = "FAIL";
       D_errorbaseInfo["parameter"]["message"] = "API帶有的Data解析錯誤，參數格式錯誤?";
       String ErrorMessage;
-      serializeJsonPretty(D_errorbaseInfo, ErrorMessage);
+      serializeJson(D_errorbaseInfo, ErrorMessage);
       D_errorbaseInfo.clear();
 
       //? 2024-08-28 NodeRed端需求
@@ -145,7 +145,7 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
             D_baseInfo["message"] = "FAIL";
             D_baseInfo["parameter"]["message"] = "Not allow: "+String(METHOD_std.c_str());
             String returnString;
-            serializeJsonPretty(D_baseInfo, returnString);
+            serializeJson(D_baseInfo, returnString);
 
             //? 2024-08-28 NodeRed端需求
             //? 希望開一個群組，群組收到訊息時，所有的回傳訊息是傳給原始訊號端以外的所有人
@@ -168,7 +168,7 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
         D_baseInfo["action"]["status"] = "FAIL";
         D_baseInfo["action"]["message"] = "找不到API: "+String(Message_CMD_std.c_str());
         String returnString;
-        serializeJsonPretty(D_baseInfo, returnString);
+        serializeJson(D_baseInfo, returnString);
 
         //? 2024-08-28 NodeRed端需求
         //? 希望開一個群組，群組收到訊息時，所有的回傳訊息是傳給原始訊號端以外的所有人

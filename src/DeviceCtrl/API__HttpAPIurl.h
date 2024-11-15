@@ -160,7 +160,7 @@ void Set_Pipeline_apis(AsyncWebServer &asyncServer)
   //? pipeline 列表 API
   asyncServer.on("/api/piplines", HTTP_GET, [&](AsyncWebServerRequest *request){
     String pipelineFilesList;
-    serializeJsonPretty(*Device_Ctrl.JSON__PipelineConfigList, pipelineFilesList);
+    serializeJson(*Device_Ctrl.JSON__PipelineConfigList, pipelineFilesList);
     AsyncWebServerResponse* response = request->beginResponse(200, "application/json", pipelineFilesList);
     request->send(response);
   });
@@ -232,7 +232,7 @@ void Set_Pipeline_apis(AsyncWebServer &asyncServer)
 
   asyncServer.on("/api/running", HTTP_GET, [&](AsyncWebServerRequest *request){
     String pipelineFilesList;
-    serializeJsonPretty(*Device_Ctrl.JSON__pipelineConfig, pipelineFilesList);
+    serializeJson(*Device_Ctrl.JSON__pipelineConfig, pipelineFilesList);
     AsyncWebServerResponse* response = request->beginResponse(200, "application/json", pipelineFilesList);
     request->send(response);
   });
@@ -808,7 +808,6 @@ void Set_tool_apis(AsyncWebServer &asyncServer)
           JsonObject ItemObj = JsonPair_SensorData.value();
           pool_datas[S_PoolID][ItemName]["value"] = ItemObj["Value"].as<double>();
           pool_datas[S_PoolID][ItemName]["data_time"] = ItemObj["data_time"].as<String>();
-          // serializeJsonPretty(JsonPair_SensorData.value(), Serial);
         }
       }
       String returnString;

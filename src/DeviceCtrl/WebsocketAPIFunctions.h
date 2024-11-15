@@ -28,7 +28,7 @@ void ws_GetNowStatus(AsyncWebSocket *server, AsyncWebSocketClient *client, Dynam
   D_baseInfoJSON["action"]["status"].set("OK");
   D_baseInfoJSON["parameter"]["message"].set("OK");
   String returnString;
-  serializeJsonPretty(D_baseInfoJSON, returnString);
+  serializeJson(D_baseInfoJSON, returnString);
 
   //? 2024-08-28 NodeRed端需求
   //? 希望開一個群組，群組收到訊息時，所有的回傳訊息是傳給原始訊號端以外的所有人
@@ -94,7 +94,7 @@ void ws_GetAllPoolData(AsyncWebSocket *server, AsyncWebSocketClient *client, Dyn
     parameterList.add(D_poolSensorDataSended);
   }
   String returnString;
-  serializeJsonPretty((*D_baseInfo), returnString);
+  serializeJson((*D_baseInfo), returnString);
   (*D_baseInfo).clear();
   //? 2024-08-28 NodeRed端需求
   //? 希望開一個群組，群組收到訊息時，所有的回傳訊息是傳給原始訊號端以外的所有人
@@ -144,7 +144,7 @@ void ws_GetAllPoolData_ForWeb(AsyncWebSocket *server, AsyncWebSocketClient *clie
     parameterList.add(D_poolSensorDataSended);
   }
   String returnString;
-  serializeJsonPretty((*D_baseInfo), returnString);
+  serializeJson((*D_baseInfo), returnString);
   (*D_baseInfo).clear();
   client->binary(returnString);
 }
@@ -232,8 +232,6 @@ void ws_v2_RunPwmMotor(AsyncWebSocket *server, AsyncWebSocketClient *client, Dyn
     JsonArray emptyList = emptyObject.createNestedArray();
     piplineSetList.add(emptyList);
 
-
-    // serializeJsonPretty(tempFile, Serial);
     File tempFileItem = SD.open("/pipelines/__temp__.json", FILE_WRITE);
     serializeJson(tempFile, tempFileItem);
     tempFileItem.close();

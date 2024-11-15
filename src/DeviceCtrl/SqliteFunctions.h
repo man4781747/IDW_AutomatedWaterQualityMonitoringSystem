@@ -58,9 +58,6 @@ int db_exec(sqlite3 *db, String sql, JsonDocument *jsonData=NULL) {
   }
   Serial.print(F("Time taken:"));
   Serial.println(micros()-start);
-  // if (jsonData!=NULL) {
-  //   serializeJsonPretty(*jsonData, Serial);
-  // }
   xSemaphoreGive(SQL_xMutex);
   return rc;
 }
@@ -99,9 +96,6 @@ int db_exec_http(sqlite3 *db, String sql, JsonArray *jsonData=NULL) {
   }
   Serial.print(F("Time taken:"));
   Serial.println(micros()-start);
-  // if (jsonData!=NULL) {
-  //   serializeJsonPretty(*jsonData, Serial);
-  // }
   xSemaphoreGive(SQL_xMutex);
   return rc;
 }
