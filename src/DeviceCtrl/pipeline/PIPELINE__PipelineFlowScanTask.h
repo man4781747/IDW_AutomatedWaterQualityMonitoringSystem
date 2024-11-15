@@ -46,8 +46,6 @@ void PipelineFlowScan(void* parameter) {
         xSemaphoreGive(Device_Ctrl.xMutex__pipelineFlowScan);
         continue;
       }
-      Device_Ctrl.Pipeline_LogFileName = "/pipeline_log/"+GetDatetimeString("","_","")+".log";
-      ExFile_CreateFile(SD,Device_Ctrl.Pipeline_LogFileName);
       JsonArray PipelineList = (*Device_Ctrl.JSON__pipelineStack).as<JsonArray>();
       ESP_LOGD("","一共有 %d 個流程會依序執行", PipelineList.size());
       Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 3, "準備執行新流程需求，一共有 %d 個流程: %s", PipelineList.size(), Device_Ctrl.Pipeline_LogFileName.c_str());
