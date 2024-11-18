@@ -42,6 +42,8 @@ struct DoSpectrophotometerAction : DoAction
       }
       digitalWrite(activePin, HIGH);
       vTaskDelay(2000/portTICK_PERIOD_MS);
+      // Device_Ctrl.ScanI2C();
+      //? 檢查光度計感光元件是否存在
       Device_Ctrl._Wire.beginTransmission(sensorAddr);
       byte error = Device_Ctrl._Wire.endTransmission();
       if (error != 0) {
@@ -58,9 +60,10 @@ struct DoSpectrophotometerAction : DoAction
         ResultMessage = "找不到光度計: "+spectrophotometerTitle + "\n";
         return;
       }
+      
       INA226 ina226(Device_Ctrl._Wire);
       ina226.begin(sensorAddr);
-      Serial.println(sensorAddr);
+      // Serial.println(sensorAddr);
       ina226.configure(
         INA226_AVERAGES_4, // 采样平均
         INA226_BUS_CONV_TIME_140US, //采样时间

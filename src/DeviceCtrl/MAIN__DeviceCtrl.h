@@ -20,7 +20,20 @@
 #include <ESPAsyncWebServer.h>
 #include <sqlite3.h>
 #include "PeristalticMotorCtrl.h"
-#include "./DeviceCtrl/ConfigSetting.h"
+
+#include "./config/device_base_config.h"
+#include "./config/item_use_count.h"
+#include "./config/maintenance_item.h"
+#include "./config/peristaltic_motor.h"
+#include "./config/ph_meter.h"
+#include "./config/pool.h"
+#include "./config/ro_correction.h"
+#include "./config/schedule.h"
+#include "./config/servo.h"
+#include "./config/spectrophoto_meter.h"
+#include "./config/wifi.h"
+
+
 #include <unordered_map>
 #include <map>
 
