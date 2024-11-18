@@ -5,9 +5,34 @@
 #include <vector>
 #include "common.h"
 
-struct PeristalticMotorAction : DoAction 
+/** 蠕動馬達功能設定
+ *  可設定參數: 
+ *    1. (必要/int)index: 馬達編號
+ *    2. (必要/int)status: 0 不轉、1 正轉、2 反轉
+ *    3. (必要/float)time: 旋轉秒數
+ *    4. (str)until: 觸發停止目標物: "RO"、"SAMPLE"、"-"
+ *    5. (str)failType: 錯誤觸發類型: "timeout"、"-"
+ *    6. (str)failAction: 錯誤後行為: "stopPipeline"、"continue"
+ *    7. (str)pool: 抽取耗時記錄目標: pool-1 ~ pool-4、無
+ *    8. (str)consumeTarget: 消耗記數目標: "RO"、"NO2_R1"、"NH4_R1"、"NH4_R2"
+ *    9. (int)consumeNum: 消耗記數數量
+ *   10. (float)consumeRate: 消耗記數比率
+ *  設定檔範例: 
+  "peristaltic_motor_list": [{
+    "index": 1,
+    "status": 1,
+    "time": 240,
+    "until": "RO",
+    "consumeTarget": "RO",
+    "consumeNum": 1,
+    "failType": "timeout",
+    "failAction": "stopPipeline",
+    "pool": "pool-1"
+  }]
+ */
+struct DoPeristalticMotorAction : DoAction 
 {
-  explicit PeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem) :  DoAction(eventItem, StepTaskDetailItem){}
+  explicit DoPeristalticMotorAction(JsonObject eventItem, StepTaskDetail* StepTaskDetailItem) :  DoAction(eventItem, StepTaskDetailItem){}
 
   void Run() {
     pinMode(PIN__EN_Peristaltic_Motor, OUTPUT);
@@ -91,6 +116,7 @@ struct PeristalticMotorAction : DoAction
         ESP_LOGI(StepTaskDetailItem->TaskName.c_str(),"蠕動馬達流程步驟收到中斷要求");
         digitalWrite(PIN__EN_Peristaltic_Motor, LOW);
         result_code = ResultCode::STOP_BY_OUTSIDE;
+        return;
       }
       allFinish = true;
       for (const auto& endTimeCheck : endTimeCheckList.as<JsonObject>()) {
@@ -146,12 +172,14 @@ struct PeristalticMotorAction : DoAction
               Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "停止當前Step的運行");
               Device_Ctrl.BroadcastLogToClient(NULL, 1, "停止當前Step的運行");
               result_code = ResultCode::STOP_THIS_STEP;
+              return;
             }
             else if (thisFailAction=="stopImmediately") {
               ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "準備緊急終止儀器");
               Device_Ctrl.InsertNewLogToDB(GetDatetimeString(), 1, "準備緊急終止儀器");
               Device_Ctrl.BroadcastLogToClient(NULL, 1, "準備緊急終止儀器");
               result_code = ResultCode::STOP_DEVICE;
+              return;
             }
             else if (thisFailAction=="stopPipeline") {
               ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "準備停止當前流程，若有下一個排隊中的流程就執行他");
@@ -159,6 +187,7 @@ struct PeristalticMotorAction : DoAction
               Device_Ctrl.BroadcastLogToClient(NULL, 1, "準備停止當前流程，若有下一個排隊中的流程就執行他");
               // (*Device_Ctrl.JSON__pipelineConfig)["steps_group"][stepsGroupNameString]["RESULT"].set("STOP_THIS_PIPELINE");
               result_code = ResultCode::STOP_THIS_PIPELINE;
+              return;
             }
             //? 若非，則正常停止馬達運行
             if (Device_Ctrl.peristalticMotorsCtrl.GetMotorStatusSetting(motorIndex) == PeristalticMotorStatus::STOP) {
@@ -250,10 +279,12 @@ struct PeristalticMotorAction : DoAction
                 endTimeCheckJSON["finish"].set(true);
                 ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "停止當前Step的運行");
                 result_code = ResultCode::STOP_THIS_STEP;
+                return;
               }
               else if (thisFailAction=="stopImmediately") {
                 ESP_LOGE(StepTaskDetailItem->TaskName.c_str(), "準備緊急終止儀器");
                 result_code = ResultCode::STOP_DEVICE;
+                return;
               }
             }
             endTimeCheckJSON["finish"].set(true);
@@ -267,6 +298,7 @@ struct PeristalticMotorAction : DoAction
       digitalWrite(PIN__EN_Peristaltic_Motor, LOW);
     }
     result_code = ResultCode::SUCCESS;
+    return;
   };
 
   void StopByOutside() {
@@ -275,6 +307,6 @@ struct PeristalticMotorAction : DoAction
     ResultMessage = "";
   }
 
-}
+};
 
 #endif
